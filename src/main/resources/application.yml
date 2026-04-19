@@ -1,0 +1,97 @@
+spring:
+  application:
+    name: appointments-module
+  
+  datasource:
+    url: jdbc:postgresql://localhost:5432/ipscentir_appointments
+    username: postgres
+    password: postgres
+    driver-class-name: org.postgresql.Driver
+    
+  jpa:
+    hibernate:
+      ddl-auto: validate # Flyway maneja las migraciones, por lo que hibernación solo valida
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    locations: classpath:db/migration
+    
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: ${EMAIL_USERNAME:admin@ipscentir.com}
+    password: ${EMAIL_PASSWORD:secret}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+
+server:
+  port: 8080
+  servlet:
+    context-path: /api
+
+# Configuración de integración con otros módulos
+integration:
+  patient-service:
+    url: ${PATIENT_SERVICE_URL:http://localhost:8081}
+  affiliation-service:
+    url: ${AFFILIATION_SERVICE_URL:http://external-system/affiliation}
+    timeout: 3000
+  billing-service:
+    url: ${BILLING_SERVICE_URL:http://localhost:8082}
+  clinical-service:
+    url: ${CLINICAL_SERVICE_URL:http://localhost:8083}
+
+# Twilio (SMS y WhatsApp)
+twilio:
+  account-sid: ${TWILIO_ACCOUNT_SID:mock_sid}
+  auth-token: ${TWILIO_AUTH_TOKEN:mock_token}
+  phone-number: ${TWILIO_PHONE_NUMBER:+123456789}
+  whatsapp-number: ${TWILIO_WHATSAPP_NUMBER:+123456789}
+
+# Configuración Genérica de Notificaciones Internas
+notifications:
+  enabled: true
+  reminder-24h-enabled: true
+  reminder-2h-enabled: true
+  max-retry-attempts: 3
+
+# Springdoc (SwaggerUI)
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    enabled: true
+
+# Logging Level
+logging:
+  level:
+    root: INFO
+    com.ipscentir.appointments: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.springframework.web: DEBUG
+
+security:
+  n8n:
+    api-key: ${N8N_API_KEY:change-this-in-production}
+    base-path: ${N8N_BASE_PATH:/api/v1/integrations/n8n}
+  bootstrap:
+    superadmin-password: ${BOOTSTRAP_SUPERADMIN_PASSWORD:}
+    admin-password: ${BOOTSTRAP_ADMIN_PASSWORD:}
+    especialista-password: ${BOOTSTRAP_ESPECIALISTA_PASSWORD:}
+
+appointments:
+  therapy:
+    pending-group-policy: ${THERAPY_PENDING_GROUP_POLICY:RESCHEDULE}
+    pending-group-cutoff-minutes: ${THERAPY_PENDING_GROUP_CUTOFF_MINUTES:120}
+    pending-group-cutoff-cron: ${THERAPY_PENDING_GROUP_CUTOFF_CRON:0 */5 * * * *}
