@@ -3,13 +3,13 @@ package com.ipscentir.appointments.presentation.rest;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ipscentir.appointments.application.dto.integration.n8n.N8nCancelAppointmentResponse;
 import com.ipscentir.appointments.application.dto.integration.n8n.N8nAvailabilityBookingPayloadDTO;
+import com.ipscentir.appointments.application.dto.integration.n8n.N8nFacilityId;
 import com.ipscentir.appointments.application.dto.integration.n8n.N8nAvailabilitySlotDTO;
 import com.ipscentir.appointments.application.dto.integration.n8n.N8nPatientAppointmentResponse;
 import com.ipscentir.appointments.application.dto.integration.n8n.N8nPatientAvailabilityResponse;
 import com.ipscentir.appointments.application.dto.integration.n8n.N8nWebhookEventResponse;
 import com.ipscentir.appointments.application.service.N8nPatientIntegrationService;
 import com.ipscentir.appointments.application.dto.AppointmentDTO;
-import com.ipscentir.appointments.application.dto.AvailableSlotDTO;
 import com.ipscentir.appointments.domain.model.appointment.AppointmentStatus;
 import com.ipscentir.appointments.domain.model.appointment.AppointmentType;
 import org.junit.jupiter.api.Test;
@@ -59,10 +59,9 @@ class N8nIntegrationControllerTest {
 
     @Test
     void shouldRejectAvailabilityWithoutApiKey() throws Exception {
-        UUID facilityId = UUID.randomUUID();
         LocalDate date = LocalDate.now().plusDays(2);
 
-                String body = asJson(Map.of("serviceType", "TERAPIA_FISICA", "facilityId", facilityId, "fromDate", date, "limit", 4));
+                String body = asJson(Map.of("serviceType", "TERAPIA_FISICA", "facilityId", "BELEN", "fromDate", date, "limit", 4));
 
         mockMvc.perform(post("/api/v1/integrations/n8n/patient/availability")
                         .contentType(JSON)
@@ -72,11 +71,10 @@ class N8nIntegrationControllerTest {
 
     @Test
     void shouldExposeAvailabilityWithApiKey() throws Exception {
-        UUID facilityId = UUID.randomUUID();
         LocalDate date = LocalDate.now().plusDays(2);
 
         when(n8nPatientIntegrationService.getAvailability(any())).thenReturn(new N8nPatientAvailabilityResponse(
-                facilityId,
+                N8nFacilityId.BELEN,
                 "TERAPIA_FISICA",
                 "Terapia fisica",
                 date,
@@ -85,7 +83,7 @@ class N8nIntegrationControllerTest {
                 List.of(new N8nAvailabilitySlotDTO(
                         UUID.randomUUID(),
                         UUID.randomUUID(),
-                        facilityId,
+                        N8nFacilityId.BELEN,
                         "TERAPIA_FISICA",
                         "Terapia fisica",
                         date,
@@ -96,7 +94,7 @@ class N8nIntegrationControllerTest {
                         new N8nAvailabilityBookingPayloadDTO(
                                 null,
                                 UUID.randomUUID(),
-                                facilityId,
+                                N8nFacilityId.BELEN,
                                 null,
                                 UUID.randomUUID(),
                                 date,
@@ -112,17 +110,17 @@ class N8nIntegrationControllerTest {
                 "Se encontraron 1 horarios disponibles para Terapia fisica."
         ));
 
-        String body = asJson(Map.of("serviceType", "TERAPIA_FISICA", "facilityId", facilityId, "fromDate", date, "limit", 4));
+        String body = asJson(Map.of("serviceType", "TERAPIA_FISICA", "facilityId", "BELEN", "fromDate", date, "limit", 4));
 
         mockMvc.perform(post("/api/v1/integrations/n8n/patient/availability")
                         .header(N8N_API_KEY_HEADER, N8N_API_KEY)
                         .contentType(JSON)
                         .content(body))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.facilityId").value(facilityId.toString()))
+                .andExpect(jsonPath("$.facilityId").value("BELEN"))
                 .andExpect(jsonPath("$.serviceType").value("TERAPIA_FISICA"))
                 .andExpect(jsonPath("$.availableSlotsCount").value(1))
-                .andExpect(jsonPath("$.slots[0].bookingPayload.facilityId").value(facilityId.toString()));
+                .andExpect(jsonPath("$.slots[0].bookingPayload.facilityId").value("BELEN"));
     }
 
     @Test
@@ -144,11 +142,10 @@ class N8nIntegrationControllerTest {
         String body = asJson(Map.of(
                 "patientId", patientId,
                 "doctorId", doctorId,
-                "facilityId", facilityId,
+                "facilityId", "BELEN",
                 "scheduleId", scheduleId,
                 "appointmentDate", date,
                 "appointmentTime", time,
-                "appointmentType", "PRESENCIAL",
                 "reason", "Checkup"
         ));
 

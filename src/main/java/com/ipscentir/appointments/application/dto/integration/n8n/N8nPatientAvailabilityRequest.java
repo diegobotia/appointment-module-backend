@@ -3,12 +3,11 @@ package com.ipscentir.appointments.application.dto.integration.n8n;
 import jakarta.validation.constraints.NotNull;
 
 import java.time.LocalDate;
-import java.util.UUID;
 
 public record N8nPatientAvailabilityRequest(
                 String serviceType,
                 String specialty,
-        @NotNull UUID facilityId,
+        @NotNull N8nFacilityId facilityId,
                 Integer limit,
                 LocalDate fromDate
 ) {

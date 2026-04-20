@@ -6,24 +6,28 @@ import com.ipscentir.appointments.application.dto.integration.n8n.N8nAvailabilit
 import com.ipscentir.appointments.application.dto.integration.n8n.N8nAvailabilitySlotDTO;
 import com.ipscentir.appointments.application.dto.integration.n8n.N8nCancelAppointmentRequest;
 import com.ipscentir.appointments.application.dto.integration.n8n.N8nCancelAppointmentResponse;
+import com.ipscentir.appointments.application.dto.integration.n8n.N8nFacilityId;
 import com.ipscentir.appointments.application.dto.integration.n8n.N8nPatientAppointmentRequest;
 import com.ipscentir.appointments.application.dto.integration.n8n.N8nPatientAppointmentResponse;
 import com.ipscentir.appointments.application.dto.integration.n8n.N8nPatientAvailabilityRequest;
 import com.ipscentir.appointments.application.dto.integration.n8n.N8nPatientAvailabilityResponse;
 import com.ipscentir.appointments.application.dto.integration.n8n.N8nWebhookEventRequest;
 import com.ipscentir.appointments.application.dto.integration.n8n.N8nWebhookEventResponse;
+import com.ipscentir.appointments.application.mapper.AppointmentMapper;
 import com.ipscentir.appointments.domain.model.catalog.AppointmentServiceType;
 import com.ipscentir.appointments.domain.model.appointment.Appointment;
 import com.ipscentir.appointments.domain.model.appointment.AppointmentType;
+import com.ipscentir.appointments.domain.model.facility.Facility;
 import com.ipscentir.appointments.domain.model.schedule.AvailableSlotDetail;
 import com.ipscentir.appointments.domain.service.AppointmentBookingService;
 import com.ipscentir.appointments.domain.service.AvailabilityService;
-import com.ipscentir.appointments.application.mapper.AppointmentMapper;
+import com.ipscentir.appointments.infrastructure.persistence.jpa.FacilityJpaRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -34,15 +38,17 @@ public class N8nPatientIntegrationService {
     private final AppointmentBookingService appointmentBookingService;
     private final AppointmentMapper appointmentMapper;
     private final N8nEventJournalService n8nEventJournalService;
+        private final FacilityJpaRepository facilityJpaRepository;
 
     @Transactional(readOnly = true)
     public N8nPatientAvailabilityResponse getAvailability(N8nPatientAvailabilityRequest request) {
         String requestedServiceType = request.canonicalServiceType();
         AppointmentServiceType serviceType = AppointmentServiceType.fromFlexibleValue(requestedServiceType);
+        UUID resolvedFacilityId = resolveFacilityId(request.facilityId());
 
         List<AvailableSlotDetail> slots = availabilityService.getNearestAvailableSlotsByServiceType(
                 serviceType,
-                request.facilityId(),
+                resolvedFacilityId,
                 request.fromDate(),
                 request.limit()
         );
@@ -51,7 +57,7 @@ public class N8nPatientIntegrationService {
                 .map(slot -> new N8nAvailabilitySlotDTO(
                         slot.scheduleId(),
                         slot.doctorId(),
-                        slot.facilityId(),
+                        request.facilityId(),
                         slot.serviceType().name(),
                         slot.specialty(),
                         slot.appointmentDate(),
@@ -62,7 +68,7 @@ public class N8nPatientIntegrationService {
                         new N8nAvailabilityBookingPayloadDTO(
                                 null,
                                 slot.doctorId(),
-                                slot.facilityId(),
+                                request.facilityId(),
                                 null,
                                 slot.scheduleId(),
                                 slot.appointmentDate(),
@@ -95,11 +101,13 @@ public class N8nPatientIntegrationService {
 
     @Transactional
     public N8nPatientAppointmentResponse createAppointment(N8nPatientAppointmentRequest request) {
+        UUID resolvedFacilityId = resolveFacilityId(request.facilityId());
+
         AppointmentDTO appointment = appointmentApplicationService.createAppointment(
                 new CreateAppointmentCommand(
                         request.patientId(),
                         request.doctorId(),
-                        request.facilityId(),
+                        resolvedFacilityId,
                         request.secondaryDoctorId(),
                         request.scheduleId(),
                         request.appointmentDate(),
@@ -116,7 +124,7 @@ public class N8nPatientIntegrationService {
     }
 
     @Transactional
-    public N8nCancelAppointmentResponse cancelAppointment(java.util.UUID appointmentId, N8nCancelAppointmentRequest request) {
+        public N8nCancelAppointmentResponse cancelAppointment(UUID appointmentId, N8nCancelAppointmentRequest request) {
         Appointment cancelled = appointmentBookingService.cancelAppointment(appointmentId, request.reason());
         AppointmentDTO dto = appointmentMapper.toDto(cancelled);
 
@@ -130,4 +138,10 @@ public class N8nPatientIntegrationService {
     public N8nWebhookEventResponse handleWebhookEvent(N8nWebhookEventRequest request) {
         return n8nEventJournalService.handleWebhookEvent(request);
     }
+
+        private UUID resolveFacilityId(N8nFacilityId facilityId) {
+                return facilityJpaRepository.findByCode(facilityId.persistenceCode())
+                                .map(Facility::getId)
+                                .orElseThrow(() -> new IllegalArgumentException("Unknown facilityId: " + facilityId));
+        }
 }
