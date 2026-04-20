@@ -46,7 +46,7 @@ class AppointmentEventListenerTest {
 
         Appointment appointment = Appointment.scheduleNew(
             patientId, doctorId, null,
-            new AppointmentScheduleData(scheduleId, facilityId, LocalDate.now().plusDays(2), LocalTime.of(10, 0), 30, AppointmentType.TELEMEDICINA, com.ipscentir.appointments.domain.model.appointment.AppointmentStatus.SCHEDULED, "Checkup")
+            new AppointmentScheduleData(scheduleId, facilityId, LocalDate.now().plusDays(2), LocalTime.of(10, 0), 30, AppointmentType.PRESENCIAL, com.ipscentir.appointments.domain.model.appointment.AppointmentStatus.SCHEDULED, "Checkup")
         );
 
         // Act - Se dispara el guardado en base de datos.
@@ -70,7 +70,7 @@ class AppointmentEventListenerTest {
 
         Appointment appointment = Appointment.scheduleNew(
             patientId, doctorId, null,
-            new AppointmentScheduleData(scheduleId, facilityId, LocalDate.now().plusDays(2), LocalTime.of(10, 0), 30, AppointmentType.TELEMEDICINA, com.ipscentir.appointments.domain.model.appointment.AppointmentStatus.SCHEDULED, "Checkup")
+            new AppointmentScheduleData(scheduleId, facilityId, LocalDate.now().plusDays(2), LocalTime.of(10, 0), 30, AppointmentType.PRESENCIAL, com.ipscentir.appointments.domain.model.appointment.AppointmentStatus.SCHEDULED, "Checkup")
         );
 
         appointmentRepository.save(appointment);

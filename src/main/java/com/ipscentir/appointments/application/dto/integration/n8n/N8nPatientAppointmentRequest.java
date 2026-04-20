@@ -15,6 +15,5 @@ public record N8nPatientAppointmentRequest(
         @NotNull UUID scheduleId,
         @NotNull @FutureOrPresent LocalDate appointmentDate,
         @NotNull LocalTime appointmentTime,
-        @NotNull String appointmentType,
         String reason
 ) {}

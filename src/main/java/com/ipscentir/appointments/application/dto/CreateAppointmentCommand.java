@@ -28,7 +28,7 @@ public record CreateAppointmentCommand(
         @NotNull(message = "Appointment time is required")
         LocalTime appointmentTime,
         
-        @NotNull(message = "Appointment type is required (PRESENCIAL or TELEMEDICINA)")
+        @NotNull(message = "Appointment type is required")
         String appointmentType,
         
         String reason

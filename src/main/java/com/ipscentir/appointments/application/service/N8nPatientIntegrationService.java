@@ -14,6 +14,7 @@ import com.ipscentir.appointments.application.dto.integration.n8n.N8nWebhookEven
 import com.ipscentir.appointments.application.dto.integration.n8n.N8nWebhookEventResponse;
 import com.ipscentir.appointments.domain.model.catalog.AppointmentServiceType;
 import com.ipscentir.appointments.domain.model.appointment.Appointment;
+import com.ipscentir.appointments.domain.model.appointment.AppointmentType;
 import com.ipscentir.appointments.domain.model.schedule.AvailableSlotDetail;
 import com.ipscentir.appointments.domain.service.AppointmentBookingService;
 import com.ipscentir.appointments.domain.service.AvailabilityService;
@@ -103,7 +104,7 @@ public class N8nPatientIntegrationService {
                         request.scheduleId(),
                         request.appointmentDate(),
                         request.appointmentTime(),
-                        request.appointmentType(),
+                        AppointmentType.PRESENCIAL.name(),
                         request.reason()
                 )
         );

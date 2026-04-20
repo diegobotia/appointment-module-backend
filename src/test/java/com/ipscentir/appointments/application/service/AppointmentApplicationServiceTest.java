@@ -60,20 +60,20 @@ class AppointmentApplicationServiceTest {
     void testCreateAppointment_MapsCommandToDtoSuccessfully() {
         UUID facilityId = UUID.randomUUID();
         CreateAppointmentCommand command = new CreateAppointmentCommand(
-                patientId, doctorId, facilityId, null, scheduleId, date, time, "TELEMEDICINA", "Symptoms"
+                patientId, doctorId, facilityId, null, scheduleId, date, time, "PRESENCIAL", "Symptoms"
         );
 
         Appointment appointment = Appointment.scheduleNew(
-                patientId, doctorId, null, new AppointmentScheduleData(scheduleId, facilityId, date, time, 30, AppointmentType.TELEMEDICINA, AppointmentStatus.SCHEDULED, "Symptoms")
+                patientId, doctorId, null, new AppointmentScheduleData(scheduleId, facilityId, date, time, 30, AppointmentType.PRESENCIAL, AppointmentStatus.SCHEDULED, "Symptoms")
         );
 
         AppointmentDTO mappedDto = new AppointmentDTO(
                 appointment.getId(), patientId, doctorId, facilityId, null, scheduleId, date, time, 30,
-                AppointmentType.TELEMEDICINA, AppointmentStatus.SCHEDULED, "Symptoms", null, null, null
+                AppointmentType.PRESENCIAL, AppointmentStatus.SCHEDULED, "Symptoms", null, null, null
         );
 
         when(bookingService.bookAppointment(new AppointmentBookingRequest(
-                patientId, doctorId, null, scheduleId, facilityId, date, time, AppointmentType.TELEMEDICINA, "Symptoms"
+                patientId, doctorId, null, scheduleId, facilityId, date, time, AppointmentType.PRESENCIAL, "Symptoms"
         ))).thenReturn(appointment);
 
         when(appointmentMapper.toDto(appointment)).thenReturn(mappedDto);
@@ -81,10 +81,10 @@ class AppointmentApplicationServiceTest {
         AppointmentDTO result = applicationService.createAppointment(command);
 
         assertNotNull(result);
-        assertEquals(AppointmentType.TELEMEDICINA, result.appointmentType());
+        assertEquals(AppointmentType.PRESENCIAL, result.appointmentType());
         verify(facilityAuthorizationService).assertCurrentUserCanAccessFacility(facilityId);
         verify(bookingService).bookAppointment(new AppointmentBookingRequest(
-                patientId, doctorId, null, scheduleId, facilityId, date, time, AppointmentType.TELEMEDICINA, "Symptoms"
+                patientId, doctorId, null, scheduleId, facilityId, date, time, AppointmentType.PRESENCIAL, "Symptoms"
         ));
         verify(appointmentMapper).toDto(appointment);
     }

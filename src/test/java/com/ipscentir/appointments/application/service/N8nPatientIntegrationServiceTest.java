@@ -100,7 +100,7 @@ class N8nPatientIntegrationServiceTest {
         when(appointmentApplicationService.createAppointment(any())).thenReturn(dto);
 
         var response = service.createAppointment(new N8nPatientAppointmentRequest(
-                patientId, doctorId, facilityId, null, scheduleId, date, time, "PRESENCIAL", "Checkup"
+                patientId, doctorId, facilityId, null, scheduleId, date, time, "Checkup"
         ));
 
         assertEquals(dto, response.appointment());
