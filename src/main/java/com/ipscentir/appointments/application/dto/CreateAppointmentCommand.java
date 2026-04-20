@@ -13,6 +13,9 @@ public record CreateAppointmentCommand(
         @NotNull(message = "Doctor ID is required")
         UUID doctorId,
 
+        @NotNull(message = "Facility ID is required")
+        UUID facilityId,
+
         UUID secondaryDoctorId,
         
         @NotNull(message = "Schedule ID is required")

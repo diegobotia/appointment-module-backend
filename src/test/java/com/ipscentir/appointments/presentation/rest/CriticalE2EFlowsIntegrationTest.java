@@ -99,12 +99,13 @@ class CriticalE2EFlowsIntegrationTest {
     @Test
     void e2eN8nPatientHappyFlowWithCancellationAndEventJournal() throws Exception {
         UUID doctorId = UUID.randomUUID();
+        UUID facilityId = UUID.randomUUID();
         LocalDate date = LocalDate.now().plusDays(2);
         LocalTime time = LocalTime.of(9, 0);
 
         Schedule schedule = scheduleJpaRepository.save(Schedule.builder()
                 .doctorId(doctorId)
-                .facilityId(UUID.randomUUID())
+                .facilityId(facilityId)
                 .specialty("GENERAL")
                 .dayOfWeek(date.getDayOfWeek())
                 .startTime(LocalTime.of(8, 0))
@@ -119,6 +120,7 @@ class CriticalE2EFlowsIntegrationTest {
                         .contentType(JSON)
                         .content(asJson(Map.of(
                                 "doctorId", doctorId,
+                                "facilityId", facilityId,
                                 "date", date
                         ))))
                 .andExpect(status().isOk())
@@ -130,6 +132,7 @@ class CriticalE2EFlowsIntegrationTest {
                         .content(asJson(Map.of(
                                 "patientId", UUID.randomUUID(),
                                 "doctorId", doctorId,
+                                "facilityId", facilityId,
                                 "scheduleId", schedule.getId(),
                                 "appointmentDate", date,
                                 "appointmentTime", time,

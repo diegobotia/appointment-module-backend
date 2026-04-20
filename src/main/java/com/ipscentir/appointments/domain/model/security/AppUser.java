@@ -1,5 +1,6 @@
 package com.ipscentir.appointments.domain.model.security;
 
+import com.ipscentir.appointments.domain.model.facility.Facility;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -54,4 +55,13 @@ public class AppUser {
     )
     @Builder.Default
     private Set<Role> roles = new HashSet<>();
+
+    @ManyToMany(fetch = FetchType.EAGER)
+    @JoinTable(
+            name = "user_facilities",
+            joinColumns = @JoinColumn(name = "user_id"),
+            inverseJoinColumns = @JoinColumn(name = "facility_id")
+    )
+    @Builder.Default
+    private Set<Facility> facilities = new HashSet<>();
 }

@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -23,11 +24,12 @@ public class ScheduleController {
     private final ScheduleApplicationService scheduleApplicationService;
 
     @GetMapping("/doctors/{doctorId}/day/{dayOfWeek}")
-    @Operation(summary = "Get Doctor Schedule Configuration", description = "Retrieves the active routing template for a specific doctor on a given day of the week")
+    @Operation(summary = "Get Doctor Schedule Configuration", description = "Retrieves the active routing template for a specific doctor and facility on a given day of the week")
     public ResponseEntity<ScheduleDTO> getDoctorSchedule(
             @PathVariable UUID doctorId,
-            @PathVariable DayOfWeek dayOfWeek
+            @PathVariable DayOfWeek dayOfWeek,
+            @RequestParam UUID facilityId
     ) {
-        return ResponseEntity.ok(scheduleApplicationService.getScheduleForDoctor(doctorId, dayOfWeek));
+        return ResponseEntity.ok(scheduleApplicationService.getScheduleForDoctorAndFacility(doctorId, facilityId, dayOfWeek));
     }
 }

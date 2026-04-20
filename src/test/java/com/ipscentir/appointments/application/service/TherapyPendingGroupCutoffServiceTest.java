@@ -1,6 +1,7 @@
 package com.ipscentir.appointments.application.service;
 
 import com.ipscentir.appointments.domain.model.appointment.Appointment;
+import com.ipscentir.appointments.domain.model.appointment.AppointmentScheduleData;
 import com.ipscentir.appointments.domain.model.appointment.AppointmentStatus;
 import com.ipscentir.appointments.domain.model.appointment.AppointmentType;
 import com.ipscentir.appointments.domain.repository.AppointmentRepository;
@@ -105,13 +106,16 @@ class TherapyPendingGroupCutoffServiceTest {
                 UUID.randomUUID(),
                 UUID.randomUUID(),
                 null,
-                UUID.randomUUID(),
-                LocalDate.from(appointmentDateTime),
-                LocalTime.from(appointmentDateTime),
-                30,
-                AppointmentType.TERAPIA_FISICA,
-                AppointmentStatus.PENDIENTE_CONFIRMACION_GRUPO,
-                "Sesion grupal"
+                new AppointmentScheduleData(
+                        UUID.randomUUID(),
+                        UUID.randomUUID(),
+                        LocalDate.from(appointmentDateTime),
+                        LocalTime.from(appointmentDateTime),
+                        30,
+                        AppointmentType.TERAPIA_FISICA,
+                        AppointmentStatus.PENDIENTE_CONFIRMACION_GRUPO,
+                        "Sesion grupal"
+                )
         );
     }
 }

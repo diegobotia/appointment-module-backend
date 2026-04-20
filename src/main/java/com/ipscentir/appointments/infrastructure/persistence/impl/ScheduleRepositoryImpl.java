@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.time.DayOfWeek;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -15,6 +16,16 @@ import java.util.UUID;
 public class ScheduleRepositoryImpl implements ScheduleRepository {
 
     private final ScheduleJpaRepository jpaRepository;
+
+    @Override
+    public Optional<Schedule> findByDoctorIdAndFacilityIdAndDayOfWeek(UUID doctorId, UUID facilityId, DayOfWeek dayOfWeek) {
+        return jpaRepository.findByDoctorIdAndFacilityIdAndDayOfWeekWithBlocks(doctorId, facilityId, dayOfWeek);
+    }
+
+    @Override
+    public List<Schedule> findByFacilityIdAndDayOfWeek(UUID facilityId, DayOfWeek dayOfWeek) {
+        return jpaRepository.findByFacilityIdAndDayOfWeekWithBlocks(facilityId, dayOfWeek);
+    }
 
     @Override
     public Optional<Schedule> findByDoctorIdAndDayOfWeek(UUID doctorId, DayOfWeek dayOfWeek) {

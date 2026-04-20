@@ -1,5 +1,6 @@
 package com.ipscentir.appointments.application.service;
 
+import com.ipscentir.appointments.application.security.FacilityAuthorizationService;
 import com.ipscentir.appointments.application.dto.security.AuthUserDTO;
 import com.ipscentir.appointments.application.dto.security.LoginRequest;
 import jakarta.servlet.http.HttpServletRequest;
@@ -22,6 +23,7 @@ import java.util.stream.Collectors;
 public class AuthService {
 
     private final AuthenticationManager authenticationManager;
+    private final FacilityAuthorizationService facilityAuthorizationService;
 
     public AuthUserDTO login(LoginRequest request, HttpServletRequest httpRequest) {
         Authentication authentication = authenticationManager.authenticate(
@@ -39,6 +41,11 @@ public class AuthService {
             .map(GrantedAuthority::getAuthority)
                 .collect(Collectors.toSet());
 
-        return new AuthUserDTO(authentication.getName(), roles, "SESSION");
+        return new AuthUserDTO(
+            authentication.getName(),
+            roles,
+            "SESSION",
+            facilityAuthorizationService.getCurrentUserFacilityIds(authentication)
+        );
     }
 }

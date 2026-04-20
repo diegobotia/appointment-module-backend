@@ -3,8 +3,10 @@ package com.ipscentir.appointments.application.service;
 import com.ipscentir.appointments.application.dto.AppointmentDTO;
 import com.ipscentir.appointments.application.dto.CreateAppointmentCommand;
 import com.ipscentir.appointments.application.mapper.AppointmentMapper;
+import com.ipscentir.appointments.application.security.FacilityAuthorizationService;
 import com.ipscentir.appointments.domain.model.appointment.Appointment;
 import com.ipscentir.appointments.domain.model.appointment.AppointmentStatus;
+import com.ipscentir.appointments.domain.model.appointment.AppointmentScheduleData;
 import com.ipscentir.appointments.domain.model.appointment.AppointmentType;
 import com.ipscentir.appointments.domain.service.AppointmentBookingRequest;
 import com.ipscentir.appointments.domain.service.AppointmentBookingService;
@@ -33,6 +35,9 @@ class AppointmentApplicationServiceTest {
     @Mock
     private AppointmentMapper appointmentMapper;
 
+        @Mock
+        private FacilityAuthorizationService facilityAuthorizationService;
+
     @InjectMocks
     private AppointmentApplicationService applicationService;
 
@@ -53,21 +58,22 @@ class AppointmentApplicationServiceTest {
 
     @Test
     void testCreateAppointment_MapsCommandToDtoSuccessfully() {
+        UUID facilityId = UUID.randomUUID();
         CreateAppointmentCommand command = new CreateAppointmentCommand(
-                patientId, doctorId, null, scheduleId, date, time, "TELEMEDICINA", "Symptoms"
+                patientId, doctorId, facilityId, null, scheduleId, date, time, "TELEMEDICINA", "Symptoms"
         );
 
         Appointment appointment = Appointment.scheduleNew(
-                patientId, doctorId, null, scheduleId, date, time, 30, AppointmentType.TELEMEDICINA, AppointmentStatus.SCHEDULED, "Symptoms"
+                patientId, doctorId, null, new AppointmentScheduleData(scheduleId, facilityId, date, time, 30, AppointmentType.TELEMEDICINA, AppointmentStatus.SCHEDULED, "Symptoms")
         );
 
         AppointmentDTO mappedDto = new AppointmentDTO(
-                appointment.getId(), patientId, doctorId, null, scheduleId, date, time, 30,
+                appointment.getId(), patientId, doctorId, facilityId, null, scheduleId, date, time, 30,
                 AppointmentType.TELEMEDICINA, AppointmentStatus.SCHEDULED, "Symptoms", null, null, null
         );
 
         when(bookingService.bookAppointment(new AppointmentBookingRequest(
-                patientId, doctorId, null, scheduleId, date, time, AppointmentType.TELEMEDICINA, "Symptoms"
+                patientId, doctorId, null, scheduleId, facilityId, date, time, AppointmentType.TELEMEDICINA, "Symptoms"
         ))).thenReturn(appointment);
 
         when(appointmentMapper.toDto(appointment)).thenReturn(mappedDto);
@@ -76,8 +82,9 @@ class AppointmentApplicationServiceTest {
 
         assertNotNull(result);
         assertEquals(AppointmentType.TELEMEDICINA, result.appointmentType());
+        verify(facilityAuthorizationService).assertCurrentUserCanAccessFacility(facilityId);
         verify(bookingService).bookAppointment(new AppointmentBookingRequest(
-                patientId, doctorId, null, scheduleId, date, time, AppointmentType.TELEMEDICINA, "Symptoms"
+                patientId, doctorId, null, scheduleId, facilityId, date, time, AppointmentType.TELEMEDICINA, "Symptoms"
         ));
         verify(appointmentMapper).toDto(appointment);
     }

@@ -7,6 +7,10 @@ import java.util.Optional;
 import java.util.UUID;
 
 public interface ScheduleRepository {
+
+    Optional<Schedule> findByDoctorIdAndFacilityIdAndDayOfWeek(UUID doctorId, UUID facilityId, DayOfWeek dayOfWeek);
+
+    java.util.List<Schedule> findByFacilityIdAndDayOfWeek(UUID facilityId, DayOfWeek dayOfWeek);
     
     Optional<Schedule> findByDoctorIdAndDayOfWeek(UUID doctorId, DayOfWeek dayOfWeek);
     

@@ -3,7 +3,9 @@ package com.ipscentir.appointments.domain.service;
 import com.ipscentir.appointments.domain.model.appointment.Appointment;
 import com.ipscentir.appointments.domain.model.appointment.AppointmentStatus;
 import com.ipscentir.appointments.domain.model.appointment.AppointmentType;
+import com.ipscentir.appointments.domain.model.appointment.AppointmentScheduleData;
 import com.ipscentir.appointments.domain.repository.AppointmentRepository;
+import com.ipscentir.appointments.domain.repository.ScheduleRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,6 +28,7 @@ public class AppointmentBookingService {
 
     private final AvailabilityService availabilityService;
     private final AppointmentRepository appointmentRepository;
+    private final ScheduleRepository scheduleRepository;
     private final TransactionTemplate transactionTemplate;
 
     public Appointment bookAppointment(AppointmentBookingRequest request) {
@@ -47,7 +50,7 @@ public class AppointmentBookingService {
     }
 
     private Appointment bookTherapyUnderLock(AppointmentBookingRequest request) {
-        String lockKey = request.scheduleId() + "|" + request.date() + "|" + request.time() + "|" + request.type();
+        String lockKey = request.scheduleId() + "|" + request.facilityId() + "|" + request.date() + "|" + request.time() + "|" + request.type();
         ReentrantLock lock = THERAPY_SLOT_LOCKS.computeIfAbsent(lockKey, ignored -> new ReentrantLock());
 
         lock.lock();
@@ -75,13 +78,15 @@ public class AppointmentBookingService {
         UUID doctorId = request.doctorId();
         UUID secondaryDoctorId = request.secondaryDoctorId();
         UUID scheduleId = request.scheduleId();
+        UUID facilityId = request.facilityId();
         LocalDate date = request.date();
         LocalTime time = request.time();
         AppointmentType type = request.type();
         String reason = request.reason();
 
-        validateDoctorAvailability(doctorId, date, time);
-        validateJuntaMedica(type, doctorId, secondaryDoctorId, date, time);
+        validateScheduleOwnership(scheduleId, doctorId, facilityId);
+        validateDoctorAvailability(doctorId, facilityId, date, time);
+        validateJuntaMedica(type, doctorId, facilityId, secondaryDoctorId, date, time);
         validatePatientNoDuplicate(patientId, date);
 
         // Regla 3: Crear la Cita Médica
@@ -96,21 +101,37 @@ public class AppointmentBookingService {
                 patientId,
                 doctorId,
                 secondaryDoctorId,
+            new AppointmentScheduleData(
                 scheduleId,
+                facilityId,
                 date,
                 time,
                 blockDuration,
                 type,
                 AppointmentStatus.SCHEDULED,
                 reason
+            )
         );
         return appointmentRepository.save(appointment);
     }
 
-    private void validateDoctorAvailability(UUID doctorId, LocalDate date, LocalTime time) {
+    private void validateScheduleOwnership(UUID scheduleId, UUID doctorId, UUID facilityId) {
+        var schedule = scheduleRepository.findById(scheduleId)
+                .orElseThrow(() -> new IllegalArgumentException("Schedule not found"));
+
+        if (!schedule.getDoctorId().equals(doctorId)) {
+            throw new IllegalStateException("The selected schedule does not belong to the requested doctor.");
+        }
+
+        if (!schedule.getFacilityId().equals(facilityId)) {
+            throw new IllegalStateException("The selected schedule does not belong to the requested facility.");
+        }
+    }
+
+    private void validateDoctorAvailability(UUID doctorId, UUID facilityId, LocalDate date, LocalTime time) {
         // Regla 1: Validar si la franja está disponible en la agenda del doctor
         // integrando comprobación de horarios bloqueados y citas previas cruzadas.
-        if (!availabilityService.isSlotAvailable(doctorId, date, time)) {
+        if (!availabilityService.isSlotAvailable(doctorId, facilityId, date, time)) {
             throw new IllegalStateException("The requested slot is not available for this doctor.");
         }
     }
@@ -118,6 +139,7 @@ public class AppointmentBookingService {
     private void validateJuntaMedica(
             AppointmentType type,
             UUID doctorId,
+            UUID facilityId,
             UUID secondaryDoctorId,
             LocalDate date,
             LocalTime time
@@ -132,7 +154,7 @@ public class AppointmentBookingService {
         if (secondaryDoctorId.equals(doctorId)) {
             throw new IllegalStateException("Junta medica requires 2 different specialists");
         }
-        if (!availabilityService.isSlotAvailable(secondaryDoctorId, date, time)) {
+        if (!availabilityService.isSlotAvailable(secondaryDoctorId, facilityId, date, time)) {
             throw new IllegalStateException("The requested slot is not available for the second specialist.");
         }
     }
@@ -153,6 +175,7 @@ public class AppointmentBookingService {
         UUID doctorId = request.doctorId();
         UUID secondaryDoctorId = request.secondaryDoctorId();
         UUID scheduleId = request.scheduleId();
+        UUID facilityId = request.facilityId();
         LocalDate date = request.date();
         LocalTime time = request.time();
         AppointmentType type = request.type();
@@ -180,13 +203,16 @@ public class AppointmentBookingService {
             patientId,
             doctorId,
             secondaryDoctorId,
-            scheduleId,
-            date,
-            time,
-            duration,
-            type,
-            initialStatus,
-            reason
+            new AppointmentScheduleData(
+                    scheduleId,
+                    facilityId,
+                    date,
+                    time,
+                    duration,
+                    type,
+                    initialStatus,
+                    reason
+            )
         );
 
         Appointment saved = appointmentRepository.save(appointment);

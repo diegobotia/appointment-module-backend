@@ -2,6 +2,7 @@ package com.ipscentir.appointments.application.event;
 
 import com.ipscentir.appointments.domain.model.appointment.Appointment;
 import com.ipscentir.appointments.domain.model.appointment.AppointmentType;
+import com.ipscentir.appointments.domain.model.appointment.AppointmentScheduleData;
 import com.ipscentir.appointments.domain.repository.AppointmentRepository;
 import com.ipscentir.appointments.application.service.N8nEventJournalService;
 import com.ipscentir.appointments.domain.service.NotificationProvider;
@@ -40,11 +41,12 @@ class AppointmentEventListenerTest {
 
         UUID patientId = UUID.randomUUID();
         UUID doctorId = UUID.randomUUID();
+        UUID facilityId = UUID.randomUUID();
         UUID scheduleId = UUID.randomUUID();
 
         Appointment appointment = Appointment.scheduleNew(
-            patientId, doctorId, null, scheduleId, LocalDate.now().plusDays(2), LocalTime.of(10, 0),
-            30, AppointmentType.TELEMEDICINA, com.ipscentir.appointments.domain.model.appointment.AppointmentStatus.SCHEDULED, "Checkup"
+            patientId, doctorId, null,
+            new AppointmentScheduleData(scheduleId, facilityId, LocalDate.now().plusDays(2), LocalTime.of(10, 0), 30, AppointmentType.TELEMEDICINA, com.ipscentir.appointments.domain.model.appointment.AppointmentStatus.SCHEDULED, "Checkup")
         );
 
         // Act - Se dispara el guardado en base de datos.
@@ -63,11 +65,12 @@ class AppointmentEventListenerTest {
 
         UUID patientId = UUID.randomUUID();
         UUID doctorId = UUID.randomUUID();
+        UUID facilityId = UUID.randomUUID();
         UUID scheduleId = UUID.randomUUID();
 
         Appointment appointment = Appointment.scheduleNew(
-                patientId, doctorId, null, scheduleId, LocalDate.now().plusDays(2), LocalTime.of(10, 0),
-                30, AppointmentType.TELEMEDICINA, com.ipscentir.appointments.domain.model.appointment.AppointmentStatus.SCHEDULED, "Checkup"
+            patientId, doctorId, null,
+            new AppointmentScheduleData(scheduleId, facilityId, LocalDate.now().plusDays(2), LocalTime.of(10, 0), 30, AppointmentType.TELEMEDICINA, com.ipscentir.appointments.domain.model.appointment.AppointmentStatus.SCHEDULED, "Checkup")
         );
 
         appointmentRepository.save(appointment);

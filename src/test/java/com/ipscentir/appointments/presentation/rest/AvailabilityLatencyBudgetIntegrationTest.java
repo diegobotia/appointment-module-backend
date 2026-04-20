@@ -49,6 +49,7 @@ class AvailabilityLatencyBudgetIntegrationTest {
     private AppointmentJpaRepository appointmentJpaRepository;
 
     private UUID doctorId;
+    private UUID facilityId;
     private LocalDate queryDate;
 
     @BeforeEach
@@ -57,11 +58,12 @@ class AvailabilityLatencyBudgetIntegrationTest {
         scheduleJpaRepository.deleteAll();
 
         doctorId = UUID.randomUUID();
+        facilityId = UUID.randomUUID();
         queryDate = LocalDate.now().plusDays(2);
 
         scheduleJpaRepository.save(Schedule.builder()
                 .doctorId(doctorId)
-                .facilityId(UUID.randomUUID())
+                .facilityId(facilityId)
                 .specialty("GENERAL")
                 .dayOfWeek(queryDate.getDayOfWeek())
                 .startTime(LocalTime.of(8, 0))
@@ -76,6 +78,7 @@ class AvailabilityLatencyBudgetIntegrationTest {
     void availabilityEndpointShouldMeetLatencyBudget() throws Exception {
         String requestBody = objectMapper.writeValueAsString(Map.of(
                 "doctorId", doctorId,
+            "facilityId", facilityId,
                 "date", queryDate
         ));
 

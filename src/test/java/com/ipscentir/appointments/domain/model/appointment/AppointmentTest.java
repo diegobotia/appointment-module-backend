@@ -17,35 +17,40 @@ class AppointmentTest {
     private Appointment appointment;
     private UUID patientId;
     private UUID doctorId;
+    private UUID facilityId;
     private UUID scheduleId;
 
     @BeforeEach
     void setUp() {
         patientId = UUID.randomUUID();
         doctorId = UUID.randomUUID();
+        facilityId = UUID.randomUUID();
         scheduleId = UUID.randomUUID();
-        
+
         appointment = Appointment.scheduleNew(
                 patientId,
                 doctorId,
-            null,
-                scheduleId,
-                LocalDate.now().plusDays(2),
-                LocalTime.of(10, 0),
-                30,
-                AppointmentType.PRESENCIAL,
-            AppointmentStatus.SCHEDULED,
-                "Checkup"
+                null,
+                new AppointmentScheduleData(
+                        scheduleId,
+                        facilityId,
+                        LocalDate.now().plusDays(2),
+                        LocalTime.of(10, 0),
+                        30,
+                        AppointmentType.PRESENCIAL,
+                        AppointmentStatus.SCHEDULED,
+                        "Checkup"
+                )
         );
     }
 
     @Test
+    @SuppressWarnings("unchecked")
     void testScheduleNew_InitializesCorrectly_AndFiresEvent() {
         assertNotNull(appointment);
         assertEquals(AppointmentStatus.SCHEDULED, appointment.getStatus());
         assertEquals(AppointmentType.PRESENCIAL, appointment.getAppointmentType());
-        
-        // As it extends AbstractAggregateRoot, it holds domain events eagerly before save
+
         var events = (java.util.Collection<Object>) org.springframework.test.util.ReflectionTestUtils.invokeMethod(appointment, "domainEvents");
         assertEquals(1, events.size());
         assertTrue(events.iterator().next() instanceof AppointmentCreatedEvent);
@@ -61,35 +66,36 @@ class AppointmentTest {
     @Test
     void testConfirm_FailsIfAlreadyCancelled() {
         appointment.cancel("Changed mind");
-        
+
         IllegalStateException ex = assertThrows(IllegalStateException.class, appointment::confirm);
         assertEquals("Only SCHEDULED or PENDIENTE_CONFIRMACION_GRUPO appointments can be confirmed", ex.getMessage());
     }
 
     @Test
+    @SuppressWarnings("unchecked")
     void testCancel_ChangesStatusToCancelled_AndFiresEvent() {
         appointment.cancel("Sick");
-        
+
         assertEquals(AppointmentStatus.CANCELLED, appointment.getStatus());
         assertEquals("Sick", appointment.getCancellationReason());
         assertNotNull(appointment.getCancelledAt());
-        
+
         var events = (java.util.Collection<Object>) org.springframework.test.util.ReflectionTestUtils.invokeMethod(appointment, "domainEvents");
-        boolean hasCancelEvent = events.stream().anyMatch(e -> e instanceof AppointmentCancelledEvent);
+        boolean hasCancelEvent = events.stream().anyMatch(AppointmentCancelledEvent.class::isInstance);
         assertTrue(hasCancelEvent);
     }
 
     @Test
     void testCancel_FailsIfAppointmentInThePast() {
-        // Build one directly in the past bypassing factory or utilizing reflection / data builder
         Appointment pastAppointment = Appointment.builder()
                 .patientId(patientId)
                 .doctorId(doctorId)
+                .facilityId(facilityId)
                 .appointmentDate(LocalDate.now().minusDays(1))
-                .appointmentTime(LocalTime.of(8,0))
+                .appointmentTime(LocalTime.of(8, 0))
                 .status(AppointmentStatus.SCHEDULED)
                 .build();
-                
+
         IllegalStateException ex = assertThrows(IllegalStateException.class, () -> pastAppointment.cancel("Too late"));
         assertEquals("Cannot cancel an appointment in the past", ex.getMessage());
     }

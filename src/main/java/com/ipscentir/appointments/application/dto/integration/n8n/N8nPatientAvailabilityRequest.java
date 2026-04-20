@@ -6,6 +6,23 @@ import java.time.LocalDate;
 import java.util.UUID;
 
 public record N8nPatientAvailabilityRequest(
-        @NotNull UUID doctorId,
-        @NotNull LocalDate date
-) {}
+                String serviceType,
+                String specialty,
+        @NotNull UUID facilityId,
+                Integer limit,
+                LocalDate fromDate
+) {
+
+        public N8nPatientAvailabilityRequest {
+                if (fromDate == null) {
+                        fromDate = LocalDate.now();
+                }
+                if (limit == null) {
+                        limit = 4;
+                }
+        }
+
+        public String canonicalServiceType() {
+                return (serviceType != null && !serviceType.isBlank()) ? serviceType : specialty;
+        }
+}

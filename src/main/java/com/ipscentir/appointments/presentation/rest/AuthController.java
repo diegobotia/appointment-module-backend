@@ -2,6 +2,7 @@ package com.ipscentir.appointments.presentation.rest;
 
 import com.ipscentir.appointments.application.dto.security.AuthUserDTO;
 import com.ipscentir.appointments.application.dto.security.LoginRequest;
+import com.ipscentir.appointments.application.security.FacilityAuthorizationService;
 import com.ipscentir.appointments.application.service.AuthService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -27,6 +28,7 @@ import java.util.stream.Collectors;
 public class AuthController {
 
     private final AuthService authService;
+    private final FacilityAuthorizationService facilityAuthorizationService;
 
     @PostMapping("/login")
     @Operation(summary = "Login", description = "Creates authenticated session for internal frontend")
@@ -44,6 +46,13 @@ public class AuthController {
             .map(GrantedAuthority::getAuthority)
                 .collect(Collectors.toSet());
 
-        return ResponseEntity.ok(new AuthUserDTO(authentication.getName(), roles, "SESSION"));
+        return ResponseEntity.ok(
+            new AuthUserDTO(
+                authentication.getName(),
+                roles,
+                "SESSION",
+                facilityAuthorizationService.getCurrentUserFacilityIds(authentication)
+            )
+        );
     }
 }

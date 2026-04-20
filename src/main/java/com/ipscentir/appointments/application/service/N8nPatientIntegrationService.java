@@ -1,8 +1,9 @@
 package com.ipscentir.appointments.application.service;
 
 import com.ipscentir.appointments.application.dto.AppointmentDTO;
-import com.ipscentir.appointments.application.dto.AvailableSlotDTO;
 import com.ipscentir.appointments.application.dto.CreateAppointmentCommand;
+import com.ipscentir.appointments.application.dto.integration.n8n.N8nAvailabilityBookingPayloadDTO;
+import com.ipscentir.appointments.application.dto.integration.n8n.N8nAvailabilitySlotDTO;
 import com.ipscentir.appointments.application.dto.integration.n8n.N8nCancelAppointmentRequest;
 import com.ipscentir.appointments.application.dto.integration.n8n.N8nCancelAppointmentResponse;
 import com.ipscentir.appointments.application.dto.integration.n8n.N8nPatientAppointmentRequest;
@@ -11,7 +12,9 @@ import com.ipscentir.appointments.application.dto.integration.n8n.N8nPatientAvai
 import com.ipscentir.appointments.application.dto.integration.n8n.N8nPatientAvailabilityResponse;
 import com.ipscentir.appointments.application.dto.integration.n8n.N8nWebhookEventRequest;
 import com.ipscentir.appointments.application.dto.integration.n8n.N8nWebhookEventResponse;
+import com.ipscentir.appointments.domain.model.catalog.AppointmentServiceType;
 import com.ipscentir.appointments.domain.model.appointment.Appointment;
+import com.ipscentir.appointments.domain.model.schedule.AvailableSlotDetail;
 import com.ipscentir.appointments.domain.service.AppointmentBookingService;
 import com.ipscentir.appointments.domain.service.AvailabilityService;
 import com.ipscentir.appointments.application.mapper.AppointmentMapper;
@@ -33,20 +36,58 @@ public class N8nPatientIntegrationService {
 
     @Transactional(readOnly = true)
     public N8nPatientAvailabilityResponse getAvailability(N8nPatientAvailabilityRequest request) {
-        List<AvailableSlotDTO> slots = availabilityService.getAvailableSlots(request.doctorId(), request.date())
-                .stream()
-                .map(slot -> new AvailableSlotDTO(slot.getDate(), slot.getTime(), slot.getDurationMinutes()))
+        String requestedServiceType = request.canonicalServiceType();
+        AppointmentServiceType serviceType = AppointmentServiceType.fromFlexibleValue(requestedServiceType);
+
+        List<AvailableSlotDetail> slots = availabilityService.getNearestAvailableSlotsByServiceType(
+                serviceType,
+                request.facilityId(),
+                request.fromDate(),
+                request.limit()
+        );
+
+        List<N8nAvailabilitySlotDTO> responseSlots = slots.stream()
+                .map(slot -> new N8nAvailabilitySlotDTO(
+                        slot.scheduleId(),
+                        slot.doctorId(),
+                        slot.facilityId(),
+                        slot.serviceType().name(),
+                        slot.specialty(),
+                        slot.appointmentDate(),
+                        slot.appointmentTime(),
+                        slot.durationMinutes(),
+                        "PRESENCIAL",
+                        slot.availableSeats(),
+                        new N8nAvailabilityBookingPayloadDTO(
+                                null,
+                                slot.doctorId(),
+                                slot.facilityId(),
+                                null,
+                                slot.scheduleId(),
+                                slot.appointmentDate(),
+                                slot.appointmentTime(),
+                                "PRESENCIAL",
+                                slot.serviceType().name(),
+                                slot.specialty(),
+                                slot.durationMinutes(),
+                                slot.availableSeats(),
+                                null
+                        )
+                ))
                 .toList();
 
-        String summary = slots.isEmpty()
+        String summary = responseSlots.isEmpty()
                 ? "No hay cupos disponibles para la fecha solicitada."
-                : "Se encontraron " + slots.size() + " horarios disponibles.";
+                : "Se encontraron " + responseSlots.size() + " horarios disponibles para " + serviceType.getDisplayName() + ".";
 
         return new N8nPatientAvailabilityResponse(
-                request.doctorId(),
-                request.date(),
-                slots.size(),
-                slots,
+                request.facilityId(),
+                serviceType.name(),
+                serviceType.getDisplayName(),
+                request.fromDate(),
+                request.limit(),
+                responseSlots.size(),
+                responseSlots,
                 summary
         );
     }
@@ -57,6 +98,7 @@ public class N8nPatientIntegrationService {
                 new CreateAppointmentCommand(
                         request.patientId(),
                         request.doctorId(),
+                        request.facilityId(),
                         request.secondaryDoctorId(),
                         request.scheduleId(),
                         request.appointmentDate(),

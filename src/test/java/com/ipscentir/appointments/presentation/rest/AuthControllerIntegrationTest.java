@@ -35,7 +35,8 @@ class AuthControllerIntegrationTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.username").value("admin"))
-                .andExpect(jsonPath("$.authType").value("SESSION"));
+            .andExpect(jsonPath("$.authType").value("SESSION"))
+            .andExpect(jsonPath("$.facilityIds").isArray());
     }
 
     @Test

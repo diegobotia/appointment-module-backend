@@ -3,6 +3,7 @@ package com.ipscentir.appointments.application.service;
 import com.ipscentir.appointments.application.dto.AppointmentDTO;
 import com.ipscentir.appointments.application.dto.CreateAppointmentCommand;
 import com.ipscentir.appointments.application.mapper.AppointmentMapper;
+import com.ipscentir.appointments.application.security.FacilityAuthorizationService;
 import com.ipscentir.appointments.domain.model.appointment.Appointment;
 import com.ipscentir.appointments.domain.model.appointment.AppointmentType;
 import com.ipscentir.appointments.domain.service.AppointmentBookingRequest;
@@ -16,8 +17,10 @@ public class AppointmentApplicationService {
 
     private final AppointmentBookingService appointmentBookingService;
     private final AppointmentMapper appointmentMapper;
+    private final FacilityAuthorizationService facilityAuthorizationService;
 
     public AppointmentDTO createAppointment(CreateAppointmentCommand command) {
+        facilityAuthorizationService.assertCurrentUserCanAccessFacility(command.facilityId());
         
         // El Application Service recibe el Input DTO (Command), extrae los parámetros,
         // maneja la transacción orquestando el Core Domain (Booking Service),
@@ -29,6 +32,7 @@ public class AppointmentApplicationService {
                 command.doctorId(),
                 command.secondaryDoctorId(),
                 command.scheduleId(),
+                command.facilityId(),
                 command.appointmentDate(),
                 command.appointmentTime(),
                 AppointmentType.valueOf(command.appointmentType().toUpperCase()),

@@ -12,6 +12,7 @@ public record AppointmentDTO(
         UUID id,
         UUID patientId,
         UUID doctorId,
+        UUID facilityId,
         UUID secondaryDoctorId,
         UUID scheduleId,
         LocalDate appointmentDate,

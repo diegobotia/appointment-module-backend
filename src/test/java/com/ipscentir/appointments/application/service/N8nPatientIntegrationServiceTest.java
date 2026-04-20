@@ -1,6 +1,8 @@
 package com.ipscentir.appointments.application.service;
 
 import com.ipscentir.appointments.application.dto.AppointmentDTO;
+import com.ipscentir.appointments.application.dto.integration.n8n.N8nAvailabilityBookingPayloadDTO;
+import com.ipscentir.appointments.application.dto.integration.n8n.N8nAvailabilitySlotDTO;
 import com.ipscentir.appointments.application.dto.integration.n8n.N8nCancelAppointmentRequest;
 import com.ipscentir.appointments.application.dto.integration.n8n.N8nPatientAppointmentRequest;
 import com.ipscentir.appointments.application.dto.integration.n8n.N8nPatientAvailabilityRequest;
@@ -8,8 +10,10 @@ import com.ipscentir.appointments.application.dto.integration.n8n.N8nWebhookEven
 import com.ipscentir.appointments.application.mapper.AppointmentMapper;
 import com.ipscentir.appointments.domain.model.appointment.Appointment;
 import com.ipscentir.appointments.domain.model.appointment.AppointmentStatus;
+import com.ipscentir.appointments.domain.model.appointment.AppointmentScheduleData;
 import com.ipscentir.appointments.domain.model.appointment.AppointmentType;
-import com.ipscentir.appointments.domain.model.schedule.AvailableSlot;
+import com.ipscentir.appointments.domain.model.catalog.AppointmentServiceType;
+import com.ipscentir.appointments.domain.model.schedule.AvailableSlotDetail;
 import com.ipscentir.appointments.domain.service.AppointmentBookingService;
 import com.ipscentir.appointments.domain.service.AvailabilityService;
 import org.junit.jupiter.api.Test;
@@ -53,25 +57,30 @@ class N8nPatientIntegrationServiceTest {
 
     @Test
     void shouldReturnAvailabilitySummary() {
-        UUID doctorId = UUID.randomUUID();
+        UUID facilityId = UUID.randomUUID();
         LocalDate date = LocalDate.now().plusDays(2);
 
-        when(availabilityService.getAvailableSlots(doctorId, date)).thenReturn(List.of(
-                new AvailableSlot(date, LocalTime.of(8, 0), 30),
-                new AvailableSlot(date, LocalTime.of(8, 30), 30)
+        when(availabilityService.getNearestAvailableSlotsByServiceType(AppointmentServiceType.TERAPIA_FISICA, facilityId, date, 4)).thenReturn(List.of(
+                new AvailableSlotDetail(UUID.randomUUID(), UUID.randomUUID(), facilityId, AppointmentServiceType.TERAPIA_FISICA, "Terapia fisica", date, LocalTime.of(8, 0), 30, 3),
+                new AvailableSlotDetail(UUID.randomUUID(), UUID.randomUUID(), facilityId, AppointmentServiceType.TERAPIA_FISICA, "Terapia fisica", date, LocalTime.of(8, 30), 30, 2)
         ));
 
-        var response = service.getAvailability(new N8nPatientAvailabilityRequest(doctorId, date));
+        var response = service.getAvailability(new N8nPatientAvailabilityRequest("TERAPIA_FISICA", null, facilityId, 4, date));
 
         assertEquals(2, response.availableSlotsCount());
         assertEquals(2, response.slots().size());
-        assertEquals("Se encontraron 2 horarios disponibles.", response.summary());
+        assertEquals(facilityId, response.facilityId());
+        assertEquals("TERAPIA_FISICA", response.serviceType());
+        assertEquals("Se encontraron 2 horarios disponibles para Terapia fisica.", response.summary());
+        assertEquals("PRESENCIAL", response.slots().get(0).appointmentType());
+        assertEquals(facilityId, response.slots().get(0).bookingPayload().facilityId());
     }
 
     @Test
     void shouldMapCreatedAppointmentResponse() {
         UUID patientId = UUID.randomUUID();
         UUID doctorId = UUID.randomUUID();
+        UUID facilityId = UUID.randomUUID();
         UUID scheduleId = UUID.randomUUID();
         LocalDate date = LocalDate.now().plusDays(2);
         LocalTime time = LocalTime.of(10, 0);
@@ -80,24 +89,18 @@ class N8nPatientIntegrationServiceTest {
                 patientId,
                 doctorId,
                 null,
-                scheduleId,
-                date,
-                time,
-                30,
-                AppointmentType.PRESENCIAL,
-                AppointmentStatus.SCHEDULED,
-                "Checkup"
+                new AppointmentScheduleData(scheduleId, facilityId, date, time, 30, AppointmentType.PRESENCIAL, AppointmentStatus.SCHEDULED, "Checkup")
         );
 
         AppointmentDTO dto = new AppointmentDTO(
-                appointment.getId(), patientId, doctorId, null, scheduleId, date, time, 30,
+                appointment.getId(), patientId, doctorId, facilityId, null, scheduleId, date, time, 30,
                 AppointmentType.PRESENCIAL, AppointmentStatus.SCHEDULED, "Checkup", null, null, null
         );
 
         when(appointmentApplicationService.createAppointment(any())).thenReturn(dto);
 
         var response = service.createAppointment(new N8nPatientAppointmentRequest(
-                patientId, doctorId, null, scheduleId, date, time, "PRESENCIAL", "Checkup"
+                patientId, doctorId, facilityId, null, scheduleId, date, time, "PRESENCIAL", "Checkup"
         ));
 
         assertEquals(dto, response.appointment());
@@ -111,18 +114,12 @@ class N8nPatientIntegrationServiceTest {
                 UUID.randomUUID(),
                 UUID.randomUUID(),
                 null,
-                UUID.randomUUID(),
-                LocalDate.now().plusDays(2),
-                LocalTime.of(10, 0),
-                30,
-                AppointmentType.PRESENCIAL,
-                AppointmentStatus.SCHEDULED,
-                "Checkup"
+                new AppointmentScheduleData(UUID.randomUUID(), UUID.randomUUID(), LocalDate.now().plusDays(2), LocalTime.of(10, 0), 30, AppointmentType.PRESENCIAL, AppointmentStatus.SCHEDULED, "Checkup")
         );
 
         when(appointmentBookingService.cancelAppointment(appointmentId, "Cambio de plan")).thenReturn(cancelled);
         when(appointmentMapper.toDto(cancelled)).thenReturn(new AppointmentDTO(
-                cancelled.getId(), cancelled.getPatientId(), cancelled.getDoctorId(), null,
+                cancelled.getId(), cancelled.getPatientId(), cancelled.getDoctorId(), cancelled.getFacilityId(), null,
                 cancelled.getScheduleId(), cancelled.getAppointmentDate(), cancelled.getAppointmentTime(), 30,
                 cancelled.getAppointmentType(), cancelled.getStatus(), cancelled.getReason(), null, null, null
         ));

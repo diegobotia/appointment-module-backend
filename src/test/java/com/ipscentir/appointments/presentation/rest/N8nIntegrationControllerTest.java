@@ -2,6 +2,8 @@ package com.ipscentir.appointments.presentation.rest;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ipscentir.appointments.application.dto.integration.n8n.N8nCancelAppointmentResponse;
+import com.ipscentir.appointments.application.dto.integration.n8n.N8nAvailabilityBookingPayloadDTO;
+import com.ipscentir.appointments.application.dto.integration.n8n.N8nAvailabilitySlotDTO;
 import com.ipscentir.appointments.application.dto.integration.n8n.N8nPatientAppointmentResponse;
 import com.ipscentir.appointments.application.dto.integration.n8n.N8nPatientAvailabilityResponse;
 import com.ipscentir.appointments.application.dto.integration.n8n.N8nWebhookEventResponse;
@@ -51,57 +53,89 @@ class N8nIntegrationControllerTest {
     @MockBean
     private N8nPatientIntegrationService n8nPatientIntegrationService;
 
-        private String asJson(Object value) throws Exception {
-                return objectMapper.writeValueAsString(value);
-        }
+    private String asJson(Object value) throws Exception {
+        return objectMapper.writeValueAsString(value);
+    }
 
     @Test
-        void shouldRejectAvailabilityWithoutApiKey() throws Exception {
-                UUID doctorId = UUID.randomUUID();
-                LocalDate date = LocalDate.now().plusDays(2);
+    void shouldRejectAvailabilityWithoutApiKey() throws Exception {
+        UUID facilityId = UUID.randomUUID();
+        LocalDate date = LocalDate.now().plusDays(2);
 
-                String body = asJson(Map.of("doctorId", doctorId, "date", date));
+                String body = asJson(Map.of("serviceType", "TERAPIA_FISICA", "facilityId", facilityId, "fromDate", date, "limit", 4));
 
-                mockMvc.perform(post("/api/v1/integrations/n8n/patient/availability")
-                                                .contentType(JSON)
-                                                .content(body))
-                                .andExpect(status().isUnauthorized());
-        }
+        mockMvc.perform(post("/api/v1/integrations/n8n/patient/availability")
+                        .contentType(JSON)
+                        .content(body))
+                .andExpect(status().isUnauthorized());
+    }
 
-        @Test
-        void shouldExposeAvailabilityWithApiKey() throws Exception {
-        UUID doctorId = UUID.randomUUID();
+    @Test
+    void shouldExposeAvailabilityWithApiKey() throws Exception {
+        UUID facilityId = UUID.randomUUID();
         LocalDate date = LocalDate.now().plusDays(2);
 
         when(n8nPatientIntegrationService.getAvailability(any())).thenReturn(new N8nPatientAvailabilityResponse(
-                doctorId,
+                facilityId,
+                "TERAPIA_FISICA",
+                "Terapia fisica",
                 date,
+                4,
                 1,
-                List.of(new AvailableSlotDTO(date, LocalTime.of(8, 0), 30)),
-                "Se encontró 1 horario disponible."
+                List.of(new N8nAvailabilitySlotDTO(
+                        UUID.randomUUID(),
+                        UUID.randomUUID(),
+                        facilityId,
+                        "TERAPIA_FISICA",
+                        "Terapia fisica",
+                        date,
+                        LocalTime.of(8, 0),
+                        30,
+                        "PRESENCIAL",
+                        3,
+                        new N8nAvailabilityBookingPayloadDTO(
+                                null,
+                                UUID.randomUUID(),
+                                facilityId,
+                                null,
+                                UUID.randomUUID(),
+                                date,
+                                LocalTime.of(8, 0),
+                                "PRESENCIAL",
+                                "TERAPIA_FISICA",
+                                "Terapia fisica",
+                                30,
+                                3,
+                                null
+                        )
+                )),
+                "Se encontraron 1 horarios disponibles para Terapia fisica."
         ));
 
-        String body = asJson(Map.of("doctorId", doctorId, "date", date));
+        String body = asJson(Map.of("serviceType", "TERAPIA_FISICA", "facilityId", facilityId, "fromDate", date, "limit", 4));
 
         mockMvc.perform(post("/api/v1/integrations/n8n/patient/availability")
                         .header(N8N_API_KEY_HEADER, N8N_API_KEY)
                         .contentType(JSON)
                         .content(body))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.doctorId").value(doctorId.toString()))
-                .andExpect(jsonPath("$.availableSlotsCount").value(1));
+                .andExpect(jsonPath("$.facilityId").value(facilityId.toString()))
+                .andExpect(jsonPath("$.serviceType").value("TERAPIA_FISICA"))
+                .andExpect(jsonPath("$.availableSlotsCount").value(1))
+                .andExpect(jsonPath("$.slots[0].bookingPayload.facilityId").value(facilityId.toString()));
     }
 
     @Test
     void shouldCreateAppointmentForN8n() throws Exception {
         UUID patientId = UUID.randomUUID();
         UUID doctorId = UUID.randomUUID();
+        UUID facilityId = UUID.randomUUID();
         UUID scheduleId = UUID.randomUUID();
         LocalDate date = LocalDate.now().plusDays(2);
         LocalTime time = LocalTime.of(10, 0);
 
         AppointmentDTO dto = new AppointmentDTO(
-                UUID.randomUUID(), patientId, doctorId, null, scheduleId, date, time, 30,
+                UUID.randomUUID(), patientId, doctorId, facilityId, null, scheduleId, date, time, 30,
                 AppointmentType.PRESENCIAL, AppointmentStatus.SCHEDULED, "Checkup", null, LocalDateTime.now(), null
         );
 
@@ -110,6 +144,7 @@ class N8nIntegrationControllerTest {
         String body = asJson(Map.of(
                 "patientId", patientId,
                 "doctorId", doctorId,
+                "facilityId", facilityId,
                 "scheduleId", scheduleId,
                 "appointmentDate", date,
                 "appointmentTime", time,
@@ -130,7 +165,7 @@ class N8nIntegrationControllerTest {
     void shouldCancelAppointmentForN8n() throws Exception {
         UUID appointmentId = UUID.randomUUID();
         AppointmentDTO dto = new AppointmentDTO(
-                UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), null, UUID.randomUUID(),
+                UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), null, UUID.randomUUID(),
                 LocalDate.now().plusDays(2), LocalTime.of(10, 0), 30,
                 AppointmentType.PRESENCIAL, AppointmentStatus.CANCELLED, "Cambio de plan", null, LocalDateTime.now(), LocalDateTime.now()
         );

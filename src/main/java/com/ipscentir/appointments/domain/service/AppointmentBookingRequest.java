@@ -11,6 +11,7 @@ public record AppointmentBookingRequest(
         UUID doctorId,
         UUID secondaryDoctorId,
         UUID scheduleId,
+        UUID facilityId,
         LocalDate date,
         LocalTime time,
         AppointmentType type,

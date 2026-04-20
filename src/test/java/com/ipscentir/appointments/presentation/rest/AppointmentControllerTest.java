@@ -51,14 +51,15 @@ class AppointmentControllerTest {
     void testBookAppointment_Success() throws Exception {
         UUID doctorId = UUID.randomUUID();
         UUID patientId = UUID.randomUUID();
+        UUID facilityId = UUID.randomUUID();
         UUID scheduleId = UUID.randomUUID();
 
         CreateAppointmentCommand command = new CreateAppointmentCommand(
-                patientId, doctorId, null, scheduleId, LocalDate.now().plusDays(2), LocalTime.of(10, 0), "PRESENCIAL", "Routine Visit"
+                patientId, doctorId, facilityId, null, scheduleId, LocalDate.now().plusDays(2), LocalTime.of(10, 0), "PRESENCIAL", "Routine Visit"
         );
 
         AppointmentDTO dto = new AppointmentDTO(
-                UUID.randomUUID(), patientId, doctorId, null, scheduleId, LocalDate.now().plusDays(2), LocalTime.of(10, 0),
+                UUID.randomUUID(), patientId, doctorId, facilityId, null, scheduleId, LocalDate.now().plusDays(2), LocalTime.of(10, 0),
                 30, AppointmentType.PRESENCIAL, AppointmentStatus.SCHEDULED, "Routine Visit", null, LocalDateTime.now(), null
         );
 
@@ -77,7 +78,7 @@ class AppointmentControllerTest {
     void testBookAppointment_FailsDueToValidationErrors() throws Exception {
         // Missing patientId and doctorId to trigger 400 Bad Request
         CreateAppointmentCommand command = new CreateAppointmentCommand(
-                null, null, null, null, LocalDate.now().plusDays(2), LocalTime.of(10, 0), "PRESENCIAL", "Routine Visit"
+                null, null, null, null, null, LocalDate.now().plusDays(2), LocalTime.of(10, 0), "PRESENCIAL", "Routine Visit"
         );
 
         mockMvc.perform(post("/api/v1/appointments")

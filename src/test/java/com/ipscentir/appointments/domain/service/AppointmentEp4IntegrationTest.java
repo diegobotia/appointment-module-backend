@@ -39,6 +39,7 @@ class AppointmentEp4IntegrationTest {
 
     private UUID doctorA;
     private UUID doctorB;
+    private UUID facilityId;
     private UUID scheduleIdA;
     private LocalDate bookingDate;
     private LocalTime bookingTime;
@@ -49,12 +50,13 @@ class AppointmentEp4IntegrationTest {
 
         doctorA = UUID.randomUUID();
         doctorB = UUID.randomUUID();
+        facilityId = UUID.randomUUID();
         bookingDate = LocalDate.now().plusDays(2);
         bookingTime = LocalTime.of(10, 0);
 
         Schedule scheduleA = scheduleRepository.save(Schedule.builder()
                 .doctorId(doctorA)
-                .facilityId(UUID.randomUUID())
+            .facilityId(facilityId)
                 .specialty("TERAPIA")
                 .dayOfWeek(bookingDate.getDayOfWeek())
                 .startTime(LocalTime.of(8, 0))
@@ -66,7 +68,7 @@ class AppointmentEp4IntegrationTest {
 
         scheduleRepository.save(Schedule.builder()
                 .doctorId(doctorB)
-                .facilityId(UUID.randomUUID())
+            .facilityId(facilityId)
                 .specialty("JUNTA")
                 .dayOfWeek(bookingDate.getDayOfWeek())
                 .startTime(LocalTime.of(8, 0))
@@ -87,6 +89,7 @@ class AppointmentEp4IntegrationTest {
                 doctorA,
                 null,
                 scheduleIdA,
+                facilityId,
                 bookingDate,
                 bookingTime,
                 AppointmentType.TERAPIA_FISICA,
@@ -123,6 +126,7 @@ class AppointmentEp4IntegrationTest {
                             doctorA,
                             null,
                             scheduleIdA,
+                            facilityId,
                             bookingDate,
                             bookingTime,
                             AppointmentType.TERAPIA_OCUPACIONAL,
@@ -162,6 +166,7 @@ class AppointmentEp4IntegrationTest {
                 doctorA,
                 doctorB,
                 scheduleIdA,
+            facilityId,
                 bookingDate,
                 bookingTime,
                 AppointmentType.JUNTA_MEDICA,

@@ -44,6 +44,9 @@ public class Appointment extends AbstractAggregateRoot<Appointment> {
     @Column(nullable = false)
     private UUID doctorId;
 
+    @Column(nullable = false)
+    private UUID facilityId;
+
     private UUID scheduleId;
 
     @Column(nullable = false)
@@ -113,21 +116,15 @@ public class Appointment extends AbstractAggregateRoot<Appointment> {
     }
 
     // Factory method wrapper for domain driven design instantiation
-    public static Appointment scheduleNew(
+        public static Appointment scheduleNew(
             UUID patientId,
             UUID primaryDoctorId,
             UUID secondaryDoctorId,
-            UUID scheduleId,
-            LocalDate date,
-            LocalTime time,
-            Integer duration,
-            AppointmentType type,
-            AppointmentStatus status,
-            String reason
-    ) {
+            AppointmentScheduleData scheduleData
+        ) {
         UUID appointmentId = UUID.randomUUID();
 
-        if (type == AppointmentType.JUNTA_MEDICA && secondaryDoctorId == null) {
+        if (scheduleData.type() == AppointmentType.JUNTA_MEDICA && secondaryDoctorId == null) {
             throw new IllegalStateException("Junta medica requires exactly 2 specialists");
         }
 
@@ -135,13 +132,14 @@ public class Appointment extends AbstractAggregateRoot<Appointment> {
                 .id(appointmentId)
                 .patientId(patientId)
                 .doctorId(primaryDoctorId)
-                .scheduleId(scheduleId)
-                .appointmentDate(date)
-                .appointmentTime(time)
-                .durationMinutes(duration)
-                .appointmentType(type)
-                .status(status)
-                .reason(reason)
+            .facilityId(scheduleData.facilityId())
+            .scheduleId(scheduleData.scheduleId())
+            .appointmentDate(scheduleData.date())
+            .appointmentTime(scheduleData.time())
+            .durationMinutes(scheduleData.duration())
+            .appointmentType(scheduleData.type())
+            .status(scheduleData.status())
+            .reason(scheduleData.reason())
                 .build();
 
         appointment.addParticipant(primaryDoctorId, 1, AppointmentParticipantRole.PRIMARY);

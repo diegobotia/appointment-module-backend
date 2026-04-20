@@ -1,9 +1,11 @@
 package com.ipscentir.appointments.infrastructure.config;
 
 import com.ipscentir.appointments.domain.model.security.AppUser;
+import com.ipscentir.appointments.domain.model.facility.Facility;
 import com.ipscentir.appointments.domain.model.security.Role;
 import com.ipscentir.appointments.domain.model.security.RoleName;
 import com.ipscentir.appointments.infrastructure.persistence.jpa.AppUserJpaRepository;
+import com.ipscentir.appointments.infrastructure.persistence.jpa.FacilityJpaRepository;
 import com.ipscentir.appointments.infrastructure.persistence.jpa.RoleJpaRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -15,6 +17,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.Set;
 import java.util.UUID;
+import java.util.HashSet;
+import java.util.List;
 
 @Slf4j
 @Configuration
@@ -34,6 +38,7 @@ public class SecurityBootstrapConfig {
     CommandLineRunner bootstrapUsersAndRoles(
             RoleJpaRepository roleJpaRepository,
             AppUserJpaRepository appUserJpaRepository,
+            FacilityJpaRepository facilityJpaRepository,
             PasswordEncoder passwordEncoder
     ) {
         return args -> {
@@ -44,9 +49,11 @@ public class SecurityBootstrapConfig {
             Role especialistaRole = roleJpaRepository.findByName(RoleName.ESPECIALISTA)
                     .orElseGet(() -> roleJpaRepository.save(Role.builder().name(RoleName.ESPECIALISTA).build()));
 
-            ensureUser("superadmin", resolvePassword(superadminPassword, "superadmin"), Set.of(superadminRole), appUserJpaRepository, passwordEncoder);
-            ensureUser("admin", resolvePassword(adminPassword, "admin"), Set.of(adminRole), appUserJpaRepository, passwordEncoder);
-            ensureUser("especialista", resolvePassword(especialistaPassword, "especialista"), Set.of(especialistaRole), appUserJpaRepository, passwordEncoder);
+            Set<Facility> activeFacilities = ensureActiveFacilities(facilityJpaRepository);
+
+            ensureUser("superadmin", resolvePassword(superadminPassword, "superadmin"), Set.of(superadminRole), activeFacilities, appUserJpaRepository, passwordEncoder);
+            ensureUser("admin", resolvePassword(adminPassword, "admin"), Set.of(adminRole), activeFacilities, appUserJpaRepository, passwordEncoder);
+            ensureUser("especialista", resolvePassword(especialistaPassword, "especialista"), Set.of(especialistaRole), activeFacilities, appUserJpaRepository, passwordEncoder);
 
             log.info("Security bootstrap completed (default users ensured)");
         };
@@ -56,6 +63,7 @@ public class SecurityBootstrapConfig {
             String username,
             String rawPassword,
             Set<Role> roles,
+                Set<Facility> facilities,
             AppUserJpaRepository appUserJpaRepository,
             PasswordEncoder passwordEncoder
     ) {
@@ -66,6 +74,7 @@ public class SecurityBootstrapConfig {
                             .passwordHash(passwordEncoder.encode(rawPassword))
                             .active(true)
                             .roles(roles)
+                            .facilities(new HashSet<>(facilities))
                             .build()
             );
         }
@@ -79,5 +88,34 @@ public class SecurityBootstrapConfig {
         String generated = UUID.randomUUID().toString();
         log.warn("No bootstrap password configured for user '{}'. Generated ephemeral password for this startup.", username);
         return generated;
+    }
+
+    private Set<Facility> ensureActiveFacilities(FacilityJpaRepository facilityJpaRepository) {
+        List<Facility> activeFacilities = facilityJpaRepository.findByActiveTrue();
+        if (!activeFacilities.isEmpty()) {
+            return new HashSet<>(activeFacilities);
+        }
+
+        Facility principal = facilityJpaRepository.findByCode("SEDE_PRINCIPAL")
+                .orElseGet(() -> facilityJpaRepository.save(
+                        Facility.builder()
+                                .code("SEDE_PRINCIPAL")
+                                .name("Sede Principal")
+                                .address("Direccion pendiente - Sede Principal")
+                                .active(true)
+                                .build()
+                ));
+
+        Facility norte = facilityJpaRepository.findByCode("SEDE_NORTE")
+                .orElseGet(() -> facilityJpaRepository.save(
+                        Facility.builder()
+                                .code("SEDE_NORTE")
+                                .name("Sede Norte")
+                                .address("Direccion pendiente - Sede Norte")
+                                .active(true)
+                                .build()
+                ));
+
+        return new HashSet<>(List.of(principal, norte));
     }
 }
