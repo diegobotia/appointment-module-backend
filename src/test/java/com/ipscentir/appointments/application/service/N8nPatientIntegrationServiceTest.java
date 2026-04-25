@@ -1,8 +1,6 @@
 package com.ipscentir.appointments.application.service;
 
 import com.ipscentir.appointments.application.dto.AppointmentDTO;
-import com.ipscentir.appointments.application.dto.integration.n8n.N8nAvailabilityBookingPayloadDTO;
-import com.ipscentir.appointments.application.dto.integration.n8n.N8nAvailabilitySlotDTO;
 import com.ipscentir.appointments.application.dto.integration.n8n.N8nCancelAppointmentRequest;
 import com.ipscentir.appointments.application.dto.integration.n8n.N8nFacilityId;
 import com.ipscentir.appointments.application.dto.integration.n8n.N8nPatientAppointmentRequest;

@@ -48,6 +48,12 @@ appointments-module/
 
 Consulte `plan.md` para visualizar los sprints programados para completar este desarrollo en 8 semanas.
 
+## Integracion con n8n
+
+Guia tecnica de conexion backend-n8n:
+
+- `docs/n8n/GUIA_CONEXION_BACKEND_N8N.md`
+
 ## 🚀 Quick Start (Local)
 
 *El inicio local se simplificará únicamente a levantar PostgreSQL e iniciar el proyecto Spring Boot directamente.*

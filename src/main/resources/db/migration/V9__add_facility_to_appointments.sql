@@ -20,6 +20,8 @@ ALTER TABLE appointments
 
 CREATE INDEX idx_appointments_facility_date_status ON appointments(facility_id, appointment_date, status);
 
+DROP VIEW IF EXISTS v_appointments_enriched;
+
 CREATE OR REPLACE VIEW v_appointments_enriched AS
 SELECT 
     a.id,
