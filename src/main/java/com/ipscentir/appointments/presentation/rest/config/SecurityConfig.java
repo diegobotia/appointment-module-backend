@@ -30,6 +30,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/v1/catalogs/**").permitAll()
                 .requestMatchers("/api/v1/integrations/n8n/**").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/v1/appointments").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/v1/forms/pqrs").permitAll()
                 .requestMatchers("/api/v1/admin/**").hasAnyRole("ADMIN", "SUPERADMIN")
                 .requestMatchers(
                         "/swagger-ui/**",
