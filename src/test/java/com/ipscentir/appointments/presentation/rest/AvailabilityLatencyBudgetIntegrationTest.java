@@ -3,6 +3,7 @@ package com.ipscentir.appointments.presentation.rest;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ipscentir.appointments.domain.model.schedule.Schedule;
 import com.ipscentir.appointments.infrastructure.persistence.jpa.AppointmentJpaRepository;
+import com.ipscentir.appointments.infrastructure.persistence.jpa.FacilityJpaRepository;
 import com.ipscentir.appointments.infrastructure.persistence.jpa.ScheduleJpaRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -48,6 +49,9 @@ class AvailabilityLatencyBudgetIntegrationTest {
     @Autowired
     private AppointmentJpaRepository appointmentJpaRepository;
 
+    @Autowired
+    private FacilityJpaRepository facilityJpaRepository;
+
     private UUID doctorId;
     private UUID facilityId;
     private LocalDate queryDate;
@@ -58,13 +62,15 @@ class AvailabilityLatencyBudgetIntegrationTest {
         scheduleJpaRepository.deleteAll();
 
         doctorId = UUID.randomUUID();
-        facilityId = UUID.randomUUID();
+        facilityId = facilityJpaRepository.findByCode("SEDE_NORTE")
+                .orElseThrow(() -> new IllegalStateException("Expected seed facility SEDE_NORTE in test profile"))
+                .getId();
         queryDate = LocalDate.now().plusDays(2);
 
         scheduleJpaRepository.save(Schedule.builder()
                 .doctorId(doctorId)
                 .facilityId(facilityId)
-                .specialty("GENERAL")
+                .specialty("Terapia fisica")
                 .dayOfWeek(queryDate.getDayOfWeek())
                 .startTime(LocalTime.of(8, 0))
                 .endTime(LocalTime.of(12, 0))
@@ -78,15 +84,15 @@ class AvailabilityLatencyBudgetIntegrationTest {
     void availabilityEndpointShouldMeetLatencyBudget() throws Exception {
         String requestBody = objectMapper.writeValueAsString(Map.of(
                 "doctorId", doctorId,
-            "facilityId", facilityId,
-                "date", queryDate
-        ));
+                "facilityId", "BELEN",
+                "serviceType", "TERAPIA_FISICA",
+                "date", queryDate));
 
         for (int i = 0; i < 3; i++) {
             mockMvc.perform(post("/api/v1/integrations/n8n/patient/availability")
-                            .header(N8N_API_KEY_HEADER, N8N_API_KEY)
-                            .contentType(JSON)
-                            .content(requestBody))
+                    .header(N8N_API_KEY_HEADER, N8N_API_KEY)
+                    .contentType(JSON)
+                    .content(requestBody))
                     .andExpect(status().isOk());
         }
 
@@ -94,9 +100,9 @@ class AvailabilityLatencyBudgetIntegrationTest {
         for (int i = 0; i < 15; i++) {
             long startNanos = System.nanoTime();
             mockMvc.perform(post("/api/v1/integrations/n8n/patient/availability")
-                            .header(N8N_API_KEY_HEADER, N8N_API_KEY)
-                            .contentType(JSON)
-                            .content(requestBody))
+                    .header(N8N_API_KEY_HEADER, N8N_API_KEY)
+                    .contentType(JSON)
+                    .content(requestBody))
                     .andExpect(status().isOk());
             long elapsedMs = (System.nanoTime() - startNanos) / 1_000_000;
             latenciesMs.add(elapsedMs);
@@ -108,7 +114,6 @@ class AvailabilityLatencyBudgetIntegrationTest {
 
         assertTrue(
                 p95Ms < LATENCY_BUDGET_MS,
-                "Expected p95 latency under " + LATENCY_BUDGET_MS + "ms but got " + p95Ms + "ms"
-        );
+                "Expected p95 latency under " + LATENCY_BUDGET_MS + "ms but got " + p95Ms + "ms");
     }
 }
