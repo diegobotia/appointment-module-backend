@@ -29,12 +29,21 @@ public class Notification {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @Column(name = "external_entity_id", nullable = false)
-    private UUID externalEntityId;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "entity_type", nullable = false)
+    @Builder.Default
+    private NotificationEntityType entityType = NotificationEntityType.APPOINTMENT;
+
+    @Column(name = "entity_id", nullable = false)
+    private UUID entityId;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private NotificationType notificationType;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "purpose", nullable = false)
+    private NotificationPurpose purpose;
 
     @Column(nullable = false)
     private String recipient;
@@ -47,32 +56,75 @@ public class Notification {
     @Builder.Default
     private NotificationStatus status = NotificationStatus.PENDING;
 
+    @Column(name = "retry_count", nullable = false)
+    @Builder.Default
+    private int retryCount = 0;
+
+    @Column(name = "last_attempt_at")
+    private LocalDateTime lastAttemptAt;
+
     @Column(name = "created_at", updatable = false, insertable = false)
     private LocalDateTime createdAt;
-    
+
     @Column(name = "sent_at")
     private LocalDateTime sentAt;
-    
+
     @Column(name = "failure_reason")
     private String failureReason;
 
-    public static Notification create(UUID externalEntityId, NotificationType type, String recipient, String messageContent) {
+    public static Notification create(
+            NotificationEntityType entityType,
+            UUID entityId,
+            NotificationType type,
+            NotificationPurpose purpose,
+            String recipient,
+            String messageContent
+    ) {
         return Notification.builder()
-                .externalEntityId(externalEntityId)
+                .entityType(entityType)
+                .entityId(entityId)
                 .notificationType(type)
+                .purpose(purpose)
                 .recipient(recipient)
                 .messageContent(messageContent)
                 .status(NotificationStatus.PENDING)
+                .retryCount(0)
                 .build();
     }
-    
+
+    public static Notification create(
+            UUID entityId,
+            NotificationType type,
+            NotificationPurpose purpose,
+            String recipient,
+            String messageContent
+    ) {
+        return create(NotificationEntityType.APPOINTMENT, entityId, type, purpose, recipient, messageContent);
+    }
+
     public void markAsSent() {
         this.status = NotificationStatus.SENT;
         this.sentAt = LocalDateTime.now();
+        this.lastAttemptAt = LocalDateTime.now();
+        this.failureReason = null;
     }
-    
+
     public void markAsFailed(String reason) {
         this.status = NotificationStatus.FAILED;
         this.failureReason = reason;
+        this.lastAttemptAt = LocalDateTime.now();
+    }
+
+    public void recordFailedAttempt(String reason) {
+        this.retryCount++;
+        markAsFailed(reason);
+    }
+
+    public boolean canRetry(int maxAttempts) {
+        return status != NotificationStatus.SENT && retryCount < maxAttempts;
+    }
+
+    public void prepareForRetry() {
+        this.status = NotificationStatus.PENDING;
     }
 }

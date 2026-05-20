@@ -51,19 +51,30 @@ integration:
   clinical-service:
     url: ${CLINICAL_SERVICE_URL:http://localhost:8083}
 
-# Twilio (SMS y WhatsApp)
+# Twilio (SMS y WhatsApp) — activar en prod con TWILIO_ENABLED=true
 twilio:
-  account-sid: ${TWILIO_ACCOUNT_SID:mock_sid}
-  auth-token: ${TWILIO_AUTH_TOKEN:mock_token}
-  phone-number: ${TWILIO_PHONE_NUMBER:+123456789}
-  whatsapp-number: ${TWILIO_WHATSAPP_NUMBER:+123456789}
+  enabled: ${TWILIO_ENABLED:false}
+  account-sid: ${TWILIO_ACCOUNT_SID:}
+  auth-token: ${TWILIO_AUTH_TOKEN:}
+  phone-number: ${TWILIO_PHONE_NUMBER:}
+  whatsapp-number: ${TWILIO_WHATSAPP_NUMBER:}
 
-# Configuración Genérica de Notificaciones Internas
+# Resend (Email) — activar en prod con RESEND_ENABLED=true
+resend:
+  api-key: ${RESEND_API_KEY:}
+  from-email: ${RESEND_FROM_EMAIL:onboarding@resend.dev}
+  enabled: ${RESEND_ENABLED:false}
+
+# Notificaciones internas
 notifications:
-  enabled: true
-  reminder-24h-enabled: true
-  reminder-2h-enabled: true
-  max-retry-attempts: 3
+  enabled: ${NOTIFICATIONS_ENABLED:true}
+  created-alert-enabled: ${NOTIFICATIONS_CREATED_ALERT_ENABLED:false}
+  cancelled-alert-enabled: ${NOTIFICATIONS_CANCELLED_ALERT_ENABLED:false}
+  reminder-24h-enabled: ${NOTIFICATIONS_REMINDER_24H_ENABLED:true}
+  reminder-2h-enabled: ${NOTIFICATIONS_REMINDER_2H_ENABLED:false}
+  max-retry-attempts: ${NOTIFICATIONS_MAX_RETRY_ATTEMPTS:3}
+  retry-cron: ${NOTIFICATIONS_RETRY_CRON:0 */15 * * * *}
+  reminder-2h-cron: ${NOTIFICATIONS_REMINDER_2H_CRON:0 */15 * * * *}
 
 # Springdoc (SwaggerUI)
 springdoc:
@@ -85,10 +96,9 @@ security:
   n8n:
     api-key: ${N8N_API_KEY:change-this-in-production}
     base-path: ${N8N_BASE_PATH:/api/v1/integrations/n8n}
-  bootstrap:
-    superadmin-password: ${BOOTSTRAP_SUPERADMIN_PASSWORD:}
-    admin-password: ${BOOTSTRAP_ADMIN_PASSWORD:}
-    especialista-password: ${BOOTSTRAP_ESPECIALISTA_PASSWORD:}
+
+patient-registration:
+  form-base-url: ${PATIENT_REGISTRATION_FORM_URL:https://citas.ipscentir.com/registro}
 
 appointments:
   therapy:

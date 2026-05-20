@@ -159,6 +159,65 @@ public class Appointment extends AbstractAggregateRoot<Appointment> {
         return appointment;
     }
 
+    public void checkIn() {
+        if (this.status != AppointmentStatus.SCHEDULED && this.status != AppointmentStatus.CONFIRMED) {
+            throw new IllegalStateException("Only SCHEDULED or CONFIRMED appointments can be checked in");
+        }
+        this.status = AppointmentStatus.CHECKED_IN;
+    }
+
+    public void markNoShow() {
+        if (this.status == AppointmentStatus.CANCELLED
+                || this.status == AppointmentStatus.COMPLETED
+                || this.status == AppointmentStatus.NO_SHOW) {
+            throw new IllegalStateException("Appointment cannot be marked as no-show from its current state");
+        }
+        this.status = AppointmentStatus.NO_SHOW;
+    }
+
+    public void complete() {
+        if (this.status != AppointmentStatus.CHECKED_IN && this.status != AppointmentStatus.CONFIRMED) {
+            throw new IllegalStateException("Only CHECKED_IN or CONFIRMED appointments can be completed");
+        }
+        this.status = AppointmentStatus.COMPLETED;
+    }
+
+    public void reschedule(
+            LocalDate newDate,
+            LocalTime newTime,
+            UUID newScheduleId,
+            String newDoctorId,
+            UUID newFacilityId
+    ) {
+        if (this.status == AppointmentStatus.CANCELLED || this.status == AppointmentStatus.COMPLETED) {
+            throw new IllegalStateException("Cannot reschedule an appointment in its current state");
+        }
+        if (newDate.isBefore(LocalDate.now())) {
+            throw new IllegalStateException("Cannot reschedule to a date in the past");
+        }
+
+        this.appointmentDate = newDate;
+        this.appointmentTime = newTime;
+        this.scheduleId = newScheduleId;
+        this.doctorId = newDoctorId;
+        this.facilityId = newFacilityId;
+
+        if (this.status == AppointmentStatus.CONFIRMED) {
+            this.status = AppointmentStatus.SCHEDULED;
+            this.confirmedAt = null;
+        }
+    }
+
+    public boolean isAssignedToDoctor(String doctorId) {
+        if (doctorId == null) {
+            return false;
+        }
+        if (doctorId.equals(this.doctorId)) {
+            return true;
+        }
+        return this.participants.stream().anyMatch(p -> doctorId.equals(p.getDoctorId()));
+    }
+
     public void transitionGroupPendingToScheduled() {
         if (this.status == AppointmentStatus.PENDIENTE_CONFIRMACION_GRUPO) {
             this.status = AppointmentStatus.SCHEDULED;

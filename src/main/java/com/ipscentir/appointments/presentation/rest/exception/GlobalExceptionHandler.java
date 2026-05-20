@@ -1,5 +1,7 @@
 package com.ipscentir.appointments.presentation.rest.exception;
 
+import com.ipscentir.appointments.application.exception.PatientAlreadyExistsException;
+import com.ipscentir.appointments.application.exception.PatientNotFoundException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
@@ -14,6 +16,15 @@ import java.util.Map;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    @ExceptionHandler({PatientNotFoundException.class, PatientAlreadyExistsException.class})
+    public ResponseEntity<ErrorResponse> handlePatientExceptions(RuntimeException ex) {
+        HttpStatus status = ex instanceof PatientAlreadyExistsException
+                ? HttpStatus.CONFLICT
+                : HttpStatus.NOT_FOUND;
+        ErrorResponse error = new ErrorResponse(status.value(), ex.getMessage(), LocalDateTime.now());
+        return new ResponseEntity<>(error, status);
+    }
 
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ErrorResponse> handleIllegalArgumentException(IllegalArgumentException ex) {

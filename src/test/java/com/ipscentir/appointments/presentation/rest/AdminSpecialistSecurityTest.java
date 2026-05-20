@@ -26,15 +26,15 @@ class AdminSpecialistSecurityTest {
     }
 
     @Test
-    @WithMockUser(username = "especialista", roles = {"ESPECIALISTA"})
-    void shouldReturnForbiddenForEspecialistaRole() throws Exception {
+    @WithMockUser(username = "medico", roles = {"MEDICO"})
+    void shouldReturnForbiddenForMedicoRole() throws Exception {
         mockMvc.perform(get("/api/v1/admin/specialists"))
                 .andExpect(status().isForbidden());
     }
 
     @Test
-    @WithMockUser(username = "admin", roles = {"ADMIN"})
-    void shouldAllowAdminToAccessSpecialists() throws Exception {
+    @WithMockUser(username = "administracion", roles = {"ADMINISTRACION"})
+    void shouldAllowAdministracionToAccessSpecialists() throws Exception {
         mockMvc.perform(get("/api/v1/admin/specialists"))
                 .andExpect(status().isOk());
     }

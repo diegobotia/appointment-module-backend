@@ -26,5 +26,31 @@ public interface AppointmentRepository {
 
     List<Appointment> findByScheduleAndDateAndTimeAndTypeForUpdate(UUID scheduleId, LocalDate date, LocalTime time, AppointmentType type);
 
+    List<Appointment> findByDateAndStatusIn(LocalDate date, List<AppointmentStatus> statuses);
+
+    List<Appointment> findByPatientIdOrderByAppointmentDateDescAppointmentTimeDesc(UUID patientId);
+
+    List<Appointment> search(AppointmentSearchFilter filter);
+
     void saveAll(List<Appointment> appointments);
+
+    long countByStatus(AppointmentStatus status);
+
+    long countByAppointmentDate(LocalDate date);
+
+    long countByAppointmentDateAndStatus(LocalDate date, AppointmentStatus status);
+
+    long countByAppointmentDateBetween(LocalDate fromDate, LocalDate toDate);
+
+    long countByAppointmentDateBetweenAndStatus(LocalDate fromDate, LocalDate toDate, AppointmentStatus status);
+
+    record AppointmentSearchFilter(
+            UUID facilityId,
+            String doctorId,
+            UUID patientId,
+            AppointmentStatus status,
+            java.time.LocalDate fromDate,
+            java.time.LocalDate toDate
+    ) {
+    }
 }

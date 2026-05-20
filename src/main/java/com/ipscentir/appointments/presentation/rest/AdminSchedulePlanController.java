@@ -2,13 +2,17 @@ package com.ipscentir.appointments.presentation.rest;
 
 import com.ipscentir.appointments.application.dto.schedule.CreateSchedulePlanBlockRequest;
 import com.ipscentir.appointments.application.dto.schedule.CreateSchedulePlanRequest;
+import com.ipscentir.appointments.application.dto.schedule.PublishSchedulePlanRequest;
 import com.ipscentir.appointments.application.dto.schedule.SchedulePlanDTO;
+import com.ipscentir.appointments.application.dto.schedule.SchedulePlanPageResponse;
+import com.ipscentir.appointments.application.dto.schedule.SchedulePlanSearchCriteria;
 import com.ipscentir.appointments.application.service.SchedulePlanAdminService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -23,8 +27,9 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/admin/schedule-plans")
+@PreAuthorize("hasRole('ADMINISTRACION')")
 @RequiredArgsConstructor
-@Tag(name = "Admin Schedule Plans API", description = "Administrative endpoints for quarterly planning and publication")
+@Tag(name = "Admin Schedule Plans API", description = "Planificación trimestral y publicación de agendas")
 public class AdminSchedulePlanController {
 
     private final SchedulePlanAdminService schedulePlanAdminService;
@@ -45,15 +50,34 @@ public class AdminSchedulePlanController {
     }
 
     @PostMapping("/{planId}/publish")
-    @Operation(summary = "Publish schedule plan version")
-    public ResponseEntity<SchedulePlanDTO> publish(@PathVariable UUID planId) {
-        return ResponseEntity.ok(schedulePlanAdminService.publish(planId));
+    @Operation(summary = "Publish schedule plan version and materialize operational schedules")
+    public ResponseEntity<SchedulePlanDTO> publish(
+            @PathVariable UUID planId,
+            @Valid @RequestBody PublishSchedulePlanRequest request
+    ) {
+        return ResponseEntity.ok(schedulePlanAdminService.publish(planId, request));
     }
 
     @GetMapping("/{planId}")
     @Operation(summary = "Get schedule plan by id")
     public ResponseEntity<SchedulePlanDTO> getById(@PathVariable UUID planId) {
         return ResponseEntity.ok(schedulePlanAdminService.getById(planId));
+    }
+
+    @GetMapping
+    @Operation(summary = "Search schedule plans with pagination and filters")
+    public ResponseEntity<SchedulePlanPageResponse> search(
+            @RequestParam String specialistId,
+            @RequestParam(required = false) Integer year,
+            @RequestParam(required = false) Integer quarter,
+            @RequestParam(required = false) Boolean published,
+            @RequestParam(required = false) Boolean activeVersion,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
+    ) {
+        return ResponseEntity.ok(schedulePlanAdminService.search(
+                new SchedulePlanSearchCriteria(specialistId, year, quarter, published, activeVersion, page, size)
+        ));
     }
 
     @GetMapping("/specialists/{specialistId}")

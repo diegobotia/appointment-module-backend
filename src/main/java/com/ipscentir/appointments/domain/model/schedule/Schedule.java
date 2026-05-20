@@ -103,6 +103,21 @@ public class Schedule {
         return blocks.stream().anyMatch(block -> block.isDateTimeBlocked(date, time));
     }
 
+    public void applyPublishedSlotConfiguration(
+            String specialty,
+            LocalTime startTime,
+            LocalTime endTime,
+            int slotDurationMinutes,
+            int maxPatientsPerSlot
+    ) {
+        this.specialty = specialty;
+        this.startTime = startTime;
+        this.endTime = endTime;
+        this.slotDurationMinutes = slotDurationMinutes;
+        this.maxPatientsPerSlot = maxPatientsPerSlot;
+        this.isActive = true;
+    }
+
     public void addBlock(LocalDate date, LocalTime start, LocalTime end, String reason) {
         if (this.blocks == null) {
             this.blocks = new ArrayList<>();

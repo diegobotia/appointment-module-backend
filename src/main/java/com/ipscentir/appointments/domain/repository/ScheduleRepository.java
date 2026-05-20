@@ -11,8 +11,10 @@ public interface ScheduleRepository {
     Optional<Schedule> findByDoctorIdAndFacilityIdAndDayOfWeek(String doctorId, UUID facilityId, DayOfWeek dayOfWeek);
 
     java.util.List<Schedule> findByFacilityIdAndDayOfWeek(UUID facilityId, DayOfWeek dayOfWeek);
-    
-        Optional<Schedule> findByDoctorIdAndDayOfWeek(String doctorId, DayOfWeek dayOfWeek);
+
+    java.util.List<Schedule> findByDoctorIdAndFacilityId(String doctorId, UUID facilityId);
+
+    Optional<Schedule> findByDoctorIdAndDayOfWeek(String doctorId, DayOfWeek dayOfWeek);
     
     Schedule save(Schedule schedule);
     

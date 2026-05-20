@@ -2,8 +2,11 @@ package com.ipscentir.appointments.application.service;
 
 import com.ipscentir.appointments.application.dto.schedule.CreateSchedulePlanBlockRequest;
 import com.ipscentir.appointments.application.dto.schedule.CreateSchedulePlanRequest;
+import com.ipscentir.appointments.application.dto.schedule.PublishSchedulePlanRequest;
 import com.ipscentir.appointments.application.dto.schedule.SchedulePlanBlockDTO;
 import com.ipscentir.appointments.application.dto.schedule.SchedulePlanDTO;
+import com.ipscentir.appointments.application.dto.schedule.SchedulePlanPageResponse;
+import com.ipscentir.appointments.application.dto.schedule.SchedulePlanSearchCriteria;
 import com.ipscentir.appointments.application.dto.schedule.SchedulePlanSlotDTO;
 import com.ipscentir.appointments.domain.model.schedule.SchedulePlan;
 import com.ipscentir.appointments.domain.model.schedule.SchedulePlanBlock;
@@ -14,6 +17,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 
@@ -23,11 +27,16 @@ public class SchedulePlanAdminService {
 
     private final SchedulePlanJpaRepository schedulePlanJpaRepository;
     private final SpecialistJpaRepository specialistJpaRepository;
+    private final SchedulePlanMaterializationService schedulePlanMaterializationService;
 
     @Transactional
     public SchedulePlanDTO createPlan(CreateSchedulePlanRequest request) {
         var specialist = specialistJpaRepository.findById(request.specialistId())
             .orElseThrow(() -> new IllegalArgumentException("Specialist not found"));
+
+        if (request.slots() == null || request.slots().isEmpty()) {
+            throw new IllegalArgumentException("Schedule plan must include at least one slot");
+        }
 
         int nextVersion = schedulePlanJpaRepository.findMaxVersionBySpecialistAndPeriod(
             specialist.getId(),
@@ -48,6 +57,7 @@ public class SchedulePlanAdminService {
             if (!slotRequest.endTime().isAfter(slotRequest.startTime())) {
                 throw new IllegalArgumentException("Slot end time must be after start time");
             }
+            validateSlotDoesNotOverlap(plan.getSlots(), slotRequest.dayOfWeek(), slotRequest.startTime(), slotRequest.endTime());
 
             plan.addSlot(SchedulePlanSlot.builder()
                     .dayOfWeek(slotRequest.dayOfWeek())
@@ -68,12 +78,22 @@ public class SchedulePlanAdminService {
         SchedulePlan plan = schedulePlanJpaRepository.findWithSlotsAndBlocksById(planId)
                 .orElseThrow(() -> new IllegalArgumentException("Schedule plan not found"));
 
+        if (plan.isPublished()) {
+            throw new IllegalArgumentException("Cannot add blocks to a published schedule plan");
+        }
+
         if (request.endDate().isBefore(request.startDate())) {
             throw new IllegalArgumentException("Block end date must be after or equal to start date");
         }
 
         if (!request.endTime().isAfter(request.startTime())) {
             throw new IllegalArgumentException("Block end time must be after start time");
+        }
+
+        for (SchedulePlanBlock existing : plan.getBlocks()) {
+            if (blocksOverlap(existing, request.startDate(), request.endDate(), request.startTime(), request.endTime())) {
+                throw new IllegalArgumentException("Block overlaps with an existing block in this plan");
+            }
         }
 
         plan.addBlock(SchedulePlanBlock.builder()
@@ -89,24 +109,34 @@ public class SchedulePlanAdminService {
     }
 
     @Transactional
-    public SchedulePlanDTO publish(UUID planId) {
+    public SchedulePlanDTO publish(UUID planId, PublishSchedulePlanRequest request) {
         SchedulePlan plan = schedulePlanJpaRepository.findWithSlotsAndBlocksById(planId)
                 .orElseThrow(() -> new IllegalArgumentException("Schedule plan not found"));
 
+        if (plan.isPublished()) {
+            throw new IllegalArgumentException("Schedule plan is already published");
+        }
+
+        boolean hasActiveSlot = plan.getSlots().stream().anyMatch(SchedulePlanSlot::isActive);
+        if (!hasActiveSlot) {
+            throw new IllegalArgumentException("Cannot publish a schedule plan without active slots");
+        }
+
         schedulePlanJpaRepository.findBySpecialistIdAndPlanYearAndPlanQuarterAndActiveVersionTrue(
                 plan.getSpecialistId(),
-                        plan.getPlanYear(),
-                        plan.getPlanQuarter()
-                )
-                .ifPresent(activePlan -> {
-                    if (!activePlan.getId().equals(plan.getId())) {
-                        activePlan.markAsInactiveVersion();
-                        schedulePlanJpaRepository.save(activePlan);
-                    }
-                });
+                plan.getPlanYear(),
+                plan.getPlanQuarter()
+        ).ifPresent(activePlan -> {
+            if (!activePlan.getId().equals(plan.getId())) {
+                activePlan.markAsInactiveVersion();
+                schedulePlanJpaRepository.save(activePlan);
+            }
+        });
 
         plan.publishAsActive();
-        return toDto(schedulePlanJpaRepository.save(plan));
+        SchedulePlan saved = schedulePlanJpaRepository.save(plan);
+        schedulePlanMaterializationService.materializePublishedPlan(saved, request.facilityId());
+        return toDto(saved);
     }
 
     @Transactional(readOnly = true)
@@ -134,6 +164,65 @@ public class SchedulePlanAdminService {
         }
 
         return plans.stream().map(this::toDto).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public SchedulePlanPageResponse search(SchedulePlanSearchCriteria criteria) {
+        if (criteria.specialistId() == null || criteria.specialistId().isBlank()) {
+            throw new IllegalArgumentException("specialistId is required for schedule plan search");
+        }
+
+        List<SchedulePlanDTO> all = listBySpecialist(criteria.specialistId(), criteria.year(), criteria.quarter())
+                .stream()
+                .filter(dto -> criteria.published() == null || dto.published() == criteria.published())
+                .filter(dto -> criteria.activeVersion() == null || dto.activeVersion() == criteria.activeVersion())
+                .sorted(Comparator
+                        .comparing(SchedulePlanDTO::planYear).reversed()
+                        .thenComparing(SchedulePlanDTO::planQuarter).reversed()
+                        .thenComparing(SchedulePlanDTO::versionNumber).reversed())
+                .toList();
+
+        int total = all.size();
+        int totalPages = total == 0 ? 0 : (int) Math.ceil((double) total / criteria.size());
+        int fromIndex = Math.min(criteria.page() * criteria.size(), total);
+        int toIndex = Math.min(fromIndex + criteria.size(), total);
+
+        return new SchedulePlanPageResponse(
+                all.subList(fromIndex, toIndex),
+                criteria.page(),
+                criteria.size(),
+                total,
+                totalPages
+        );
+    }
+
+    private void validateSlotDoesNotOverlap(
+            List<SchedulePlanSlot> existingSlots,
+            java.time.DayOfWeek dayOfWeek,
+            java.time.LocalTime start,
+            java.time.LocalTime end
+    ) {
+        for (SchedulePlanSlot slot : existingSlots) {
+            if (!slot.isActive() || slot.getDayOfWeek() != dayOfWeek) {
+                continue;
+            }
+            if (start.isBefore(slot.getEndTime()) && slot.getStartTime().isBefore(end)) {
+                throw new IllegalArgumentException("Slot overlaps with another slot on " + dayOfWeek);
+            }
+        }
+    }
+
+    private boolean blocksOverlap(
+            SchedulePlanBlock existing,
+            java.time.LocalDate startDate,
+            java.time.LocalDate endDate,
+            java.time.LocalTime startTime,
+            java.time.LocalTime endTime
+    ) {
+        if (existing.getEndDate().isBefore(startDate) || endDate.isBefore(existing.getStartDate())) {
+            return false;
+        }
+        return startTime.isBefore(existing.getEndTime()) && existing.getStartTime().isBefore(endTime);
     }
 
     private SchedulePlanDTO toDto(SchedulePlan plan) {

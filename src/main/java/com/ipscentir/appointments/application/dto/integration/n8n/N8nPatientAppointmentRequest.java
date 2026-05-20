@@ -15,5 +15,17 @@ public record N8nPatientAppointmentRequest(
         @NotNull UUID scheduleId,
         @NotNull @FutureOrPresent LocalDate appointmentDate,
         @NotNull LocalTime appointmentTime,
-        String reason
-) {}
+        String reason,
+        String conversationId,
+        String requestId
+) {
+    public String resolveIdempotencyKey() {
+        if (requestId != null && !requestId.isBlank()) {
+            return requestId.trim();
+        }
+        if (conversationId != null && !conversationId.isBlank()) {
+            return conversationId.trim();
+        }
+        return null;
+    }
+}

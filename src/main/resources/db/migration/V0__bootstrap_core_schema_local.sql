@@ -65,8 +65,8 @@ CREATE TABLE IF NOT EXISTS core.admisiones (
 
 INSERT INTO core.roles (nombre, descripcion)
 VALUES
-    ('Paciente', 'Rol de paciente'),
-    ('Medico', 'Rol de medico'),
-    ('Admin', 'Rol de administracion'),
-    ('Superadmin', 'Rol de superadministracion')
+    ('Medico', 'Gestiona historia clínica'),
+    ('Admisiones', 'Gestiona admisiones'),
+    ('Administracion', 'Acceso total al sistema'),
+    ('Facturacion', 'Gestiona cuentas médicas')
 ON CONFLICT (nombre) DO NOTHING;

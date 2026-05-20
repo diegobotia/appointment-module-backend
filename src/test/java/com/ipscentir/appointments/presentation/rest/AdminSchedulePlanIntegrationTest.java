@@ -5,7 +5,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ipscentir.appointments.application.dto.schedule.CreateSchedulePlanBlockRequest;
 import com.ipscentir.appointments.application.dto.schedule.CreateSchedulePlanRequest;
 import com.ipscentir.appointments.application.dto.schedule.CreateSchedulePlanSlotRequest;
+import com.ipscentir.appointments.application.dto.schedule.PublishSchedulePlanRequest;
 import com.ipscentir.appointments.domain.model.specialist.Specialist;
+import com.ipscentir.appointments.infrastructure.persistence.jpa.FacilityJpaRepository;
 import com.ipscentir.appointments.infrastructure.persistence.jpa.SchedulePlanJpaRepository;
 import com.ipscentir.appointments.infrastructure.persistence.jpa.SpecialistJpaRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -47,7 +49,11 @@ class AdminSchedulePlanIntegrationTest {
     @Autowired
     private SchedulePlanJpaRepository schedulePlanJpaRepository;
 
+    @Autowired
+    private FacilityJpaRepository facilityJpaRepository;
+
     private String specialistId;
+    private UUID facilityId;
 
     @BeforeEach
     void setUp() {
@@ -63,6 +69,7 @@ class AdminSchedulePlanIntegrationTest {
                 .build());
 
         specialistId = specialist.getId();
+        facilityId = facilityJpaRepository.findByCode("SEDE_NORTE").orElseThrow().getId();
     }
 
     @Test
@@ -76,8 +83,8 @@ class AdminSchedulePlanIntegrationTest {
     }
 
     @Test
-    @WithMockUser(roles = "ESPECIALISTA")
-    void shouldRejectEspecialistaRole() throws Exception {
+    @WithMockUser(roles = "MEDICO")
+    void shouldRejectMedicoRole() throws Exception {
         CreateSchedulePlanRequest request = buildPlanRequest(2026, 2);
 
         mockMvc.perform(post("/api/v1/admin/schedule-plans")
@@ -87,11 +94,13 @@ class AdminSchedulePlanIntegrationTest {
     }
 
     @Test
-    @WithMockUser(roles = "ADMIN")
+    @WithMockUser(roles = "ADMINISTRACION")
     void shouldHandleQuarterlyVersioningAndPublication() throws Exception {
         UUID planV1Id = createPlanAndExtractId(buildPlanRequest(2026, 2));
 
-        mockMvc.perform(post("/api/v1/admin/schedule-plans/{planId}/publish", planV1Id))
+        mockMvc.perform(post("/api/v1/admin/schedule-plans/{planId}/publish", planV1Id)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new PublishSchedulePlanRequest(facilityId))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.versionNumber").value(1))
                 .andExpect(jsonPath("$.published").value(true))
@@ -99,7 +108,9 @@ class AdminSchedulePlanIntegrationTest {
 
         UUID planV2Id = createPlanAndExtractId(buildPlanRequest(2026, 2));
 
-        mockMvc.perform(post("/api/v1/admin/schedule-plans/{planId}/publish", planV2Id))
+        mockMvc.perform(post("/api/v1/admin/schedule-plans/{planId}/publish", planV2Id)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new PublishSchedulePlanRequest(facilityId))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.versionNumber").value(2))
                 .andExpect(jsonPath("$.activeVersion").value(true));
@@ -120,7 +131,7 @@ class AdminSchedulePlanIntegrationTest {
     }
 
     @Test
-    @WithMockUser(roles = "ADMIN")
+    @WithMockUser(roles = "ADMINISTRACION")
     void shouldAddBlockRangeToPlan() throws Exception {
         UUID planId = createPlanAndExtractId(buildPlanRequest(2026, 3));
 

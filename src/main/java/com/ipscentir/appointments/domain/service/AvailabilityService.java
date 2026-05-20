@@ -186,6 +186,65 @@ public class AvailabilityService {
         }
     }
 
+    /**
+     * Slots disponibles con cupos restantes para un médico en sede y rango de fechas (inclusive).
+     */
+    public List<AvailableSlotDetail> getAvailableSlotsInRange(
+            String doctorId,
+            UUID facilityId,
+            LocalDate fromDate,
+            LocalDate toDate
+    ) {
+        if (fromDate == null || toDate == null) {
+            throw new IllegalArgumentException("fromDate and toDate are required");
+        }
+        if (toDate.isBefore(fromDate)) {
+            throw new IllegalArgumentException("toDate must be on or after fromDate");
+        }
+        if (fromDate.plusDays(90).isBefore(toDate)) {
+            throw new IllegalArgumentException("Date range cannot exceed 90 days");
+        }
+
+        List<AvailableSlotDetail> result = new ArrayList<>();
+        for (LocalDate date = fromDate; !date.isAfter(toDate); date = date.plusDays(1)) {
+            try {
+                Schedule schedule = scheduleRepository
+                        .findByDoctorIdAndFacilityIdAndDayOfWeek(doctorId, facilityId, date.getDayOfWeek())
+                        .orElse(null);
+                if (schedule == null || !Boolean.TRUE.equals(schedule.getIsActive())) {
+                    continue;
+                }
+
+                List<LocalTime> possibleSlots = schedule.getAvailableSlots(date);
+                List<Appointment> existingAppointments = appointmentRepository.findByDoctorIdAndDate(doctorId, date);
+                Map<LocalTime, Long> appointmentsPerSlot = existingAppointments.stream()
+                        .collect(Collectors.groupingBy(Appointment::getAppointmentTime, Collectors.counting()));
+
+                for (LocalTime time : possibleSlots) {
+                    long occupiedSeats = appointmentsPerSlot.getOrDefault(time, 0L);
+                    int availableSeats = Math.max(0, schedule.getMaxPatientsPerSlot() - (int) occupiedSeats);
+                    if (availableSeats <= 0) {
+                        continue;
+                    }
+                    result.add(new AvailableSlotDetail(
+                            schedule.getId(),
+                            schedule.getDoctorId(),
+                            schedule.getFacilityId(),
+                            null,
+                            schedule.getSpecialty(),
+                            date,
+                            time,
+                            schedule.getSlotDurationMinutes(),
+                            availableSeats
+                    ));
+                }
+            } catch (IllegalArgumentException ignored) {
+                // Sin agenda ese día de la semana en la sede.
+            }
+        }
+        return result;
+    }
+
     private boolean matchesServiceType(String scheduleSpecialty, AppointmentServiceType serviceType) {
         if (scheduleSpecialty == null || scheduleSpecialty.isBlank()) {
             return false;

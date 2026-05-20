@@ -5,10 +5,16 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ipscentir.appointments.domain.model.integration.DomainEventRecord;
 import com.ipscentir.appointments.domain.model.schedule.Schedule;
 import com.ipscentir.appointments.infrastructure.persistence.jpa.AppointmentJpaRepository;
+import com.ipscentir.appointments.infrastructure.persistence.jpa.ContactoRepository;
+import com.ipscentir.appointments.infrastructure.persistence.jpa.DireccionRepository;
 import com.ipscentir.appointments.infrastructure.persistence.jpa.DomainEventJpaRepository;
 import com.ipscentir.appointments.infrastructure.persistence.jpa.FacilityJpaRepository;
+import com.ipscentir.appointments.infrastructure.persistence.jpa.PacienteRepository;
 import com.ipscentir.appointments.infrastructure.persistence.jpa.ScheduleJpaRepository;
 import com.ipscentir.appointments.infrastructure.persistence.jpa.SpecialistJpaRepository;
+import com.ipscentir.appointments.infrastructure.persistence.jpa.entity.Contacto;
+import com.ipscentir.appointments.infrastructure.persistence.jpa.entity.Direccion;
+import com.ipscentir.appointments.infrastructure.persistence.jpa.entity.Paciente;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,6 +34,7 @@ import java.util.UUID;
 import java.util.concurrent.locks.LockSupport;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -62,6 +69,15 @@ class CriticalE2EFlowsIntegrationTest {
         @Autowired
         private FacilityJpaRepository facilityJpaRepository;
 
+        @Autowired
+        private PacienteRepository pacienteRepository;
+
+        @Autowired
+        private ContactoRepository contactoRepository;
+
+        @Autowired
+        private DireccionRepository direccionRepository;
+
         private static final MediaType JSON = MediaType.APPLICATION_JSON;
 
         @BeforeEach
@@ -70,6 +86,9 @@ class CriticalE2EFlowsIntegrationTest {
                 domainEventJpaRepository.deleteAll();
                 scheduleJpaRepository.deleteAll();
                 specialistJpaRepository.deleteAll();
+                pacienteRepository.deleteAll();
+                contactoRepository.deleteAll();
+                direccionRepository.deleteAll();
         }
 
 
@@ -83,6 +102,8 @@ class CriticalE2EFlowsIntegrationTest {
                 LocalDate date = LocalDate.now().plusDays(2);
                 LocalTime time = LocalTime.of(9, 0);
 
+                UUID patientId = seedPatient("CC", "1122334455");
+
                 Schedule schedule = scheduleJpaRepository.save(Schedule.builder()
                                 .doctorId(doctorId)
                                 .facilityId(facilityId)
@@ -94,6 +115,16 @@ class CriticalE2EFlowsIntegrationTest {
                                 .maxPatientsPerSlot(5)
                                 .isActive(true)
                                 .build());
+
+                mockMvc.perform(post("/api/v1/integrations/n8n/patient/identify")
+                                .header(N8N_API_KEY_HEADER, N8N_API_KEY)
+                                .contentType(JSON)
+                                .content(asJson(Map.of(
+                                                "codTipoIdentificacion", "CC",
+                                                "numIdentificacion", "1122334455"))))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.found").value(true))
+                                .andExpect(jsonPath("$.patientId").value(patientId.toString()));
 
                 mockMvc.perform(post("/api/v1/integrations/n8n/patient/availability")
                                 .header(N8N_API_KEY_HEADER, N8N_API_KEY)
@@ -111,19 +142,26 @@ class CriticalE2EFlowsIntegrationTest {
                                 .header(N8N_API_KEY_HEADER, N8N_API_KEY)
                                 .contentType(JSON)
                                 .content(asJson(Map.of(
-                                                "patientId", UUID.randomUUID(),
+                                                "patientId", patientId,
                                                 "doctorId", doctorId,
                                                 "facilityId", "BELEN",
                                                 "scheduleId", schedule.getId(),
                                                 "appointmentDate", date,
                                                 "appointmentTime", time,
-                                                "appointmentType", "PRESENCIAL",
+                                                "conversationId", "e2e-conv-001",
                                                 "reason", "Control general"))))
                                 .andExpect(status().isCreated())
                                 .andExpect(jsonPath("$.appointment.status").value("SCHEDULED"))
                                 .andReturn();
 
                 UUID appointmentId = UUID.fromString(readField(createdResult, "appointment.id"));
+
+                mockMvc.perform(get("/api/v1/integrations/n8n/patient/appointments")
+                                .header(N8N_API_KEY_HEADER, N8N_API_KEY)
+                                .param("codTipoIdentificacion", "CC")
+                                .param("numIdentificacion", "1122334455"))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.total").value(1));
 
                 mockMvc.perform(post("/api/v1/integrations/n8n/patient/appointments/{appointmentId}/cancel",
                                 appointmentId)
@@ -164,5 +202,33 @@ class CriticalE2EFlowsIntegrationTest {
 
         private String asJson(Object value) throws Exception {
                 return objectMapper.writeValueAsString(value);
+        }
+
+        private UUID seedPatient(String codTipo, String numId) {
+                UUID contactId = contactoRepository.save(Contacto.builder()
+                                .email("e2e@example.com")
+                                .telefono("+573001112233")
+                                .build()).getId();
+                UUID directionId = direccionRepository.save(Direccion.builder()
+                                .codMunicipio("050001")
+                                .codZonaTerritorial("ZONA_1")
+                                .detalle("Calle 1 # 2-3")
+                                .build()).getId();
+                return pacienteRepository.save(Paciente.builder()
+                                .nombres("E2E")
+                                .apellidos("Paciente")
+                                .numIdentificacion(numId)
+                                .codTipoIdentificacion(codTipo)
+                                .fechaNacimiento(LocalDate.of(1990, 1, 1))
+                                .idGenero(UUID.randomUUID())
+                                .idEstadoCivil(UUID.randomUUID())
+                                .idOcupacion(UUID.randomUUID())
+                                .idGrupoSanguineo(UUID.randomUUID())
+                                .idEscolaridad(UUID.randomUUID())
+                                .estrato((short) 2)
+                                .idPaisOrigen(1L)
+                                .idContacto(contactId)
+                                .idDireccion(directionId)
+                                .build()).getId();
         }
 }
