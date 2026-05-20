@@ -6,7 +6,7 @@ import java.util.UUID;
 
 public record SchedulePlanDTO(
         UUID id,
-        UUID specialistId,
+        String specialistId,
         int planYear,
         int planQuarter,
         int versionNumber,

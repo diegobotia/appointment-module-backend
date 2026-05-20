@@ -6,7 +6,7 @@ import java.util.UUID;
 
 public record N8nAvailabilitySlotDTO(
         UUID scheduleId,
-        UUID doctorId,
+        String doctorId,
         N8nFacilityId facilityId,
         String serviceType,
         String specialty,

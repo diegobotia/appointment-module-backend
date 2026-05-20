@@ -20,7 +20,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import static java.util.Locale.ROOT;
 
@@ -28,7 +27,7 @@ import static java.util.Locale.ROOT;
 @RequiredArgsConstructor
 public class AvailabilityService {
 
-    private static final int DEFAULT_NEAREST_SLOT_LIMIT = 4;
+
     private static final int DEFAULT_SEARCH_DAYS = 90;
 
     private final ScheduleRepository scheduleRepository;
@@ -94,7 +93,7 @@ public class AvailabilityService {
                 .toList();
     }
 
-    public List<AvailableSlot> getAvailableSlots(UUID doctorId, UUID facilityId, LocalDate date) {
+    public List<AvailableSlot> getAvailableSlots(String doctorId, UUID facilityId, LocalDate date) {
 
         // 1. Obtener agenda del doctor para sede y día de la semana.
         Schedule schedule = scheduleRepository
@@ -130,7 +129,7 @@ public class AvailabilityService {
                 .toList();
     }
 
-    public List<AvailableSlot> getAvailableSlots(UUID doctorId, LocalDate date) {
+    public List<AvailableSlot> getAvailableSlots(String doctorId, LocalDate date) {
         
         // 1. Obtener agenda del doctor para ese día de la semana
         Schedule schedule = scheduleRepository
@@ -166,7 +165,7 @@ public class AvailabilityService {
             .toList();
     }
 
-    public boolean isSlotAvailable(UUID doctorId, LocalDate date, LocalTime time) {
+    public boolean isSlotAvailable(String doctorId, LocalDate date, LocalTime time) {
         // En caso de que el schedule repository falle (porque no haya schedule ese día), asumimos falso
         try {
             List<AvailableSlot> availableSlots = getAvailableSlots(doctorId, date);
@@ -177,7 +176,7 @@ public class AvailabilityService {
         }
     }
 
-    public boolean isSlotAvailable(UUID doctorId, UUID facilityId, LocalDate date, LocalTime time) {
+    public boolean isSlotAvailable(String doctorId, UUID facilityId, LocalDate date, LocalTime time) {
         try {
             List<AvailableSlot> availableSlots = getAvailableSlots(doctorId, facilityId, date);
             return availableSlots.stream()

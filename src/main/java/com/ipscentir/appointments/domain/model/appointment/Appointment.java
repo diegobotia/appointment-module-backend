@@ -27,7 +27,7 @@ import java.util.List;
 import java.util.UUID;
 
 @Entity
-@Table(name = "appointments")
+@Table(name = "appointments", schema = "appointments")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
@@ -42,7 +42,7 @@ public class Appointment extends AbstractAggregateRoot<Appointment> {
     private UUID patientId;
 
     @Column(nullable = false)
-    private UUID doctorId;
+    private String doctorId;
 
     @Column(nullable = false)
     private UUID facilityId;
@@ -118,8 +118,8 @@ public class Appointment extends AbstractAggregateRoot<Appointment> {
     // Factory method wrapper for domain driven design instantiation
         public static Appointment scheduleNew(
             UUID patientId,
-            UUID primaryDoctorId,
-            UUID secondaryDoctorId,
+            String primaryDoctorId,
+            String secondaryDoctorId,
             AppointmentScheduleData scheduleData
         ) {
         UUID appointmentId = UUID.randomUUID();
@@ -149,7 +149,7 @@ public class Appointment extends AbstractAggregateRoot<Appointment> {
         
         // Registramos evento para disparar asíncronamente notificaciones (SMS/Email) al guardar.
         appointment.registerEvent(new AppointmentCreatedEvent(
-            appointment.id,
+                appointment.id,
                 appointment.patientId,
                 appointment.doctorId,
                 appointment.appointmentDate,
@@ -165,7 +165,7 @@ public class Appointment extends AbstractAggregateRoot<Appointment> {
         }
     }
 
-    public UUID getSecondaryDoctorId() {
+    public String getSecondaryDoctorId() {
         return this.participants.stream()
                 .filter(p -> p.getParticipantRole() == AppointmentParticipantRole.SECONDARY)
                 .map(AppointmentParticipant::getDoctorId)
@@ -173,7 +173,7 @@ public class Appointment extends AbstractAggregateRoot<Appointment> {
                 .orElse(null);
     }
 
-    private void addParticipant(UUID doctorId, int order, AppointmentParticipantRole role) {
+    private void addParticipant(String doctorId, int order, AppointmentParticipantRole role) {
         AppointmentParticipant participant = AppointmentParticipant.builder()
                 .doctorId(doctorId)
                 .participantOrder(order)

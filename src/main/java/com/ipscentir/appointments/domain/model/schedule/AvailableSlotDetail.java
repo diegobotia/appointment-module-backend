@@ -8,7 +8,7 @@ import java.util.UUID;
 
 public record AvailableSlotDetail(
         UUID scheduleId,
-        UUID doctorId,
+        String doctorId,
         UUID facilityId,
         AppointmentServiceType serviceType,
         String specialty,

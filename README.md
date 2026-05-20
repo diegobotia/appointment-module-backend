@@ -23,8 +23,6 @@ Se ha definido una arquitectura basada en un **Monolito Modular** puro:
 - **Patrones de Diseño:** Domain-Driven Design (DDD), Eventos de Dominio (Spring Events, procesados localmente sin bus de mensajería externo como RabbitMQ).
 - **Justificación:** Simplicidad operacional para el equipo de 3 personas, un solo endpoint de despliegue, y eliminación de complejidad de red innecesaria para el alcance acotado actual.
 
-Más detalles en: [Decisión de Monolito Modular](docs/architecture/adr/0001-modular-monolith.md)
-
 ## Estructura Base Ajustada
 
 ```text
@@ -44,24 +42,44 @@ appointments-module/
 └── pom.xml
 ```
 
-## Próximos Pasos (ROADMAP 8 SEMANAS)
+## 🚀 Guía de Inicio (Quick Start)
 
-Consulte `plan.md` para visualizar los sprints programados para completar este desarrollo en 8 semanas.
+El proyecto puede ejecutarse en dos modalidades: **Local** (usando base de datos Docker) o integrado con **Supabase** (usando variables de entorno).
 
-## Integracion con n8n
+### Opción 1: Ejecución Local (con base de datos local y Flyway)
 
-Guia tecnica de conexion backend-n8n:
+1. **Levantar base de datos local:**
+   Inicie el contenedor de base de datos y herramientas auxiliares usando Docker:
+   ```bash
+   docker-compose up -d
+   ```
+   *(Nota: Por defecto, `docker-compose.yml` crea la base de datos `ipscentir_appointments`. Asegúrese de que coincida con la URL en su `application.yml` o use variables de entorno para adaptarla)*
 
-- `docs/n8n/GUIA_CONEXION_BACKEND_N8N.md`
+2. **Iniciar la aplicación con Flyway:**
+   Por defecto, la ejecución automática de Flyway está desactivada en la configuración para prevenir mutaciones involuntarias. Para habilitar Flyway y aplicar las migraciones locales en el arranque, ejecute:
+   ```bash
+   SPRING_FLYWAY_ENABLED=true mvn spring-boot:run
+   ```
 
-## 🚀 Quick Start (Local)
+---
 
-*El inicio local se simplificará únicamente a levantar PostgreSQL e iniciar el proyecto Spring Boot directamente.*
+### Opción 2: Ejecución con Supabase
 
-```bash
-# 1. Levantar PostgreSQL
-docker-compose up -d
+1. **Configurar variables de entorno:**
+   Cree su archivo `.env` a partir de la plantilla y configure sus credenciales de Supabase:
+   ```bash
+   cp .env.example .env
+   # Edite el archivo .env con sus credenciales reales de Supabase
+   ```
 
-# 2. Iniciar la aplicación
-mvn spring-boot:run
-```
+2. **Iniciar la aplicación:**
+   Para arrancar la aplicación cargando las variables del `.env` (incluyendo la activación del perfil `supabase` y la habilitación de Flyway si requiere aplicar cambios sobre su instancia), ejecute:
+   ```bash
+   # Habilitar permisos de ejecución si es necesario
+   chmod +x scripts/run-with-env.sh
+
+   # Ejecutar cargando perfil y habilitando Flyway
+   SPRING_PROFILES_ACTIVE=supabase SPRING_FLYWAY_ENABLED=true ./scripts/run-with-env.sh
+   ```
+
+En entornos de integración continua (CI/CD), configure estas mismas variables de entorno como secretos de su repositorio.

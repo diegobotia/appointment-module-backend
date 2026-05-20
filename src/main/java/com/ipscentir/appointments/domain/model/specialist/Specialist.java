@@ -2,13 +2,7 @@ package com.ipscentir.appointments.domain.model.specialist;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.JoinTable;
-import jakarta.persistence.ManyToMany;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
@@ -16,15 +10,19 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-import com.ipscentir.appointments.domain.model.specialty.Specialty;
-
 import java.time.LocalDateTime;
-import java.util.HashSet;
-import java.util.Set;
-import java.util.UUID;
 
+/**
+ * Specialist (Médico)
+ *
+ * Mapea a hc.medicos en el schema 'hc'.
+ * Esta es una entidad de lectura principalmente (read-only in appointments context)
+ * ya que el médico es mantenido en el sistema HC (health center).
+ *
+ * El appointments module no crea/modifica médicos, solo los referencia.
+ */
 @Entity
-@Table(name = "specialists")
+@Table(name = "medicos", schema = "hc")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
@@ -32,56 +30,28 @@ import java.util.UUID;
 public class Specialist {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    private UUID id;
+    @Column(name = "id", insertable = false, updatable = false)
+    private String id;
 
-    @Column(name = "first_name", nullable = false)
+    @Column(name = "registro", nullable = false)
+    private String numeroMedico;
+
+    @Column(name = "nombre", nullable = false)
     private String firstName;
 
-    @Column(name = "last_name", nullable = false)
+    @Column(name = "apellido", nullable = false)
     private String lastName;
 
-    @Column(nullable = false, unique = true)
-    private String email;
+    @Column(name = "especialidad")
+    private String specialty;
 
-    @Column(name = "is_active", nullable = false)
+    @Column(name = "activo", nullable = false)
     @Builder.Default
     private boolean active = true;
 
     @Column(name = "created_at", updatable = false, insertable = false)
     private LocalDateTime createdAt;
 
-    @Column(name = "updated_at")
+    @Column(name = "updated_at", insertable = false, updatable = false)
     private LocalDateTime updatedAt;
-
-    @ManyToMany(fetch = FetchType.LAZY)
-    @JoinTable(
-            name = "specialist_specialties",
-            joinColumns = @JoinColumn(name = "specialist_id"),
-            inverseJoinColumns = @JoinColumn(name = "specialty_id")
-    )
-    @Builder.Default
-    private Set<Specialty> specialties = new HashSet<>();
-
-    public void updateProfile(String firstName, String lastName, String email) {
-        this.firstName = firstName;
-        this.lastName = lastName;
-        this.email = email;
-        this.updatedAt = LocalDateTime.now();
-    }
-
-    public void deactivate() {
-        this.active = false;
-        this.updatedAt = LocalDateTime.now();
-    }
-
-    public void addSpecialty(Specialty specialty) {
-        this.specialties.add(specialty);
-        this.updatedAt = LocalDateTime.now();
-    }
-
-    public void removeSpecialty(Specialty specialty) {
-        this.specialties.remove(specialty);
-        this.updatedAt = LocalDateTime.now();
-    }
 }

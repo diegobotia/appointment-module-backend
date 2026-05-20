@@ -40,12 +40,12 @@ class AppointmentEventListenerTest {
         when(notificationProvider.sendNotification(any())).thenReturn(true);
 
         UUID patientId = UUID.randomUUID();
-        UUID doctorId = UUID.randomUUID();
+        String doctorId = UUID.randomUUID().toString();
         UUID facilityId = UUID.randomUUID();
         UUID scheduleId = UUID.randomUUID();
 
         Appointment appointment = Appointment.scheduleNew(
-            patientId, doctorId, null,
+            patientId, doctorId.toString(), null,
             new AppointmentScheduleData(scheduleId, facilityId, LocalDate.now().plusDays(2), LocalTime.of(10, 0), 30, AppointmentType.PRESENCIAL, com.ipscentir.appointments.domain.model.appointment.AppointmentStatus.SCHEDULED, "Checkup")
         );
 
@@ -64,12 +64,12 @@ class AppointmentEventListenerTest {
         when(notificationProvider.sendNotification(any())).thenReturn(true);
 
         UUID patientId = UUID.randomUUID();
-        UUID doctorId = UUID.randomUUID();
+        String doctorId = UUID.randomUUID().toString();
         UUID facilityId = UUID.randomUUID();
         UUID scheduleId = UUID.randomUUID();
 
         Appointment appointment = Appointment.scheduleNew(
-            patientId, doctorId, null,
+            patientId, doctorId.toString(), null,
             new AppointmentScheduleData(scheduleId, facilityId, LocalDate.now().plusDays(2), LocalTime.of(10, 0), 30, AppointmentType.PRESENCIAL, com.ipscentir.appointments.domain.model.appointment.AppointmentStatus.SCHEDULED, "Checkup")
         );
 

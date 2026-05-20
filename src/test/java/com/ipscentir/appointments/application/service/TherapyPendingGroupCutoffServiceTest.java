@@ -104,7 +104,7 @@ class TherapyPendingGroupCutoffServiceTest {
     private Appointment buildPendingTherapy(LocalDateTime appointmentDateTime) {
         return Appointment.scheduleNew(
                 UUID.randomUUID(),
-                UUID.randomUUID(),
+                UUID.randomUUID().toString(),
                 null,
                 new AppointmentScheduleData(
                         UUID.randomUUID(),

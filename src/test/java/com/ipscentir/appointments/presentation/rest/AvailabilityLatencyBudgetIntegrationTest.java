@@ -52,7 +52,7 @@ class AvailabilityLatencyBudgetIntegrationTest {
     @Autowired
     private FacilityJpaRepository facilityJpaRepository;
 
-    private UUID doctorId;
+    private String doctorId;
     private UUID facilityId;
     private LocalDate queryDate;
 
@@ -61,14 +61,14 @@ class AvailabilityLatencyBudgetIntegrationTest {
         appointmentJpaRepository.deleteAll();
         scheduleJpaRepository.deleteAll();
 
-        doctorId = UUID.randomUUID();
+        doctorId = UUID.randomUUID().toString();
         facilityId = facilityJpaRepository.findByCode("SEDE_NORTE")
                 .orElseThrow(() -> new IllegalStateException("Expected seed facility SEDE_NORTE in test profile"))
                 .getId();
         queryDate = LocalDate.now().plusDays(2);
 
         scheduleJpaRepository.save(Schedule.builder()
-                .doctorId(doctorId)
+            .doctorId(doctorId.toString())
                 .facilityId(facilityId)
                 .specialty("Terapia fisica")
                 .dayOfWeek(queryDate.getDayOfWeek())

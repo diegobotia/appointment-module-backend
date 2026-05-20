@@ -4,7 +4,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ipscentir.appointments.application.dto.form.CreatePqrsRequest;
 import com.ipscentir.appointments.application.dto.form.PqrsResponse;
 import com.ipscentir.appointments.application.service.PqrsApplicationService;
-import com.ipscentir.appointments.domain.model.pqrs.PqrsStatus;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;

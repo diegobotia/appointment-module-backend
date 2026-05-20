@@ -12,7 +12,7 @@ import java.util.UUID;
 
 public interface AppointmentRepository {
     
-    List<Appointment> findByDoctorIdAndDate(UUID doctorId, LocalDate date);
+    List<Appointment> findByDoctorIdAndDate(String doctorId, LocalDate date);
     
     Appointment save(Appointment appointment);
     

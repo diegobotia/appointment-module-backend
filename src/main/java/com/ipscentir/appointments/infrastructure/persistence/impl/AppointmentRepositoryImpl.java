@@ -21,7 +21,7 @@ public class AppointmentRepositoryImpl implements AppointmentRepository {
     private final AppointmentJpaRepository jpaRepository;
 
     @Override
-    public List<Appointment> findByDoctorIdAndDate(UUID doctorId, LocalDate date) {
+    public List<Appointment> findByDoctorIdAndDate(String doctorId, LocalDate date) {
         return jpaRepository.findByParticipantDoctorIdAndAppointmentDate(doctorId, date);
     }
 

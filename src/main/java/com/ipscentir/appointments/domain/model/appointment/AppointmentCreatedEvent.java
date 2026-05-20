@@ -7,7 +7,7 @@ import java.util.UUID;
 public record AppointmentCreatedEvent(
         UUID appointmentId,
         UUID patientId,
-        UUID doctorId,
+        String doctorId,
         LocalDate appointmentDate,
         LocalTime appointmentTime,
         AppointmentType appointmentType

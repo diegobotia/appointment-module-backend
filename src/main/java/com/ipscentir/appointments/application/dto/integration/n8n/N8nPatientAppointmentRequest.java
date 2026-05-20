@@ -9,9 +9,9 @@ import java.util.UUID;
 
 public record N8nPatientAppointmentRequest(
         @NotNull UUID patientId,
-        @NotNull UUID doctorId,
+        @NotNull String doctorId,
         @NotNull N8nFacilityId facilityId,
-        UUID secondaryDoctorId,
+        String secondaryDoctorId,
         @NotNull UUID scheduleId,
         @NotNull @FutureOrPresent LocalDate appointmentDate,
         @NotNull LocalTime appointmentTime,

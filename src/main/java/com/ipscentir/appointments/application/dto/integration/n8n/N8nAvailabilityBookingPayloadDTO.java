@@ -6,9 +6,9 @@ import java.util.UUID;
 
 public record N8nAvailabilityBookingPayloadDTO(
         UUID patientId,
-        UUID doctorId,
+        String doctorId,
         N8nFacilityId facilityId,
-        UUID secondaryDoctorId,
+        String secondaryDoctorId,
         UUID scheduleId,
         LocalDate appointmentDate,
         LocalTime appointmentTime,

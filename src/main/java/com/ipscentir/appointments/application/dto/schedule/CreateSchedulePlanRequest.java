@@ -10,7 +10,7 @@ import java.util.List;
 import java.util.UUID;
 
 public record CreateSchedulePlanRequest(
-        @NotNull UUID specialistId,
+        @NotNull String specialistId,
         @Min(2020) @Max(2100) int planYear,
         @Min(1) @Max(4) int planQuarter,
         @NotEmpty List<@Valid CreateSchedulePlanSlotRequest> slots

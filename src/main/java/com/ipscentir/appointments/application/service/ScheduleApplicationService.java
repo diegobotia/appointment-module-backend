@@ -19,7 +19,7 @@ public class ScheduleApplicationService {
     private final ScheduleMapper scheduleMapper;
     private final FacilityAuthorizationService facilityAuthorizationService;
 
-    public ScheduleDTO getScheduleForDoctorAndFacility(UUID doctorId, UUID facilityId, DayOfWeek dayOfWeek) {
+    public ScheduleDTO getScheduleForDoctorAndFacility(String doctorId, UUID facilityId, DayOfWeek dayOfWeek) {
         facilityAuthorizationService.assertCurrentUserCanAccessFacility(facilityId);
         Schedule schedule = scheduleRepository.findByDoctorIdAndFacilityIdAndDayOfWeek(doctorId, facilityId, dayOfWeek)
                 .orElseThrow(() -> new IllegalArgumentException("No schedule found for this doctor, facility, and specified day"));
@@ -27,7 +27,7 @@ public class ScheduleApplicationService {
         return scheduleMapper.toDto(schedule);
     }
 
-    public ScheduleDTO getScheduleForDoctor(UUID doctorId, DayOfWeek dayOfWeek) {
+    public ScheduleDTO getScheduleForDoctor(String doctorId, DayOfWeek dayOfWeek) {
         Schedule schedule = scheduleRepository.findByDoctorIdAndDayOfWeek(doctorId, dayOfWeek)
                 .orElseThrow(() -> new IllegalArgumentException("No schedule found for this doctor on the specified day"));
         

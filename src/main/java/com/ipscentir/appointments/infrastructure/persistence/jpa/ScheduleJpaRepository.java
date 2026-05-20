@@ -16,7 +16,7 @@ public interface ScheduleJpaRepository extends JpaRepository<Schedule, UUID> {
 
     @Query("SELECT s FROM Schedule s LEFT JOIN FETCH s.blocks WHERE s.doctorId = :doctorId AND s.facilityId = :facilityId AND s.dayOfWeek = :dayOfWeek")
     Optional<Schedule> findByDoctorIdAndFacilityIdAndDayOfWeekWithBlocks(
-            @Param("doctorId") UUID doctorId,
+            @Param("doctorId") String doctorId,
             @Param("facilityId") UUID facilityId,
             @Param("dayOfWeek") DayOfWeek dayOfWeek
     );
@@ -28,5 +28,5 @@ public interface ScheduleJpaRepository extends JpaRepository<Schedule, UUID> {
         );
     
     @Query("SELECT s FROM Schedule s LEFT JOIN FETCH s.blocks WHERE s.doctorId = :doctorId AND s.dayOfWeek = :dayOfWeek")
-    Optional<Schedule> findByDoctorIdAndDayOfWeekWithBlocks(@Param("doctorId") UUID doctorId, @Param("dayOfWeek") DayOfWeek dayOfWeek);
+    Optional<Schedule> findByDoctorIdAndDayOfWeekWithBlocks(@Param("doctorId") String doctorId, @Param("dayOfWeek") DayOfWeek dayOfWeek);
 }

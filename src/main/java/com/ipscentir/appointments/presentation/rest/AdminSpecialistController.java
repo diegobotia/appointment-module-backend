@@ -1,71 +1,56 @@
 package com.ipscentir.appointments.presentation.rest;
 
-import com.ipscentir.appointments.application.dto.specialist.AssignSpecialtyRequest;
-import com.ipscentir.appointments.application.dto.specialist.CreateSpecialistRequest;
 import com.ipscentir.appointments.application.dto.specialist.SpecialistDTO;
-import com.ipscentir.appointments.application.dto.specialist.UpdateSpecialistRequest;
 import com.ipscentir.appointments.application.service.SpecialistAdminService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PatchMapping;
-import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.UUID;
+import java.util.List;
 
+/**
+ * AdminSpecialistController - READ-ONLY
+ *
+ * NOTA: Creación/modificación de médicos ocurre en el sistema HC (Health Center).
+ * Este controlador solo proporciona acceso de lectura a médicos desde hc.medicos
+ * mediante SpecialistAdminService.
+ *
+ * Después de Iteración 3: HC es source of truth para datos de médicos.
+ */
 @RestController
 @RequestMapping("/api/v1/admin/specialists")
 @RequiredArgsConstructor
-@Tag(name = "Admin Specialists API", description = "Administrative specialist registration endpoints")
+@Tag(name = "Admin Specialists API", description = "Read-only specialist information from HC system")
 public class AdminSpecialistController {
 
     private final SpecialistAdminService specialistAdminService;
 
-    @PostMapping
-    @Operation(summary = "Create specialist")
-    public ResponseEntity<SpecialistDTO> create(@Valid @RequestBody CreateSpecialistRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(specialistAdminService.create(request));
+    @GetMapping("/{specialistId}")
+    @Operation(summary = "Get specialist by ID")
+    public ResponseEntity<SpecialistDTO> getById(@PathVariable String specialistId) {
+        return ResponseEntity.ok(specialistAdminService.getById(specialistId));
     }
 
-    @PutMapping("/{specialistId}")
-    @Operation(summary = "Update specialist")
-    public ResponseEntity<SpecialistDTO> update(
-            @PathVariable UUID specialistId,
-            @Valid @RequestBody UpdateSpecialistRequest request
-    ) {
-        return ResponseEntity.ok(specialistAdminService.update(specialistId, request));
+    @GetMapping
+    @Operation(summary = "List all specialists from HC")
+    public ResponseEntity<List<SpecialistDTO>> listAll() {
+        return ResponseEntity.ok(specialistAdminService.listAll());
     }
 
-    @PatchMapping("/{specialistId}/deactivate")
-    @Operation(summary = "Deactivate specialist")
-    public ResponseEntity<SpecialistDTO> deactivate(@PathVariable UUID specialistId) {
-        return ResponseEntity.ok(specialistAdminService.deactivate(specialistId));
+    @GetMapping("/active")
+    @Operation(summary = "List active specialists from HC")
+    public ResponseEntity<List<SpecialistDTO>> listActive() {
+        return ResponseEntity.ok(specialistAdminService.listActive());
     }
 
-    @PostMapping("/{specialistId}/specialties")
-    @Operation(summary = "Assign specialty to specialist")
-    public ResponseEntity<SpecialistDTO> assignSpecialty(
-            @PathVariable UUID specialistId,
-            @Valid @RequestBody AssignSpecialtyRequest request
-    ) {
-        return ResponseEntity.ok(specialistAdminService.assignSpecialty(specialistId, request));
-    }
-
-    @DeleteMapping("/{specialistId}/specialties/{specialtyId}")
-    @Operation(summary = "Remove specialty from specialist")
-    public ResponseEntity<SpecialistDTO> removeSpecialty(
-            @PathVariable UUID specialistId,
-            @PathVariable UUID specialtyId
-    ) {
-        return ResponseEntity.ok(specialistAdminService.removeSpecialty(specialistId, specialtyId));
+    @GetMapping("/medico-number/{numeroMedico}")
+    @Operation(summary = "Get specialist by HC medico number")
+    public ResponseEntity<SpecialistDTO> getByMedicoNumber(@PathVariable String numeroMedico) {
+        return ResponseEntity.ok(specialistAdminService.getByMedicoNumber(numeroMedico));
     }
 }

@@ -26,7 +26,7 @@ public class ScheduleController {
     @GetMapping("/doctors/{doctorId}/day/{dayOfWeek}")
     @Operation(summary = "Get Doctor Schedule Configuration", description = "Retrieves the active routing template for a specific doctor and facility on a given day of the week")
     public ResponseEntity<ScheduleDTO> getDoctorSchedule(
-            @PathVariable UUID doctorId,
+            @PathVariable String doctorId,
             @PathVariable DayOfWeek dayOfWeek,
             @RequestParam UUID facilityId
     ) {

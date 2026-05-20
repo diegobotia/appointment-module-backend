@@ -32,6 +32,14 @@ class CatalogAndSwaggerIntegrationTest {
         mockMvc.perform(get("/api/v1/catalogs/specialties"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(9))
-                .andExpect(jsonPath("$[0].version").value(1));
+                .andExpect(jsonPath("$[0].code").value("FISIATRIA"))
+                .andExpect(jsonPath("$[0].displayName").value("Fisiatria"))
+                .andExpect(jsonPath("$[0].version").value(1))
+                .andExpect(jsonPath("$[1].code").value("FISIATRIA_INTEGRAL_DOLOR"))
+                .andExpect(jsonPath("$[1].displayName").value("Fisiatria integral del dolor"))
+                .andExpect(jsonPath("$[1].version").value(1))
+                .andExpect(jsonPath("$[2].code").value("DOLOR"))
+                .andExpect(jsonPath("$[2].displayName").value("Dolor"))
+                .andExpect(jsonPath("$[2].version").value(1));
     }
 }

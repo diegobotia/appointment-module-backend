@@ -1,44 +1,35 @@
 package com.ipscentir.appointments.infrastructure.config;
 
-import com.ipscentir.appointments.infrastructure.persistence.jpa.AppUserJpaRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
-import org.springframework.security.core.userdetails.User;
-import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
+import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
 
 @Configuration
 @RequiredArgsConstructor
 public class ApplicationSecurityConfig {
 
-    private final AppUserJpaRepository appUserJpaRepository;
+    @Value("${supabase.url:https://project.supabase.co}")
+    private String supabaseUrl;
 
     @Bean
-    public UserDetailsService userDetailsService() {
-        return username -> appUserJpaRepository.findByUsername(username)
-                .map(appUser -> User.builder()
-                        .username(appUser.getUsername())
-                        .password(appUser.getPasswordHash())
-                        .disabled(!appUser.isActive())
-                        .authorities(appUser.getRoles().stream()
-                                .map(role -> "ROLE_" + role.getName().name())
-                                .toArray(String[]::new))
-                        .build())
-                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+    public JwtDecoder jwtDecoder() {
+        String baseUrl = supabaseUrl.startsWith("http") ? supabaseUrl : "https://" + supabaseUrl;
+        String jwkSetUri = baseUrl + "/auth/v1/keys";
+        return NimbusJwtDecoder.withJwkSetUri(jwkSetUri).build();
     }
 
     @Bean
-    public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
-    }
+    public JwtAuthenticationConverter jwtAuthenticationConverter() {
+        JwtGrantedAuthoritiesConverter grantedAuthoritiesConverter = new JwtGrantedAuthoritiesConverter();
+        grantedAuthoritiesConverter.setAuthorityPrefix("ROLE_");
 
-    @Bean
-    public AuthenticationManager authenticationManager(AuthenticationConfiguration authenticationConfiguration) throws Exception {
-        return authenticationConfiguration.getAuthenticationManager();
+        JwtAuthenticationConverter converter = new JwtAuthenticationConverter();
+        converter.setJwtGrantedAuthoritiesConverter(grantedAuthoritiesConverter);
+        return converter;
     }
 }

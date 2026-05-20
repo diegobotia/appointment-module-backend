@@ -90,7 +90,7 @@ public class N8nPatientIntegrationService {
         return new N8nPatientAvailabilityResponse(
                 request.facilityId(),
                 serviceType.name(),
-                serviceType.getDisplayName(),
+                serviceType.name(),
                 request.fromDate(),
                 request.limit(),
                 responseSlots.size(),

@@ -47,7 +47,7 @@ class AdminSchedulePlanIntegrationTest {
     @Autowired
     private SchedulePlanJpaRepository schedulePlanJpaRepository;
 
-    private UUID specialistId;
+    private String specialistId;
 
     @BeforeEach
     void setUp() {
@@ -55,9 +55,10 @@ class AdminSchedulePlanIntegrationTest {
         specialistJpaRepository.deleteAll();
 
         Specialist specialist = specialistJpaRepository.save(Specialist.builder()
+                .id(UUID.randomUUID().toString())
+                .numeroMedico("12345")
                 .firstName("Laura")
                 .lastName("Quintero")
-                .email("laura.quintero@ips.test")
                 .active(true)
                 .build());
 

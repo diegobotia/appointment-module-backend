@@ -40,7 +40,7 @@ class AppointmentBookingServiceTest {
     private AppointmentBookingService bookingService;
 
     private UUID patientId;
-    private UUID doctorId;
+    private String doctorId;
     private UUID facilityId;
     private UUID scheduleId;
     private LocalDate date;
@@ -49,7 +49,7 @@ class AppointmentBookingServiceTest {
     @BeforeEach
     void setUp() {
         patientId = UUID.randomUUID();
-        doctorId = UUID.randomUUID();
+        doctorId = java.util.UUID.randomUUID().toString();
         facilityId = UUID.randomUUID();
         scheduleId = UUID.randomUUID();
         date = LocalDate.now().plusDays(2);
@@ -57,7 +57,7 @@ class AppointmentBookingServiceTest {
 
         Schedule schedule = Schedule.builder()
                 .id(scheduleId)
-                .doctorId(doctorId)
+            .doctorId(doctorId.toString())
                 .facilityId(facilityId)
                 .dayOfWeek(date.getDayOfWeek())
                 .startTime(LocalTime.of(8, 0))
@@ -72,7 +72,7 @@ class AppointmentBookingServiceTest {
 
     @Test
     void testBookAppointment_Success() {
-        when(availabilityService.isSlotAvailable(doctorId, facilityId, date, time)).thenReturn(true);
+        when(availabilityService.isSlotAvailable(doctorId.toString(), facilityId, date, time)).thenReturn(true);
         when(appointmentRepository.existsByPatientIdAndDate(patientId, date)).thenReturn(false);
         when(appointmentRepository.save(any(Appointment.class))).thenAnswer(i -> i.getArgument(0));
 
@@ -94,7 +94,7 @@ class AppointmentBookingServiceTest {
 
     @Test
     void testBookAppointment_FailsIfSlotNotAvailable() {
-        when(availabilityService.isSlotAvailable(doctorId, facilityId, date, time)).thenReturn(false);
+        when(availabilityService.isSlotAvailable(doctorId.toString(), facilityId, date, time)).thenReturn(false);
 
         AppointmentBookingRequest request = new AppointmentBookingRequest(
                 patientId, doctorId, null, scheduleId, facilityId, date, time, AppointmentType.PRESENCIAL, "Routine check"
@@ -105,7 +105,7 @@ class AppointmentBookingServiceTest {
 
     @Test
     void testBookAppointment_FailsIfPatientAlreadyHasAppointmentOnDate() {
-        when(availabilityService.isSlotAvailable(doctorId, facilityId, date, time)).thenReturn(true);
+        when(availabilityService.isSlotAvailable(doctorId.toString(), facilityId, date, time)).thenReturn(true);
         when(appointmentRepository.existsByPatientIdAndDate(patientId, date)).thenReturn(true);
 
         AppointmentBookingRequest request = new AppointmentBookingRequest(
@@ -117,7 +117,7 @@ class AppointmentBookingServiceTest {
 
     @Test
     void testBookAppointment_JuntaMedicaRequiresSecondSpecialist() {
-        when(availabilityService.isSlotAvailable(doctorId, facilityId, date, time)).thenReturn(true);
+        when(availabilityService.isSlotAvailable(doctorId.toString(), facilityId, date, time)).thenReturn(true);
 
         AppointmentBookingRequest request = new AppointmentBookingRequest(
                 patientId, doctorId, null, scheduleId, facilityId, date, time, AppointmentType.JUNTA_MEDICA, "Junta"
@@ -128,7 +128,7 @@ class AppointmentBookingServiceTest {
 
     @Test
     void testBookAppointment_TherapyStartsAsPendingWhenBelowMinGroup() {
-        when(availabilityService.isSlotAvailable(doctorId, facilityId, date, time)).thenReturn(true);
+        when(availabilityService.isSlotAvailable(doctorId.toString(), facilityId, date, time)).thenReturn(true);
         when(appointmentRepository.existsByPatientIdAndDate(patientId, date)).thenReturn(false);
         when(appointmentRepository.findByScheduleAndDateAndTimeAndTypeForUpdate(scheduleId, date, time, AppointmentType.TERAPIA_FISICA))
                 .thenReturn(List.of());

@@ -24,7 +24,7 @@ import java.util.List;
 import java.util.UUID;
 
 @Entity
-@Table(name = "schedule_plans")
+@Table(name = "schedule_plans", schema = "appointments")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
@@ -35,9 +35,8 @@ public class SchedulePlan {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "specialist_id", nullable = false)
-    private Specialist specialist;
+    @Column(name = "specialist_id", nullable = false)
+    private String specialistId;
 
     @Column(name = "plan_year", nullable = false)
     private int planYear;

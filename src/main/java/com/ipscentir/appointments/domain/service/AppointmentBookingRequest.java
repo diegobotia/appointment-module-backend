@@ -8,8 +8,8 @@ import java.util.UUID;
 
 public record AppointmentBookingRequest(
         UUID patientId,
-        UUID doctorId,
-        UUID secondaryDoctorId,
+        String doctorId,
+        String secondaryDoctorId,
         UUID scheduleId,
         UUID facilityId,
         LocalDate date,

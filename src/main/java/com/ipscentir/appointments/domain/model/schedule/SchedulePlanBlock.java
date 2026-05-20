@@ -21,7 +21,7 @@ import java.time.LocalTime;
 import java.util.UUID;
 
 @Entity
-@Table(name = "schedule_plan_blocks")
+@Table(name = "schedule_plan_blocks", schema = "appointments")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor

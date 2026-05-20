@@ -39,16 +39,16 @@ class AvailabilityServiceTest {
     private AvailabilityService availabilityService;
 
     private Schedule schedule;
-    private UUID doctorId;
+    private String doctorId;
         private UUID facilityId;
 
     @BeforeEach
     void setUp() {
-        doctorId = UUID.randomUUID();
+        doctorId = java.util.UUID.randomUUID().toString();
         facilityId = UUID.randomUUID();
         schedule = Schedule.builder()
                 .id(UUID.randomUUID())
-                .doctorId(doctorId)
+                                .doctorId(doctorId.toString())
                 .facilityId(facilityId)
                 .dayOfWeek(DayOfWeek.MONDAY)
                 .startTime(LocalTime.of(8, 0))
@@ -63,12 +63,12 @@ class AvailabilityServiceTest {
     void testGetAvailableSlots_WhenNoAppointments_ReturnsAllSlots() {
         LocalDate date = LocalDate.of(2023, 10, 2); // Lunes
         
-        when(scheduleRepository.findByDoctorIdAndFacilityIdAndDayOfWeek(doctorId, facilityId, DayOfWeek.MONDAY))
+        when(scheduleRepository.findByDoctorIdAndFacilityIdAndDayOfWeek(doctorId.toString(), facilityId, DayOfWeek.MONDAY))
                 .thenReturn(Optional.of(schedule));
-        when(appointmentRepository.findByDoctorIdAndDate(doctorId, date))
+        when(appointmentRepository.findByDoctorIdAndDate(doctorId.toString(), date))
                 .thenReturn(List.of());
 
-        List<AvailableSlot> slots = availabilityService.getAvailableSlots(doctorId, facilityId, date);
+        List<AvailableSlot> slots = availabilityService.getAvailableSlots(doctorId.toString(), facilityId, date);
 
         assertEquals(4, slots.size()); // 8:00, 8:30, 9:00, 9:30
     }
@@ -80,13 +80,13 @@ class AvailabilityServiceTest {
         Appointment appointment = org.mockito.Mockito.mock(Appointment.class);
         when(appointment.getAppointmentTime()).thenReturn(LocalTime.of(8, 30));
 
-        when(scheduleRepository.findByDoctorIdAndFacilityIdAndDayOfWeek(doctorId, facilityId, DayOfWeek.MONDAY))
+        when(scheduleRepository.findByDoctorIdAndFacilityIdAndDayOfWeek(doctorId.toString(), facilityId, DayOfWeek.MONDAY))
                 .thenReturn(Optional.of(schedule));
         
-        when(appointmentRepository.findByDoctorIdAndDate(doctorId, date))
+        when(appointmentRepository.findByDoctorIdAndDate(doctorId.toString(), date))
                 .thenReturn(List.of(appointment));
 
-        List<AvailableSlot> slots = availabilityService.getAvailableSlots(doctorId, facilityId, date);
+        List<AvailableSlot> slots = availabilityService.getAvailableSlots(doctorId.toString(), facilityId, date);
 
         assertEquals(3, slots.size());
         assertFalse(slots.stream().anyMatch(s -> s.getTime().equals(LocalTime.of(8, 30))));
@@ -95,12 +95,12 @@ class AvailabilityServiceTest {
     @Test
     void testIsSlotAvailable_ReturnsTrueWhenFree() {
         LocalDate date = LocalDate.of(2023, 10, 2); 
-        when(scheduleRepository.findByDoctorIdAndFacilityIdAndDayOfWeek(doctorId, facilityId, DayOfWeek.MONDAY))
+        when(scheduleRepository.findByDoctorIdAndFacilityIdAndDayOfWeek(doctorId.toString(), facilityId, DayOfWeek.MONDAY))
                 .thenReturn(Optional.of(schedule));
-        when(appointmentRepository.findByDoctorIdAndDate(doctorId, date))
+        when(appointmentRepository.findByDoctorIdAndDate(doctorId.toString(), date))
                 .thenReturn(List.of());
 
-        assertTrue(availabilityService.isSlotAvailable(doctorId, facilityId, date, LocalTime.of(9, 0)));
+        assertTrue(availabilityService.isSlotAvailable(doctorId.toString(), facilityId, date, LocalTime.of(9, 0)));
     }
 
     @Test
@@ -108,7 +108,7 @@ class AvailabilityServiceTest {
         LocalDate fromDate = LocalDate.of(2023, 10, 2);
         Schedule serviceSchedule = Schedule.builder()
                 .id(UUID.randomUUID())
-                .doctorId(UUID.randomUUID())
+                .doctorId(UUID.randomUUID().toString())
                 .facilityId(facilityId)
                 .specialty("Terapia fisica")
                 .dayOfWeek(DayOfWeek.MONDAY)
