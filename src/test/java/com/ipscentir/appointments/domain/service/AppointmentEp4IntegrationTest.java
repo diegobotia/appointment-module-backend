@@ -37,8 +37,8 @@ class AppointmentEp4IntegrationTest {
     @Autowired
     private AppointmentJpaRepository appointmentJpaRepository;
 
-    private UUID doctorA;
-    private UUID doctorB;
+    private String doctorA;
+    private String doctorB;
     private UUID facilityId;
     private UUID scheduleIdA;
     private LocalDate bookingDate;
@@ -48,14 +48,14 @@ class AppointmentEp4IntegrationTest {
     void setUp() {
         appointmentJpaRepository.deleteAll();
 
-        doctorA = UUID.randomUUID();
-        doctorB = UUID.randomUUID();
+        doctorA = java.util.UUID.randomUUID().toString();
+        doctorB = java.util.UUID.randomUUID().toString();
         facilityId = UUID.randomUUID();
         bookingDate = LocalDate.now().plusDays(2);
         bookingTime = LocalTime.of(10, 0);
 
         Schedule scheduleA = scheduleRepository.save(Schedule.builder()
-                .doctorId(doctorA)
+            .doctorId(doctorA.toString())
             .facilityId(facilityId)
                 .specialty("TERAPIA")
                 .dayOfWeek(bookingDate.getDayOfWeek())
@@ -67,7 +67,7 @@ class AppointmentEp4IntegrationTest {
                 .build());
 
         scheduleRepository.save(Schedule.builder()
-                .doctorId(doctorB)
+            .doctorId(doctorB.toString())
             .facilityId(facilityId)
                 .specialty("JUNTA")
                 .dayOfWeek(bookingDate.getDayOfWeek())

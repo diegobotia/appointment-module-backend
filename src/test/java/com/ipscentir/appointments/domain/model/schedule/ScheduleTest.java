@@ -21,7 +21,7 @@ class ScheduleTest {
     void setUp() {
         schedule = Schedule.builder()
                 .id(UUID.randomUUID())
-                .doctorId(UUID.randomUUID())
+                .doctorId(UUID.randomUUID().toString())
                 .facilityId(UUID.randomUUID())
                 .dayOfWeek(DayOfWeek.MONDAY)
                 .startTime(LocalTime.of(8, 0))

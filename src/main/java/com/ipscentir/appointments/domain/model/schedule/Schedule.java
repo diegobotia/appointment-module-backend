@@ -24,7 +24,7 @@ import java.util.List;
 import java.util.UUID;
 
 @Entity
-@Table(name = "schedules")
+@Table(name = "schedules", schema = "appointments")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
@@ -36,7 +36,7 @@ public class Schedule {
     private UUID id;
 
     @Column(nullable = false)
-    private UUID doctorId;
+    private String doctorId;
 
     @Column(nullable = false)
     private UUID facilityId;

@@ -17,8 +17,8 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-@Entity
-@Table(name = "roles")
+@Entity(name = "SecurityRole")
+@Table(name = "roles", schema = "core")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
@@ -30,9 +30,6 @@ public class Role {
     private UUID id;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, unique = true)
+    @Column(name = "nombre", nullable = false, unique = true)
     private RoleName name;
-
-    @Column(name = "created_at", updatable = false, insertable = false)
-    private LocalDateTime createdAt;
 }

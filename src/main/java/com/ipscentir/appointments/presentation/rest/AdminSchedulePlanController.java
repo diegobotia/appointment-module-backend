@@ -59,7 +59,7 @@ public class AdminSchedulePlanController {
     @GetMapping("/specialists/{specialistId}")
     @Operation(summary = "List schedule plan versions by specialist")
     public ResponseEntity<List<SchedulePlanDTO>> listBySpecialist(
-            @PathVariable UUID specialistId,
+            @PathVariable String specialistId,
             @RequestParam(required = false) Integer year,
             @RequestParam(required = false) Integer quarter
     ) {

@@ -1,24 +1,22 @@
 package com.ipscentir.appointments.infrastructure.persistence.jpa;
 
 import com.ipscentir.appointments.domain.model.specialist.Specialist;
-import org.springframework.data.jpa.repository.EntityGraph;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 
-public interface SpecialistJpaRepository extends JpaRepository<Specialist, UUID> {
+/**
+ * SpecialistJpaRepository - Read-only access to hc.medicos
+ *
+ * Maps to hc.medicos table. Specialists are managed by the HC (health center)
+ * system and are read-only in the appointments context.
+ */
+@Repository
+public interface SpecialistJpaRepository extends JpaRepository<Specialist, String> {
 
-    Optional<Specialist> findByEmail(String email);
+    Optional<Specialist> findByNumeroMedico(String numeroMedico);
 
-    @EntityGraph(attributePaths = "specialties")
-    Optional<Specialist> findWithSpecialtiesById(UUID id);
-
-    boolean existsByEmailAndIdNot(String email, UUID id);
-
-    Page<Specialist> findDistinctBySpecialties_IdAndActiveTrue(UUID specialtyId, Pageable pageable);
-
-    Page<Specialist> findDistinctBySpecialties_Id(UUID specialtyId, Pageable pageable);
+    List<Specialist> findAllByActiveTrue();
 }

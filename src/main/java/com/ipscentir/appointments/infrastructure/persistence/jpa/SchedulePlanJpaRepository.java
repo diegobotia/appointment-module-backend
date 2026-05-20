@@ -13,19 +13,19 @@ public interface SchedulePlanJpaRepository extends JpaRepository<SchedulePlan, U
     Optional<SchedulePlan> findWithSlotsAndBlocksById(UUID id);
 
     List<SchedulePlan> findBySpecialistIdAndPlanYearAndPlanQuarterOrderByVersionNumberDesc(
-            UUID specialistId,
+            String specialistId,
             int planYear,
             int planQuarter
     );
 
-    List<SchedulePlan> findBySpecialistIdOrderByPlanYearDescPlanQuarterDescVersionNumberDesc(UUID specialistId);
+    List<SchedulePlan> findBySpecialistIdOrderByPlanYearDescPlanQuarterDescVersionNumberDesc(String specialistId);
 
     Optional<SchedulePlan> findBySpecialistIdAndPlanYearAndPlanQuarterAndActiveVersionTrue(
-            UUID specialistId,
+            String specialistId,
             int planYear,
             int planQuarter
     );
 
-    @Query("SELECT COALESCE(MAX(sp.versionNumber), 0) FROM SchedulePlan sp WHERE sp.specialist.id = :specialistId AND sp.planYear = :planYear AND sp.planQuarter = :planQuarter")
-    int findMaxVersionBySpecialistAndPeriod(UUID specialistId, int planYear, int planQuarter);
+        @Query("SELECT COALESCE(MAX(sp.versionNumber), 0) FROM SchedulePlan sp WHERE sp.specialistId = :specialistId AND sp.planYear = :planYear AND sp.planQuarter = :planQuarter")
+    int findMaxVersionBySpecialistAndPeriod(String specialistId, int planYear, int planQuarter);
 }

@@ -8,7 +8,6 @@ import com.ipscentir.appointments.application.dto.schedule.SchedulePlanSlotDTO;
 import com.ipscentir.appointments.domain.model.schedule.SchedulePlan;
 import com.ipscentir.appointments.domain.model.schedule.SchedulePlanBlock;
 import com.ipscentir.appointments.domain.model.schedule.SchedulePlanSlot;
-import com.ipscentir.appointments.domain.model.specialist.Specialist;
 import com.ipscentir.appointments.infrastructure.persistence.jpa.SchedulePlanJpaRepository;
 import com.ipscentir.appointments.infrastructure.persistence.jpa.SpecialistJpaRepository;
 import lombok.RequiredArgsConstructor;
@@ -27,27 +26,23 @@ public class SchedulePlanAdminService {
 
     @Transactional
     public SchedulePlanDTO createPlan(CreateSchedulePlanRequest request) {
-        Specialist specialist = specialistJpaRepository.findById(request.specialistId())
-                .orElseThrow(() -> new IllegalArgumentException("Specialist not found"));
-
-        if (!specialist.isActive()) {
-            throw new IllegalStateException("Specialist is inactive");
-        }
+        var specialist = specialistJpaRepository.findById(request.specialistId())
+            .orElseThrow(() -> new IllegalArgumentException("Specialist not found"));
 
         int nextVersion = schedulePlanJpaRepository.findMaxVersionBySpecialistAndPeriod(
-                specialist.getId(),
-                request.planYear(),
-                request.planQuarter()
+            specialist.getId(),
+            request.planYear(),
+            request.planQuarter()
         ) + 1;
 
         SchedulePlan plan = SchedulePlan.builder()
-                .specialist(specialist)
-                .planYear(request.planYear())
-                .planQuarter(request.planQuarter())
-                .versionNumber(nextVersion)
-                .published(false)
-                .activeVersion(false)
-                .build();
+            .specialistId(specialist.getId())
+            .planYear(request.planYear())
+            .planQuarter(request.planQuarter())
+            .versionNumber(nextVersion)
+            .published(false)
+            .activeVersion(false)
+            .build();
 
         request.slots().forEach(slotRequest -> {
             if (!slotRequest.endTime().isAfter(slotRequest.startTime())) {
@@ -99,7 +94,7 @@ public class SchedulePlanAdminService {
                 .orElseThrow(() -> new IllegalArgumentException("Schedule plan not found"));
 
         schedulePlanJpaRepository.findBySpecialistIdAndPlanYearAndPlanQuarterAndActiveVersionTrue(
-                        plan.getSpecialist().getId(),
+                plan.getSpecialistId(),
                         plan.getPlanYear(),
                         plan.getPlanQuarter()
                 )
@@ -123,7 +118,7 @@ public class SchedulePlanAdminService {
     }
 
     @Transactional(readOnly = true)
-    public List<SchedulePlanDTO> listBySpecialist(UUID specialistId, Integer year, Integer quarter) {
+    public List<SchedulePlanDTO> listBySpecialist(String specialistId, Integer year, Integer quarter) {
         specialistJpaRepository.findById(specialistId)
                 .orElseThrow(() -> new IllegalArgumentException("Specialist not found"));
 
@@ -168,7 +163,7 @@ public class SchedulePlanAdminService {
 
         return new SchedulePlanDTO(
                 plan.getId(),
-                plan.getSpecialist().getId(),
+            plan.getSpecialistId(),
                 plan.getPlanYear(),
                 plan.getPlanQuarter(),
                 plan.getVersionNumber(),

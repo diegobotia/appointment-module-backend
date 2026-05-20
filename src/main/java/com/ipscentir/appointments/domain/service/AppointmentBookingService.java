@@ -75,8 +75,8 @@ public class AppointmentBookingService {
 
     private Appointment bookAppointmentTransactional(AppointmentBookingRequest request) {
         UUID patientId = request.patientId();
-        UUID doctorId = request.doctorId();
-        UUID secondaryDoctorId = request.secondaryDoctorId();
+        String doctorId = request.doctorId();
+        String secondaryDoctorId = request.secondaryDoctorId();
         UUID scheduleId = request.scheduleId();
         UUID facilityId = request.facilityId();
         LocalDate date = request.date();
@@ -99,8 +99,8 @@ public class AppointmentBookingService {
 
         Appointment appointment = Appointment.scheduleNew(
                 patientId,
-                doctorId,
-                secondaryDoctorId,
+            doctorId,
+            secondaryDoctorId,
             new AppointmentScheduleData(
                 scheduleId,
                 facilityId,
@@ -115,7 +115,7 @@ public class AppointmentBookingService {
         return appointmentRepository.save(appointment);
     }
 
-    private void validateScheduleOwnership(UUID scheduleId, UUID doctorId, UUID facilityId) {
+    private void validateScheduleOwnership(UUID scheduleId, String doctorId, UUID facilityId) {
         var schedule = scheduleRepository.findById(scheduleId)
                 .orElseThrow(() -> new IllegalArgumentException("Schedule not found"));
 
@@ -128,7 +128,7 @@ public class AppointmentBookingService {
         }
     }
 
-    private void validateDoctorAvailability(UUID doctorId, UUID facilityId, LocalDate date, LocalTime time) {
+    private void validateDoctorAvailability(String doctorId, UUID facilityId, LocalDate date, LocalTime time) {
         // Regla 1: Validar si la franja está disponible en la agenda del doctor
         // integrando comprobación de horarios bloqueados y citas previas cruzadas.
         if (!availabilityService.isSlotAvailable(doctorId, facilityId, date, time)) {
@@ -138,9 +138,9 @@ public class AppointmentBookingService {
 
     private void validateJuntaMedica(
             AppointmentType type,
-            UUID doctorId,
+            String doctorId,
             UUID facilityId,
-            UUID secondaryDoctorId,
+            String secondaryDoctorId,
             LocalDate date,
             LocalTime time
     ) {
@@ -172,8 +172,8 @@ public class AppointmentBookingService {
 
     private Appointment bookTherapyAppointment(AppointmentBookingRequest request, Integer duration) {
         UUID patientId = request.patientId();
-        UUID doctorId = request.doctorId();
-        UUID secondaryDoctorId = request.secondaryDoctorId();
+        String doctorId = request.doctorId();
+        String secondaryDoctorId = request.secondaryDoctorId();
         UUID scheduleId = request.scheduleId();
         UUID facilityId = request.facilityId();
         LocalDate date = request.date();

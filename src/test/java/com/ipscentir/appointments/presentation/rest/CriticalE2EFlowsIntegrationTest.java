@@ -72,35 +72,10 @@ class CriticalE2EFlowsIntegrationTest {
                 specialistJpaRepository.deleteAll();
         }
 
-        @Test
-        @WithMockUser(username = "admin", roles = { "ADMIN" })
-        void e2eAdminCanCreateSpecialist() throws Exception {
-                mockMvc.perform(post("/api/v1/admin/specialists")
-                                .contentType(JSON)
-                                .content(asJson(Map.of(
-                                                "firstName", "Carla",
-                                                "lastName", "Rojas",
-                                                "email", "carla.rojas@ips.test"))))
-                                .andExpect(status().isCreated())
-                                .andExpect(jsonPath("$.email").value("carla.rojas@ips.test"))
-                                .andExpect(jsonPath("$.active").value(true));
-        }
-
-        @Test
-        @WithMockUser(username = "especialista", roles = { "ESPECIALISTA" })
-        void e2eEspecialistaCannotCreateSpecialist() throws Exception {
-                mockMvc.perform(post("/api/v1/admin/specialists")
-                                .contentType(JSON)
-                                .content(asJson(Map.of(
-                                                "firstName", "Luis",
-                                                "lastName", "Perez",
-                                                "email", "luis.perez@ips.test"))))
-                                .andExpect(status().isForbidden());
-        }
 
         @Test
         void e2eN8nPatientHappyFlowWithCancellationAndEventJournal() throws Exception {
-                UUID doctorId = UUID.randomUUID();
+                String doctorId = UUID.randomUUID().toString();
                 UUID facilityId = facilityJpaRepository.findByCode("SEDE_NORTE")
                                 .orElseThrow(() -> new IllegalStateException(
                                                 "Expected seed facility SEDE_NORTE in test profile"))

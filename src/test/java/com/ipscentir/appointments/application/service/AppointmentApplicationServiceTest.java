@@ -42,7 +42,7 @@ class AppointmentApplicationServiceTest {
     private AppointmentApplicationService applicationService;
 
     private UUID patientId;
-    private UUID doctorId;
+    private String doctorId;
     private UUID scheduleId;
     private LocalDate date;
     private LocalTime time;
@@ -50,7 +50,7 @@ class AppointmentApplicationServiceTest {
     @BeforeEach
     void setUp() {
         patientId = UUID.randomUUID();
-        doctorId = UUID.randomUUID();
+        doctorId = java.util.UUID.randomUUID().toString();
         scheduleId = UUID.randomUUID();
         date = LocalDate.now().plusDays(3);
         time = LocalTime.of(9, 30);
@@ -64,7 +64,7 @@ class AppointmentApplicationServiceTest {
         );
 
         Appointment appointment = Appointment.scheduleNew(
-                patientId, doctorId, null, new AppointmentScheduleData(scheduleId, facilityId, date, time, 30, AppointmentType.PRESENCIAL, AppointmentStatus.SCHEDULED, "Symptoms")
+                patientId, doctorId.toString(), null, new AppointmentScheduleData(scheduleId, facilityId, date, time, 30, AppointmentType.PRESENCIAL, AppointmentStatus.SCHEDULED, "Symptoms")
         );
 
         AppointmentDTO mappedDto = new AppointmentDTO(

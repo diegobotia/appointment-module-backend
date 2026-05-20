@@ -49,7 +49,7 @@ class AppointmentControllerTest {
 
     @Test
     void testBookAppointment_Success() throws Exception {
-        UUID doctorId = UUID.randomUUID();
+        String doctorId = UUID.randomUUID().toString();
         UUID patientId = UUID.randomUUID();
         UUID facilityId = UUID.randomUUID();
         UUID scheduleId = UUID.randomUUID();

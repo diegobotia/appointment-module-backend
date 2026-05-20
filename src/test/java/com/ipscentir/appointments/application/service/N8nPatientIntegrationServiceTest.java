@@ -70,8 +70,8 @@ class N8nPatientIntegrationServiceTest {
         ));
 
         when(availabilityService.getNearestAvailableSlotsByServiceType(AppointmentServiceType.TERAPIA_FISICA, facilityId, date, 4)).thenReturn(List.of(
-                new AvailableSlotDetail(UUID.randomUUID(), UUID.randomUUID(), facilityId, AppointmentServiceType.TERAPIA_FISICA, "Terapia fisica", date, LocalTime.of(8, 0), 30, 3),
-                new AvailableSlotDetail(UUID.randomUUID(), UUID.randomUUID(), facilityId, AppointmentServiceType.TERAPIA_FISICA, "Terapia fisica", date, LocalTime.of(8, 30), 30, 2)
+                new AvailableSlotDetail(UUID.randomUUID(), UUID.randomUUID().toString(), facilityId, AppointmentServiceType.TERAPIA_FISICA, "Terapia fisica", date, LocalTime.of(8, 0), 30, 3),
+                new AvailableSlotDetail(UUID.randomUUID(), UUID.randomUUID().toString(), facilityId, AppointmentServiceType.TERAPIA_FISICA, "Terapia fisica", date, LocalTime.of(8, 30), 30, 2)
         ));
 
         var response = service.getAvailability(new N8nPatientAvailabilityRequest("TERAPIA_FISICA", null, N8nFacilityId.BELEN, 4, date));
@@ -88,7 +88,7 @@ class N8nPatientIntegrationServiceTest {
     @Test
     void shouldMapCreatedAppointmentResponse() {
         UUID patientId = UUID.randomUUID();
-        UUID doctorId = UUID.randomUUID();
+        String doctorId = UUID.randomUUID().toString();
         UUID facilityId = UUID.randomUUID();
         UUID scheduleId = UUID.randomUUID();
         LocalDate date = LocalDate.now().plusDays(2);
@@ -96,7 +96,7 @@ class N8nPatientIntegrationServiceTest {
 
         Appointment appointment = Appointment.scheduleNew(
                 patientId,
-                doctorId,
+                doctorId.toString(),
                 null,
                 new AppointmentScheduleData(scheduleId, facilityId, date, time, 30, AppointmentType.PRESENCIAL, AppointmentStatus.SCHEDULED, "Checkup")
         );
@@ -124,7 +124,7 @@ class N8nPatientIntegrationServiceTest {
         UUID appointmentId = UUID.randomUUID();
         Appointment cancelled = Appointment.scheduleNew(
                 UUID.randomUUID(),
-                UUID.randomUUID(),
+                UUID.randomUUID().toString(),
                 null,
                 new AppointmentScheduleData(UUID.randomUUID(), UUID.randomUUID(), LocalDate.now().plusDays(2), LocalTime.of(10, 0), 30, AppointmentType.PRESENCIAL, AppointmentStatus.SCHEDULED, "Checkup")
         );

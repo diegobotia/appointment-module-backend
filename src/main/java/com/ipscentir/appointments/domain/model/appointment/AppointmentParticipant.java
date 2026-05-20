@@ -20,7 +20,7 @@ import lombok.NoArgsConstructor;
 import java.util.UUID;
 
 @Entity
-@Table(name = "appointment_participants")
+@Table(name = "appointment_participants", schema = "appointments")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
@@ -36,7 +36,7 @@ public class AppointmentParticipant {
     private Appointment appointment;
 
     @Column(name = "doctor_id", nullable = false)
-    private UUID doctorId;
+    private String doctorId;
 
     @Column(name = "participant_order", nullable = false)
     private int participantOrder;

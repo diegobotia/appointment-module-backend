@@ -2,9 +2,7 @@
 .DS_Store
 Thumbs.db
 .idea/
-.vscode/*
-!.vscode/extensions.json
-!.vscode/settings.json
+.vscode/
 
 # Node
 node_modules/
@@ -18,19 +16,12 @@ target/
 .gradle/
 out/
 
-# Python
-__pycache__/
-*.pyc
-.pytest_cache/
-.mypy_cache/
-.venv/
-venv/
 
 # Logs
 *.log
 
 # Env
 .env
-.env.*
+
 
 docs/

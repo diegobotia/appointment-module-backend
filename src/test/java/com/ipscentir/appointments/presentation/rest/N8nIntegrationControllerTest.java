@@ -82,7 +82,7 @@ class N8nIntegrationControllerTest {
                 1,
                 List.of(new N8nAvailabilitySlotDTO(
                         UUID.randomUUID(),
-                        UUID.randomUUID(),
+                        UUID.randomUUID().toString(),
                         N8nFacilityId.BELEN,
                         "TERAPIA_FISICA",
                         "Terapia fisica",
@@ -93,7 +93,7 @@ class N8nIntegrationControllerTest {
                         3,
                         new N8nAvailabilityBookingPayloadDTO(
                                 null,
-                                UUID.randomUUID(),
+                                UUID.randomUUID().toString(),
                                 N8nFacilityId.BELEN,
                                 null,
                                 UUID.randomUUID(),
@@ -126,7 +126,7 @@ class N8nIntegrationControllerTest {
     @Test
     void shouldCreateAppointmentForN8n() throws Exception {
         UUID patientId = UUID.randomUUID();
-        UUID doctorId = UUID.randomUUID();
+        String doctorId = UUID.randomUUID().toString();
         UUID facilityId = UUID.randomUUID();
         UUID scheduleId = UUID.randomUUID();
         LocalDate date = LocalDate.now().plusDays(2);
@@ -162,7 +162,7 @@ class N8nIntegrationControllerTest {
     void shouldCancelAppointmentForN8n() throws Exception {
         UUID appointmentId = UUID.randomUUID();
         AppointmentDTO dto = new AppointmentDTO(
-                UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), null, UUID.randomUUID(),
+                UUID.randomUUID(), UUID.randomUUID(), java.util.UUID.randomUUID().toString(), UUID.randomUUID(), null, UUID.randomUUID(),
                 LocalDate.now().plusDays(2), LocalTime.of(10, 0), 30,
                 AppointmentType.PRESENCIAL, AppointmentStatus.CANCELLED, "Cambio de plan", null, LocalDateTime.now(), LocalDateTime.now()
         );

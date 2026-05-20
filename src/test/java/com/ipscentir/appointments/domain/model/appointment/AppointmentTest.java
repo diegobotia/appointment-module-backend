@@ -16,20 +16,20 @@ class AppointmentTest {
 
     private Appointment appointment;
     private UUID patientId;
-    private UUID doctorId;
+    private String doctorId;
     private UUID facilityId;
     private UUID scheduleId;
 
     @BeforeEach
     void setUp() {
         patientId = UUID.randomUUID();
-        doctorId = UUID.randomUUID();
+        doctorId = java.util.UUID.randomUUID().toString();
         facilityId = UUID.randomUUID();
         scheduleId = UUID.randomUUID();
 
         appointment = Appointment.scheduleNew(
                 patientId,
-                doctorId,
+            doctorId.toString(),
                 null,
                 new AppointmentScheduleData(
                         scheduleId,
@@ -89,7 +89,7 @@ class AppointmentTest {
     void testCancel_FailsIfAppointmentInThePast() {
         Appointment pastAppointment = Appointment.builder()
                 .patientId(patientId)
-                .doctorId(doctorId)
+            .doctorId(doctorId.toString())
                 .facilityId(facilityId)
                 .appointmentDate(LocalDate.now().minusDays(1))
                 .appointmentTime(LocalTime.of(8, 0))

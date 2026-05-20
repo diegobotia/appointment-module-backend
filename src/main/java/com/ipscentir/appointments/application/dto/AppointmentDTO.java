@@ -11,9 +11,9 @@ import java.util.UUID;
 public record AppointmentDTO(
         UUID id,
         UUID patientId,
-        UUID doctorId,
+        String doctorId,
         UUID facilityId,
-        UUID secondaryDoctorId,
+        String secondaryDoctorId,
         UUID scheduleId,
         LocalDate appointmentDate,
         LocalTime appointmentTime,
