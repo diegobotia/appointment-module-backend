@@ -9,6 +9,14 @@ import java.util.UUID;
 @Repository
 public interface PacienteRepository extends JpaRepository<com.ipscentir.appointments.infrastructure.persistence.jpa.entity.Paciente, UUID> {
     Optional<com.ipscentir.appointments.infrastructure.persistence.jpa.entity.Paciente> findByNumIdentificacion(String numIdentificacion);
+
+    Optional<com.ipscentir.appointments.infrastructure.persistence.jpa.entity.Paciente> findByCodTipoIdentificacionAndNumIdentificacion(
+            String codTipoIdentificacion,
+            String numIdentificacion
+    );
+
     boolean existsByNumIdentificacion(String numIdentificacion);
+
+    boolean existsByCodTipoIdentificacionAndNumIdentificacion(String codTipoIdentificacion, String numIdentificacion);
     // Paciente entity does not have email; removed incorrect derived query
 }

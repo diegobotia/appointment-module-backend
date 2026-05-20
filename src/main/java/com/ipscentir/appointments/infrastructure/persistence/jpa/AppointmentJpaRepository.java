@@ -27,6 +27,34 @@ public interface AppointmentJpaRepository extends JpaRepository<Appointment, UUI
 
     List<Appointment> findByScheduleIdAndAppointmentDateAndAppointmentTimeAndAppointmentType(UUID scheduleId, LocalDate date, LocalTime time, AppointmentType type);
 
+    List<Appointment> findByAppointmentDateAndStatusIn(LocalDate appointmentDate, List<AppointmentStatus> statuses);
+
+    List<Appointment> findByPatientIdOrderByAppointmentDateDescAppointmentTimeDesc(UUID patientId);
+
+    List<Appointment> findByFacilityId(UUID facilityId);
+
+    List<Appointment> findByDoctorId(String doctorId);
+
+    List<Appointment> findByPatientId(UUID patientId);
+
+    List<Appointment> findByStatus(AppointmentStatus status);
+
+    List<Appointment> findByAppointmentDateBetween(LocalDate fromDate, LocalDate toDate);
+
+    List<Appointment> findByFacilityIdAndAppointmentDateBetween(UUID facilityId, LocalDate fromDate, LocalDate toDate);
+
+    List<Appointment> findByDoctorIdAndAppointmentDateBetween(String doctorId, LocalDate fromDate, LocalDate toDate);
+
+    long countByStatus(AppointmentStatus status);
+
+    long countByAppointmentDate(LocalDate appointmentDate);
+
+    long countByAppointmentDateAndStatus(LocalDate appointmentDate, AppointmentStatus status);
+
+    long countByAppointmentDateBetween(LocalDate fromDate, LocalDate toDate);
+
+    long countByAppointmentDateBetweenAndStatus(LocalDate fromDate, LocalDate toDate, AppointmentStatus status);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT a FROM Appointment a WHERE a.scheduleId = :scheduleId AND a.appointmentDate = :date AND a.appointmentTime = :time AND a.appointmentType = :type")
     List<Appointment> findByScheduleIdAndAppointmentDateAndAppointmentTimeAndAppointmentTypeForUpdate(

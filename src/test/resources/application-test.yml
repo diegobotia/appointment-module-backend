@@ -23,12 +23,25 @@ security:
   n8n:
     api-key: test-n8n-api-key
     base-path: /api/v1/integrations/n8n
-  bootstrap:
-    superadmin-password: superadmin123
-    admin-password: admin123
-    especialista-password: especialista123
+
+patient-registration:
+  form-base-url: https://citas-test.ipscentir.com/registro
 
 appointments:
   therapy:
     pending-group-policy: RESCHEDULE
     pending-group-cutoff-minutes: 120
+
+notifications:
+  enabled: true
+  created-alert-enabled: true
+  cancelled-alert-enabled: true
+  reminder-24h-enabled: false
+  reminder-2h-enabled: false
+  max-retry-attempts: 3
+
+twilio:
+  enabled: false
+
+resend:
+  enabled: false

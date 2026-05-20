@@ -29,4 +29,10 @@ public interface ScheduleJpaRepository extends JpaRepository<Schedule, UUID> {
     
     @Query("SELECT s FROM Schedule s LEFT JOIN FETCH s.blocks WHERE s.doctorId = :doctorId AND s.dayOfWeek = :dayOfWeek")
     Optional<Schedule> findByDoctorIdAndDayOfWeekWithBlocks(@Param("doctorId") String doctorId, @Param("dayOfWeek") DayOfWeek dayOfWeek);
+
+    @Query("SELECT DISTINCT s FROM Schedule s LEFT JOIN FETCH s.blocks WHERE s.doctorId = :doctorId AND s.facilityId = :facilityId AND s.isActive = true")
+    List<Schedule> findByDoctorIdAndFacilityIdWithBlocks(
+            @Param("doctorId") String doctorId,
+            @Param("facilityId") UUID facilityId
+    );
 }

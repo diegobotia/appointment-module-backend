@@ -29,7 +29,7 @@ public class Profile {
     @Column(name = "password_change_required")
     private Boolean passwordChangeRequired;
 
-    @Column(name = "esta_activo", nullable = false)
+    @Column(name = "esta_activo")
     @Builder.Default
     private Boolean estaActivo = true;
 

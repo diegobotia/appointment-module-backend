@@ -1,21 +1,26 @@
 package com.ipscentir.appointments.presentation.rest.controller;
 
+import com.ipscentir.appointments.application.dto.availability.DoctorAvailabilityResponse;
 import com.ipscentir.appointments.application.service.DoctorApplicationService;
 import com.ipscentir.appointments.application.service.dto.DoctorAvailableDTO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
-/**
- * DoctorController - Endpoints para consultar médicos y disponibilidad
- */
 @RestController
 @RequestMapping("/api/v1/doctors")
 @RequiredArgsConstructor
@@ -26,35 +31,27 @@ public class DoctorController {
     private final DoctorApplicationService doctorApplicationService;
 
     @GetMapping
-    @Operation(
-        summary = "Listar médicos disponibles",
-        description = "Obtiene lista de médicos con sus especialidades y disponibilidad"
-    )
+    @PreAuthorize("hasAnyRole('ADMINISTRACION', 'ADMISIONES', 'MEDICO', 'FACTURACION')")
+    @Operation(summary = "Listar médicos disponibles")
     public ResponseEntity<List<DoctorAvailableDTO>> listAvailableDoctors(
             @RequestParam(required = false) String specialty,
             @RequestParam(required = false) UUID facilityId,
-            @RequestParam(required = false) LocalDate availabilityDate
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate availabilityDate
     ) {
-        log.info("Listando médicos: specialty={}, facility_id={}, date={}", specialty, facilityId, availabilityDate);
-
-        List<DoctorAvailableDTO> doctors = doctorApplicationService.findAvailableDoctors(
-            specialty, facilityId, availabilityDate
-        );
-
-        return ResponseEntity.ok(doctors);
+        return ResponseEntity.ok(doctorApplicationService.findAvailableDoctors(specialty, facilityId, availabilityDate));
     }
 
     @GetMapping("/{doctorId}/availability")
-    @Operation(
-        summary = "Obtener disponibilidad de un médico",
-        description = "Devuelve slots disponibles para un médico en la próxima semana"
-    )
-    public ResponseEntity<?> getDoctorAvailability(
+    @PreAuthorize("hasAnyRole('ADMINISTRACION', 'ADMISIONES', 'MEDICO', 'FACTURACION')")
+    @Operation(summary = "Obtener disponibilidad de un médico en rango de fechas")
+    public ResponseEntity<DoctorAvailabilityResponse> getDoctorAvailability(
             @PathVariable String doctorId,
-            @RequestParam(required = false) LocalDate startDate
+            @RequestParam @NotNull UUID facilityId,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate
     ) {
-        log.info("Obteniendo disponibilidad para médico: {}", doctorId);
-
-        return ResponseEntity.ok(doctorApplicationService.getDoctorAvailability(doctorId, startDate));
+        LocalDate fromDate = from != null ? from : startDate;
+        return ResponseEntity.ok(doctorApplicationService.getDoctorAvailability(doctorId, facilityId, fromDate, to));
     }
 }

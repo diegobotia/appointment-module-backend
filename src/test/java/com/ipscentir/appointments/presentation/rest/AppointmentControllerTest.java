@@ -4,7 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.ipscentir.appointments.application.dto.AppointmentDTO;
 import com.ipscentir.appointments.application.dto.CreateAppointmentCommand;
-import com.ipscentir.appointments.application.service.AppointmentApplicationService;
+import com.ipscentir.appointments.application.service.AppointmentOperationsService;
 import com.ipscentir.appointments.domain.model.appointment.AppointmentStatus;
 import com.ipscentir.appointments.domain.model.appointment.AppointmentType;
 import org.junit.jupiter.api.BeforeEach;
@@ -15,6 +15,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -37,7 +38,7 @@ class AppointmentControllerTest {
     private MockMvc mockMvc;
 
     @MockBean
-    private AppointmentApplicationService applicationService;
+    private AppointmentOperationsService appointmentOperationsService;
 
     private ObjectMapper objectMapper;
 
@@ -48,6 +49,7 @@ class AppointmentControllerTest {
     }
 
     @Test
+    @WithMockUser(roles = "ADMISIONES")
     void testBookAppointment_Success() throws Exception {
         String doctorId = UUID.randomUUID().toString();
         UUID patientId = UUID.randomUUID();
@@ -63,7 +65,7 @@ class AppointmentControllerTest {
                 30, AppointmentType.PRESENCIAL, AppointmentStatus.SCHEDULED, "Routine Visit", null, LocalDateTime.now(), null
         );
 
-        Mockito.when(applicationService.createAppointment(any(CreateAppointmentCommand.class))).thenReturn(dto);
+        Mockito.when(appointmentOperationsService.createAppointment(any(CreateAppointmentCommand.class))).thenReturn(dto);
 
         mockMvc.perform(post("/api/v1/appointments")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -75,6 +77,7 @@ class AppointmentControllerTest {
     }
 
     @Test
+    @WithMockUser(roles = "ADMISIONES")
     void testBookAppointment_FailsDueToValidationErrors() throws Exception {
         // Missing patientId and doctorId to trigger 400 Bad Request
         CreateAppointmentCommand command = new CreateAppointmentCommand(

@@ -64,6 +64,16 @@ public class Pqrs extends AbstractAggregateRoot<Pqrs> {
     @Column(insertable = false)
     private LocalDateTime updatedAt;
 
+    public void updateStatus(PqrsStatus newStatus) {
+        if (this.status == PqrsStatus.CERRADO) {
+            throw new IllegalStateException("PQRS cerrada no puede cambiar de estado");
+        }
+        if (newStatus == null) {
+            throw new IllegalArgumentException("Estado requerido");
+        }
+        this.status = newStatus;
+    }
+
     public static Pqrs create(
             String cedula,
             PqrsType tipo,

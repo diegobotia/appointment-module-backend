@@ -86,6 +86,43 @@ class AppointmentTest {
     }
 
     @Test
+    void testCheckIn_FromScheduled() {
+        appointment.confirm();
+        appointment.checkIn();
+        assertEquals(AppointmentStatus.CHECKED_IN, appointment.getStatus());
+    }
+
+    @Test
+    void testMarkNoShow_FromConfirmed() {
+        appointment.confirm();
+        appointment.markNoShow();
+        assertEquals(AppointmentStatus.NO_SHOW, appointment.getStatus());
+    }
+
+    @Test
+    void testComplete_FromCheckedIn() {
+        appointment.confirm();
+        appointment.checkIn();
+        appointment.complete();
+        assertEquals(AppointmentStatus.COMPLETED, appointment.getStatus());
+    }
+
+    @Test
+    void testReschedule_UpdatesScheduleAndResetsConfirmed() {
+        appointment.confirm();
+        LocalDate newDate = LocalDate.now().plusDays(5);
+        UUID newSchedule = UUID.randomUUID();
+        UUID newFacility = UUID.randomUUID();
+        String newDoctor = UUID.randomUUID().toString();
+
+        appointment.reschedule(newDate, LocalTime.of(11, 0), newSchedule, newDoctor, newFacility);
+
+        assertEquals(newDate, appointment.getAppointmentDate());
+        assertEquals(LocalTime.of(11, 0), appointment.getAppointmentTime());
+        assertEquals(AppointmentStatus.SCHEDULED, appointment.getStatus());
+    }
+
+    @Test
     void testCancel_FailsIfAppointmentInThePast() {
         Appointment pastAppointment = Appointment.builder()
                 .patientId(patientId)
