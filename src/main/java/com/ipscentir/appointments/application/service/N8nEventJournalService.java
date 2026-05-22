@@ -4,6 +4,7 @@ import com.ipscentir.appointments.application.dto.integration.n8n.N8nWebhookEven
 import com.ipscentir.appointments.application.dto.integration.n8n.N8nWebhookEventResponse;
 import com.ipscentir.appointments.domain.model.appointment.AppointmentCancelledEvent;
 import com.ipscentir.appointments.domain.model.appointment.AppointmentCreatedEvent;
+import com.ipscentir.appointments.domain.model.appointment.AppointmentRescheduledEvent;
 import com.ipscentir.appointments.domain.model.integration.DomainEventRecord;
 import com.ipscentir.appointments.domain.repository.DomainEventRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -13,6 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 @Service
@@ -27,13 +29,15 @@ public class N8nEventJournalService {
         return domainEventRepository.save(DomainEventRecord.unpublished(
                 "APPOINTMENT_CREATED",
                 event.appointmentId(),
-                serialize(Map.of(
-                        "appointmentId", event.appointmentId(),
-                        "patientId", event.patientId(),
-                        "doctorId", event.doctorId(),
-                        "appointmentDate", event.appointmentDate(),
-                        "appointmentTime", event.appointmentTime(),
-                        "appointmentType", event.appointmentType().name()
+                serialize(eventPayload(
+                        event.appointmentId(),
+                        event.patientId(),
+                        event.doctorId(),
+                        event.appointmentDate().toString(),
+                        event.appointmentTime().toString(),
+                        event.appointmentType().name(),
+                        event.bookingChannel().name(),
+                        event.n8nConversationId()
                 ))
         ));
     }
@@ -47,10 +51,30 @@ public class N8nEventJournalService {
                         "appointmentId", event.appointmentId(),
                         "patientId", event.patientId(),
                         "doctorId", event.doctorId(),
-                        "appointmentDate", event.appointmentDate(),
-                        "appointmentTime", event.appointmentTime(),
+                        "appointmentDate", event.appointmentDate().toString(),
+                        "appointmentTime", event.appointmentTime().toString(),
                         "cancellationReason", event.cancellationReason()
                 ))
+        ));
+    }
+
+    @Transactional
+    public DomainEventRecord recordAppointmentRescheduled(AppointmentRescheduledEvent event) {
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("appointmentId", event.appointmentId());
+        payload.put("patientId", event.patientId());
+        payload.put("doctorId", event.doctorId());
+        payload.put("previousDate", event.previousDate().toString());
+        payload.put("previousTime", event.previousTime().toString());
+        payload.put("newDate", event.newDate().toString());
+        payload.put("newTime", event.newTime().toString());
+        payload.put("bookingChannel", event.channel().name());
+        payload.put("n8nConversationId", event.n8nConversationId());
+
+        return domainEventRepository.save(DomainEventRecord.unpublished(
+                "APPOINTMENT_RESCHEDULED",
+                event.appointmentId(),
+                serialize(payload)
         ));
     }
 
@@ -99,6 +123,30 @@ public class N8nEventJournalService {
     @Transactional(readOnly = true)
     public java.util.List<DomainEventRecord> listPendingEvents() {
         return domainEventRepository.findByPublishedFalseOrderByOccurredOnAsc();
+    }
+
+    private Map<String, Object> eventPayload(
+            Object appointmentId,
+            Object patientId,
+            Object doctorId,
+            String appointmentDate,
+            String appointmentTime,
+            String appointmentType,
+            String bookingChannel,
+            String n8nConversationId
+    ) {
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("appointmentId", appointmentId);
+        payload.put("patientId", patientId);
+        payload.put("doctorId", doctorId);
+        payload.put("appointmentDate", appointmentDate);
+        payload.put("appointmentTime", appointmentTime);
+        payload.put("appointmentType", appointmentType);
+        payload.put("bookingChannel", bookingChannel);
+        if (n8nConversationId != null && !n8nConversationId.isBlank()) {
+            payload.put("n8nConversationId", n8nConversationId);
+        }
+        return payload;
     }
 
     private String serialize(Object payload) {

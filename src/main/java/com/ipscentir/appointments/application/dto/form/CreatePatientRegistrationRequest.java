@@ -32,6 +32,10 @@ public class CreatePatientRegistrationRequest {
     private String numIdentificacion;
 
     @NotBlank(message = "Tipo de identificación requerido")
+    @Schema(
+            description = "Código DIAN (13) o descripción del catálogo (Cédula de ciudadanía)",
+            example = "13"
+    )
     private String codTipoIdentificacion;
 
     @NotNull(message = "Fecha de nacimiento requerida")

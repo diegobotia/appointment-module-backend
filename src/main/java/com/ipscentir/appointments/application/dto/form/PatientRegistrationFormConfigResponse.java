@@ -6,7 +6,7 @@ public record PatientRegistrationFormConfigResponse(
         String formBaseUrl,
         String submitPath,
         String statusPath,
-        List<String> supportedDocumentTypes,
+        List<DocumentTypeOptionDTO> supportedDocumentTypes,
         String urlTemplate
 ) {
 }

@@ -1,10 +1,13 @@
 package com.ipscentir.appointments.presentation.rest;
 
+import com.ipscentir.appointments.domain.model.facility.FacilityMasterData;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ipscentir.appointments.application.dto.form.CreatePatientRegistrationRequest;
 import com.ipscentir.appointments.domain.model.schedule.Schedule;
 import com.ipscentir.appointments.infrastructure.persistence.jpa.AppointmentJpaRepository;
-import com.ipscentir.appointments.infrastructure.persistence.jpa.FacilityJpaRepository;
+import com.ipscentir.appointments.infrastructure.persistence.jpa.AppointmentResourceAllocationJpaRepository;
+import com.ipscentir.appointments.infrastructure.persistence.jpa.SedeJpaRepository;
 import com.ipscentir.appointments.infrastructure.persistence.jpa.N8nIdempotencyJpaRepository;
 import com.ipscentir.appointments.infrastructure.persistence.jpa.PacienteRepository;
 import com.ipscentir.appointments.infrastructure.persistence.jpa.ScheduleJpaRepository;
@@ -23,6 +26,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.Map;
@@ -65,14 +69,17 @@ class N8nPatientPhase1IntegrationTest {
     private AppointmentJpaRepository appointmentJpaRepository;
 
     @Autowired
+    private AppointmentResourceAllocationJpaRepository allocationJpaRepository;
+
+    @Autowired
     private N8nIdempotencyJpaRepository n8nIdempotencyJpaRepository;
 
     @Autowired
-    private FacilityJpaRepository facilityJpaRepository;
+    private SedeJpaRepository sedeJpaRepository;
 
     private UUID patientId;
     private String doctorId;
-    private UUID facilityId;
+    private Integer sedeId;
     private UUID scheduleId;
     private LocalDate appointmentDate;
     private LocalTime appointmentTime;
@@ -80,6 +87,7 @@ class N8nPatientPhase1IntegrationTest {
     @BeforeEach
     void setUp() {
         n8nIdempotencyJpaRepository.deleteAll();
+        allocationJpaRepository.deleteAll();
         appointmentJpaRepository.deleteAll();
         scheduleJpaRepository.deleteAll();
         pacienteRepository.deleteAll();
@@ -88,14 +96,14 @@ class N8nPatientPhase1IntegrationTest {
 
         patientId = seedPatient("CC", "9876543210");
         doctorId = UUID.randomUUID().toString();
-        facilityId = facilityJpaRepository.findByCode("SEDE_NORTE").orElseThrow().getId();
-        appointmentDate = LocalDate.now().plusDays(3);
+        sedeId = FacilityMasterData.SEDE_ID_BELEN;
+        appointmentDate = nextOpenWeekday(LocalDate.now().plusDays(3));
         appointmentTime = LocalTime.of(9, 0);
 
         Schedule schedule = scheduleJpaRepository.save(Schedule.builder()
                 .doctorId(doctorId)
-                .facilityId(facilityId)
-                .specialty("Terapia fisica")
+                .sedeId(sedeId)
+                .specialty("Medico fisiatria")
                 .dayOfWeek(appointmentDate.getDayOfWeek())
                 .startTime(LocalTime.of(8, 0))
                 .endTime(LocalTime.of(12, 0))
@@ -248,5 +256,12 @@ class N8nPatientPhase1IntegrationTest {
                 .idDireccion(directionId)
                 .build());
         return paciente.getId();
+    }
+
+    private static LocalDate nextOpenWeekday(LocalDate date) {
+        while (date.getDayOfWeek() == DayOfWeek.SUNDAY) {
+            date = date.plusDays(1);
+        }
+        return date;
     }
 }

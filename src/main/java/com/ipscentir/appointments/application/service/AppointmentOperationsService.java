@@ -6,14 +6,18 @@ import com.ipscentir.appointments.application.dto.CancelAppointmentCommand;
 import com.ipscentir.appointments.application.dto.CreateAppointmentCommand;
 import com.ipscentir.appointments.application.dto.RescheduleAppointmentCommand;
 import com.ipscentir.appointments.application.mapper.AppointmentMapper;
-import com.ipscentir.appointments.application.security.FacilityAuthorizationService;
+import com.ipscentir.appointments.application.security.SedeAuthorizationService;
 import com.ipscentir.appointments.application.security.StaffSecurityHelper;
 import com.ipscentir.appointments.domain.model.appointment.Appointment;
 import com.ipscentir.appointments.domain.model.appointment.AppointmentStatus;
+import com.ipscentir.appointments.domain.model.appointment.AppointmentType;
+import com.ipscentir.appointments.domain.model.appointment.BookingChannel;
 import com.ipscentir.appointments.domain.model.security.RoleName;
 import com.ipscentir.appointments.domain.repository.AppointmentRepository;
 import com.ipscentir.appointments.domain.service.AppointmentBookingService;
-import com.ipscentir.appointments.domain.service.AvailabilityService;
+import com.ipscentir.appointments.domain.service.HumanResourceAvailabilityService;
+import com.ipscentir.appointments.domain.service.HumanResourceBookingContext;
+import com.ipscentir.appointments.domain.service.ResourceCapacityService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
@@ -30,10 +34,11 @@ public class AppointmentOperationsService {
     private final AppointmentApplicationService appointmentApplicationService;
     private final AppointmentBookingService appointmentBookingService;
     private final AppointmentMapper appointmentMapper;
-    private final AvailabilityService availabilityService;
-    private final FacilityAuthorizationService facilityAuthorizationService;
+    private final SedeAuthorizationService sedeAuthorizationService;
     private final StaffSecurityHelper staffSecurityHelper;
     private final TherapyPendingGroupCutoffService therapyPendingGroupCutoffService;
+    private final HumanResourceAvailabilityService humanResourceAvailabilityService;
+    private final ResourceCapacityService resourceCapacityService;
 
     @Transactional(readOnly = true)
     public List<AppointmentDTO> searchAppointments(AppointmentSearchCriteria criteria) {
@@ -54,8 +59,21 @@ public class AppointmentOperationsService {
     @Transactional
     public AppointmentDTO createAppointment(CreateAppointmentCommand command) {
         requireWriteRole();
-        facilityAuthorizationService.assertCurrentUserCanAccessFacility(command.facilityId());
-        return appointmentApplicationService.createAppointment(command);
+        sedeAuthorizationService.assertCurrentUserCanAccessSede(command.sedeId());
+        CreateAppointmentCommand staffCommand = new CreateAppointmentCommand(
+                command.patientId(),
+                command.doctorId(),
+                command.sedeId(),
+                command.secondaryDoctorId(),
+                command.scheduleId(),
+                command.appointmentDate(),
+                command.appointmentTime(),
+                command.appointmentType(),
+                command.reason(),
+                BookingChannel.STAFF,
+                null
+        );
+        return appointmentApplicationService.createAppointment(staffCommand);
     }
 
     @Transactional
@@ -68,7 +86,7 @@ public class AppointmentOperationsService {
     @Transactional
     public AppointmentDTO cancelAppointment(UUID appointmentId, CancelAppointmentCommand command) {
         Appointment appointment = requireWritableAppointment(appointmentId);
-        facilityAuthorizationService.assertCurrentUserCanAccessFacility(appointment.getFacilityId());
+        sedeAuthorizationService.assertCurrentUserCanAccessSede(appointment.getSedeId());
         Appointment cancelled = appointmentBookingService.cancelAppointment(appointmentId, command.reason());
         return appointmentMapper.toDto(cancelled);
     }
@@ -76,26 +94,73 @@ public class AppointmentOperationsService {
     @Transactional
     public AppointmentDTO rescheduleAppointment(UUID appointmentId, RescheduleAppointmentCommand command) {
         Appointment appointment = requireWritableAppointment(appointmentId);
-        facilityAuthorizationService.assertCurrentUserCanAccessFacility(command.facilityId());
-        facilityAuthorizationService.assertCurrentUserCanAccessFacility(appointment.getFacilityId());
+        sedeAuthorizationService.assertCurrentUserCanAccessSede(command.sedeId());
+        sedeAuthorizationService.assertCurrentUserCanAccessSede(appointment.getSedeId());
 
-        if (!availabilityService.isSlotAvailable(
+        rescheduleWithHumanAndPhysicalValidation(appointment, appointmentId, command, BookingChannel.STAFF, null);
+        return appointmentMapper.toDto(appointmentRepository.findById(appointmentId).orElseThrow());
+    }
+
+    /**
+     * Reprogramación sin validación de rol JWT (flujo n8n con API key).
+     */
+    @Transactional
+    public AppointmentDTO rescheduleAppointmentFromN8n(
+            UUID appointmentId,
+            RescheduleAppointmentCommand command,
+            String n8nConversationId
+    ) {
+        Appointment appointment = appointmentRepository.findById(appointmentId)
+                .orElseThrow(() -> new IllegalArgumentException("Appointment not found"));
+
+        rescheduleWithHumanAndPhysicalValidation(appointment, appointmentId, command, BookingChannel.N8N, n8nConversationId);
+        return appointmentMapper.toDto(appointmentRepository.findById(appointmentId).orElseThrow());
+    }
+
+    private void rescheduleWithHumanAndPhysicalValidation(
+            Appointment appointment,
+            UUID appointmentId,
+            RescheduleAppointmentCommand command,
+            BookingChannel channel,
+            String n8nConversationId
+    ) {
+        HumanResourceBookingContext context = HumanResourceBookingContext.forBooking(
+                appointment.getPatientId(),
                 command.doctorId(),
-                command.facilityId(),
+                appointment.getSecondaryDoctorId(),
+                command.scheduleId(),
+                command.sedeId(),
                 command.appointmentDate(),
-                command.appointmentTime()
-        )) {
-            throw new IllegalStateException("The requested slot is not available for rescheduling");
+                command.appointmentTime(),
+                appointment.getAppointmentType(),
+                appointment.getDurationMinutes()
+        );
+
+        humanResourceAvailabilityService.assertRescheduleAllowed(context, appointmentId);
+
+        boolean therapySlotChanged = appointment.getAppointmentType() == AppointmentType.TERAPIA_FISICA
+                || appointment.getAppointmentType() == AppointmentType.TERAPIA_OCUPACIONAL;
+        if (therapySlotChanged && !sameTherapySlot(appointment, command)) {
+            humanResourceAvailabilityService.assertTherapyGroupAllowsNewPatient(
+                    command.scheduleId(),
+                    command.appointmentDate(),
+                    command.appointmentTime(),
+                    appointment.getAppointmentType()
+            );
         }
 
+        resourceCapacityService.release(appointmentId);
         appointment.reschedule(
                 command.appointmentDate(),
                 command.appointmentTime(),
                 command.scheduleId(),
                 command.doctorId(),
-                command.facilityId()
+                command.sedeId(),
+                channel,
+                n8nConversationId
         );
-        return appointmentMapper.toDto(appointmentRepository.save(appointment));
+        Appointment saved = appointmentRepository.save(appointment);
+        resourceCapacityService.allocate(saved);
     }
 
     @Transactional
@@ -121,8 +186,8 @@ public class AppointmentOperationsService {
 
     @Transactional(readOnly = true)
     public List<AppointmentDTO> listPendingGroupTherapyAppointments() {
-        if (!staffSecurityHelper.hasAnyRole(RoleName.ADMINISTRACION, RoleName.ADMISIONES)) {
-            throw new AccessDeniedException("Solo Administracion o Admisiones pueden consultar terapias pendientes");
+        if (!staffSecurityHelper.hasAnyRole(RoleName.APPOINTMENT_OPERATORS)) {
+            throw new AccessDeniedException("Solo roles operativos pueden consultar terapias pendientes");
         }
         return appointmentRepository
                 .findByStatusAndAppointmentTypeIn(
@@ -166,10 +231,11 @@ public class AppointmentOperationsService {
         if (staffSecurityHelper.hasRole(RoleName.MEDICO)) {
             String doctorId = staffSecurityHelper.requireDoctorIdForMedico();
             return new AppointmentSearchCriteria(
-                    criteria.facilityId(),
+                    criteria.sedeId(),
                     doctorId,
                     criteria.patientId(),
                     criteria.status(),
+                    criteria.bookingChannel(),
                     criteria.fromDate(),
                     criteria.toDate()
             );
@@ -197,7 +263,7 @@ public class AppointmentOperationsService {
 
     private Appointment requireAppointmentForClinicalAction(UUID appointmentId) {
         Appointment appointment = requireReadableAppointment(appointmentId);
-        if (staffSecurityHelper.hasAnyRole(RoleName.ADMINISTRACION, RoleName.ADMISIONES)) {
+        if (staffSecurityHelper.hasAnyRole(RoleName.APPOINTMENT_OPERATORS)) {
             return appointment;
         }
         if (staffSecurityHelper.hasRole(RoleName.MEDICO)
@@ -208,28 +274,35 @@ public class AppointmentOperationsService {
     }
 
     private boolean canRead(Appointment appointment) {
-        if (staffSecurityHelper.hasAnyRole(RoleName.ADMINISTRACION, RoleName.ADMISIONES, RoleName.FACTURACION)) {
-            return facilityAuthorizationService.canAccessFacility(appointment.getFacilityId());
+        if (staffSecurityHelper.hasAnyRole(RoleName.APPOINTMENT_READERS)) {
+            return sedeAuthorizationService.canAccessSede(appointment.getSedeId());
         }
         if (staffSecurityHelper.hasRole(RoleName.MEDICO)) {
             return appointment.isAssignedToDoctor(staffSecurityHelper.requireDoctorIdForMedico())
-                    && facilityAuthorizationService.canAccessFacility(appointment.getFacilityId());
+                    && sedeAuthorizationService.canAccessSede(appointment.getSedeId());
         }
         return false;
     }
 
+    private static boolean sameTherapySlot(Appointment appointment, RescheduleAppointmentCommand command) {
+        return appointment.getScheduleId().equals(command.scheduleId())
+                && appointment.getAppointmentDate().equals(command.appointmentDate())
+                && appointment.getAppointmentTime().equals(command.appointmentTime());
+    }
+
     private void requireWriteRole() {
-        if (!staffSecurityHelper.hasAnyRole(RoleName.ADMINISTRACION, RoleName.ADMISIONES)) {
-            throw new AccessDeniedException("Solo Administracion o Admisiones pueden modificar citas");
+        if (!staffSecurityHelper.hasAnyRole(RoleName.APPOINTMENT_OPERATORS)) {
+            throw new AccessDeniedException("Solo Administracion, Admisiones o Asesor pueden modificar citas");
         }
     }
 
     private AppointmentRepository.AppointmentSearchFilter toFilter(AppointmentSearchCriteria criteria) {
         return new AppointmentRepository.AppointmentSearchFilter(
-                criteria.facilityId(),
+                criteria.sedeId(),
                 criteria.doctorId(),
                 criteria.patientId(),
                 criteria.status(),
+                criteria.bookingChannel(),
                 criteria.fromDate(),
                 criteria.toDate()
         );

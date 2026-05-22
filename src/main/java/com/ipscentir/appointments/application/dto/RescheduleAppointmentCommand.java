@@ -12,6 +12,6 @@ public record RescheduleAppointmentCommand(
         @NotNull LocalTime appointmentTime,
         @NotNull UUID scheduleId,
         @NotNull String doctorId,
-        @NotNull UUID facilityId
+        @NotNull Integer sedeId
 ) {
 }

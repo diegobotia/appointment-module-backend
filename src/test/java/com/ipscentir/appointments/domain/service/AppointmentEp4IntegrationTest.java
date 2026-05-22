@@ -3,15 +3,19 @@ package com.ipscentir.appointments.domain.service;
 import com.ipscentir.appointments.domain.model.appointment.Appointment;
 import com.ipscentir.appointments.domain.model.appointment.AppointmentStatus;
 import com.ipscentir.appointments.domain.model.appointment.AppointmentType;
+import com.ipscentir.appointments.domain.model.facility.FacilityMasterData;
 import com.ipscentir.appointments.domain.model.schedule.Schedule;
 import com.ipscentir.appointments.domain.repository.ScheduleRepository;
 import com.ipscentir.appointments.infrastructure.persistence.jpa.AppointmentJpaRepository;
+import com.ipscentir.appointments.infrastructure.persistence.jpa.AppointmentResourceAllocationJpaRepository;
+import com.ipscentir.appointments.infrastructure.persistence.jpa.SedeJpaRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.ArrayList;
@@ -37,27 +41,35 @@ class AppointmentEp4IntegrationTest {
     @Autowired
     private AppointmentJpaRepository appointmentJpaRepository;
 
+    @Autowired
+    private AppointmentResourceAllocationJpaRepository allocationJpaRepository;
+
+    @Autowired
+    private SedeJpaRepository sedeJpaRepository;
+
     private String doctorA;
     private String doctorB;
-    private UUID facilityId;
+    private Integer sedeId;
     private UUID scheduleIdA;
+    private UUID scheduleIdJunta;
     private LocalDate bookingDate;
     private LocalTime bookingTime;
 
     @BeforeEach
     void setUp() {
+        allocationJpaRepository.deleteAll();
         appointmentJpaRepository.deleteAll();
 
         doctorA = java.util.UUID.randomUUID().toString();
         doctorB = java.util.UUID.randomUUID().toString();
-        facilityId = UUID.randomUUID();
-        bookingDate = LocalDate.now().plusDays(2);
+        sedeId = FacilityMasterData.SEDE_ID_BELEN;
+        bookingDate = nextOpenWeekday(LocalDate.now().plusDays(2));
         bookingTime = LocalTime.of(10, 0);
 
         Schedule scheduleA = scheduleRepository.save(Schedule.builder()
-            .doctorId(doctorA.toString())
-            .facilityId(facilityId)
-                .specialty("TERAPIA")
+            .doctorId(doctorA)
+            .sedeId(sedeId)
+                .specialty("TERAPIA_FISICA")
                 .dayOfWeek(bookingDate.getDayOfWeek())
                 .startTime(LocalTime.of(8, 0))
                 .endTime(LocalTime.of(18, 0))
@@ -66,10 +78,10 @@ class AppointmentEp4IntegrationTest {
                 .isActive(true)
                 .build());
 
-        scheduleRepository.save(Schedule.builder()
-            .doctorId(doctorB.toString())
-            .facilityId(facilityId)
-                .specialty("JUNTA")
+        Schedule scheduleJunta = scheduleRepository.save(Schedule.builder()
+            .doctorId(doctorB)
+            .sedeId(sedeId)
+                .specialty("JUNTA_MEDICA")
                 .dayOfWeek(bookingDate.getDayOfWeek())
                 .startTime(LocalTime.of(8, 0))
                 .endTime(LocalTime.of(18, 0))
@@ -79,6 +91,7 @@ class AppointmentEp4IntegrationTest {
                 .build());
 
         scheduleIdA = scheduleA.getId();
+        scheduleIdJunta = scheduleJunta.getId();
     }
 
     @Test
@@ -89,11 +102,13 @@ class AppointmentEp4IntegrationTest {
                 doctorA,
                 null,
                 scheduleIdA,
-                facilityId,
+                sedeId,
                 bookingDate,
                 bookingTime,
                 AppointmentType.TERAPIA_FISICA,
-                "Terapia grupal"
+                "Terapia grupal",
+                null,
+                null
             ));
         }
 
@@ -126,11 +141,13 @@ class AppointmentEp4IntegrationTest {
                             doctorA,
                             null,
                             scheduleIdA,
-                            facilityId,
+                            sedeId,
                             bookingDate,
                             bookingTime,
                             AppointmentType.TERAPIA_OCUPACIONAL,
-                            "Terapia ocupacional"
+                            "Terapia ocupacional",
+                            null,
+                            null
                         ));
                 } catch (Exception ignored) {
                     // Some attempts are expected to fail once capacity reaches 6.
@@ -163,19 +180,28 @@ class AppointmentEp4IntegrationTest {
     void shouldCreateJuntaMedicaWithTwoParticipants() {
         Appointment appointment = appointmentBookingService.bookAppointment(new AppointmentBookingRequest(
                 UUID.randomUUID(),
-                doctorA,
                 doctorB,
-                scheduleIdA,
-            facilityId,
+                doctorA,
+                scheduleIdJunta,
+            sedeId,
                 bookingDate,
                 bookingTime,
                 AppointmentType.JUNTA_MEDICA,
-                "Junta medica"
+                "Junta medica",
+                null,
+                null
         ));
 
             UUID appointmentId = java.util.Objects.requireNonNull(appointment.getId());
             Appointment reloaded = appointmentJpaRepository.findById(appointmentId).orElseThrow();
         assertThat(reloaded.getParticipants()).hasSize(2);
-        assertThat(reloaded.getSecondaryDoctorId()).isEqualTo(doctorB);
+        assertThat(reloaded.getSecondaryDoctorId()).isEqualTo(doctorA);
+    }
+
+    private static LocalDate nextOpenWeekday(LocalDate date) {
+        while (date.getDayOfWeek() == DayOfWeek.SUNDAY) {
+            date = date.plusDays(1);
+        }
+        return date;
     }
 }

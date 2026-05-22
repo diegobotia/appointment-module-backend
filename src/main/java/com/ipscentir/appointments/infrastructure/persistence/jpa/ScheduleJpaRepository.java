@@ -14,25 +14,25 @@ import java.util.UUID;
 @Repository
 public interface ScheduleJpaRepository extends JpaRepository<Schedule, UUID> {
 
-    @Query("SELECT s FROM Schedule s LEFT JOIN FETCH s.blocks WHERE s.doctorId = :doctorId AND s.facilityId = :facilityId AND s.dayOfWeek = :dayOfWeek")
-    Optional<Schedule> findByDoctorIdAndFacilityIdAndDayOfWeekWithBlocks(
+    @Query("SELECT s FROM Schedule s LEFT JOIN FETCH s.blocks WHERE s.doctorId = :doctorId AND s.sedeId = :sedeId AND s.dayOfWeek = :dayOfWeek")
+    Optional<Schedule> findByDoctorIdAndSedeIdAndDayOfWeekWithBlocks(
             @Param("doctorId") String doctorId,
-            @Param("facilityId") UUID facilityId,
+            @Param("sedeId") Integer sedeId,
             @Param("dayOfWeek") DayOfWeek dayOfWeek
     );
 
-        @Query("SELECT DISTINCT s FROM Schedule s LEFT JOIN FETCH s.blocks WHERE s.facilityId = :facilityId AND s.dayOfWeek = :dayOfWeek AND s.isActive = true")
-        List<Schedule> findByFacilityIdAndDayOfWeekWithBlocks(
-            @Param("facilityId") UUID facilityId,
+        @Query("SELECT DISTINCT s FROM Schedule s LEFT JOIN FETCH s.blocks WHERE s.sedeId = :sedeId AND s.dayOfWeek = :dayOfWeek AND s.isActive = true")
+        List<Schedule> findBySedeIdAndDayOfWeekWithBlocks(
+            @Param("sedeId") Integer sedeId,
             @Param("dayOfWeek") DayOfWeek dayOfWeek
         );
     
     @Query("SELECT s FROM Schedule s LEFT JOIN FETCH s.blocks WHERE s.doctorId = :doctorId AND s.dayOfWeek = :dayOfWeek")
     Optional<Schedule> findByDoctorIdAndDayOfWeekWithBlocks(@Param("doctorId") String doctorId, @Param("dayOfWeek") DayOfWeek dayOfWeek);
 
-    @Query("SELECT DISTINCT s FROM Schedule s LEFT JOIN FETCH s.blocks WHERE s.doctorId = :doctorId AND s.facilityId = :facilityId AND s.isActive = true")
-    List<Schedule> findByDoctorIdAndFacilityIdWithBlocks(
+    @Query("SELECT DISTINCT s FROM Schedule s LEFT JOIN FETCH s.blocks WHERE s.doctorId = :doctorId AND s.sedeId = :sedeId AND s.isActive = true")
+    List<Schedule> findByDoctorIdAndSedeIdWithBlocks(
             @Param("doctorId") String doctorId,
-            @Param("facilityId") UUID facilityId
+            @Param("sedeId") Integer sedeId
     );
 }

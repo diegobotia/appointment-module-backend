@@ -1,5 +1,7 @@
 package com.ipscentir.appointments.application.service;
 
+import com.ipscentir.appointments.domain.model.facility.FacilityMasterData;
+
 import com.ipscentir.appointments.application.dto.AppointmentDTO;
 import com.ipscentir.appointments.application.dto.integration.n8n.N8nCancelAppointmentRequest;
 import com.ipscentir.appointments.application.dto.integration.n8n.N8nFacilityId;
@@ -13,14 +15,18 @@ import com.ipscentir.appointments.domain.model.appointment.Appointment;
 import com.ipscentir.appointments.domain.model.appointment.AppointmentStatus;
 import com.ipscentir.appointments.domain.model.appointment.AppointmentScheduleData;
 import com.ipscentir.appointments.domain.model.appointment.AppointmentType;
+import com.ipscentir.appointments.domain.model.appointment.BookingChannel;
 import com.ipscentir.appointments.domain.model.catalog.AppointmentServiceType;
-import com.ipscentir.appointments.domain.model.facility.Facility;
+import com.ipscentir.appointments.domain.model.sede.Sede;
 import com.ipscentir.appointments.domain.model.schedule.AvailableSlotDetail;
+import com.ipscentir.appointments.domain.model.schedule.Schedule;
 import com.ipscentir.appointments.domain.repository.AppointmentRepository;
+import com.ipscentir.appointments.domain.repository.ScheduleRepository;
 import com.ipscentir.appointments.domain.service.AppointmentBookingService;
 import com.ipscentir.appointments.domain.service.AvailabilityService;
-import com.ipscentir.appointments.infrastructure.persistence.jpa.FacilityJpaRepository;
+import com.ipscentir.appointments.domain.model.specialist.Specialist;
 import com.ipscentir.appointments.infrastructure.persistence.jpa.PacienteRepository;
+import com.ipscentir.appointments.infrastructure.persistence.jpa.SpecialistJpaRepository;
 import com.ipscentir.appointments.infrastructure.persistence.jpa.entity.Paciente;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -71,25 +77,33 @@ class N8nPatientIntegrationServiceTest {
     private PacienteRepository pacienteRepository;
 
     @Mock
-    private FacilityJpaRepository facilityJpaRepository;
+    private SedeLookupService sedeLookupService;
 
     @Mock
     private N8nIdempotencyService n8nIdempotencyService;
+
+    @Mock
+    private ScheduleRepository scheduleRepository;
+
+    @Mock
+    private SpecialistJpaRepository specialistJpaRepository;
+
+    @Mock
+    private AppointmentOperationsService appointmentOperationsService;
+
+    @Mock
+    private TipoIdentificacionResolver tipoIdentificacionResolver;
 
     @InjectMocks
     private N8nPatientIntegrationService service;
 
     @Test
     void shouldReturnAvailabilitySummary() {
-        UUID facilityId = UUID.randomUUID();
+        Integer sedeId = FacilityMasterData.SEDE_ID_BELEN;
         LocalDate date = LocalDate.now().plusDays(2);
 
-        when(facilityJpaRepository.findByCode("SEDE_NORTE")).thenReturn(Optional.of(
-                Facility.builder().id(facilityId).code("SEDE_NORTE").name("Sede Norte").address("NA").active(true).build()
-        ));
-
-        when(availabilityService.getNearestAvailableSlotsByServiceType(AppointmentServiceType.TERAPIA_FISICA, facilityId, date, 4)).thenReturn(List.of(
-                new AvailableSlotDetail(UUID.randomUUID(), UUID.randomUUID().toString(), facilityId, AppointmentServiceType.TERAPIA_FISICA, "Terapia fisica", date, LocalTime.of(8, 0), 30, 3)
+        when(availabilityService.getNearestAvailableSlotsByServiceType(AppointmentServiceType.TERAPIA_FISICA, sedeId, date, 4)).thenReturn(List.of(
+                new AvailableSlotDetail(UUID.randomUUID(), UUID.randomUUID().toString(), FacilityMasterData.SEDE_ID_BELEN, AppointmentServiceType.TERAPIA_FISICA, "Terapia fisica", date, LocalTime.of(8, 0), 30, 3)
         ));
 
         var response = service.getAvailability(new N8nPatientAvailabilityRequest("TERAPIA_FISICA", null, N8nFacilityId.BELEN, 4, date));
@@ -109,11 +123,15 @@ class N8nPatientIntegrationServiceTest {
                 .numIdentificacion("123")
                 .build();
 
-        when(pacienteRepository.findByCodTipoIdentificacionAndNumIdentificacion("CC", "123"))
-                .thenReturn(Optional.of(paciente));
+        when(tipoIdentificacionResolver.resolveCodigo("CC")).thenReturn("13");
+        when(tipoIdentificacionResolver.findPaciente("CC", "123")).thenReturn(Optional.of(paciente));
         when(patientRegistrationService.getFormConfig()).thenReturn(
                 new com.ipscentir.appointments.application.dto.form.PatientRegistrationFormConfigResponse(
-                        "https://form", "/submit", "/status", List.of("CC"), "https://form?codTipoIdentificacion={codTipoIdentificacion}&numIdentificacion={numIdentificacion}"
+                        "https://form",
+                        "/submit",
+                        "/status",
+                        List.of(new com.ipscentir.appointments.application.dto.form.DocumentTypeOptionDTO("13", "Cédula de ciudadanía")),
+                        "https://form?codTipoIdentificacion={codTipoIdentificacion}&numIdentificacion={numIdentificacion}"
                 )
         );
 
@@ -121,6 +139,105 @@ class N8nPatientIntegrationServiceTest {
 
         assertTrue(response.found());
         assertEquals(patientId, response.patientId());
+    }
+
+    @Test
+    void shouldListAppointmentsWithSpecialtyAndFacilityCode() {
+        UUID patientId = UUID.randomUUID();
+        Integer sedeId = FacilityMasterData.SEDE_ID_BELEN;
+        UUID scheduleId = UUID.randomUUID();
+        Paciente paciente = Paciente.builder()
+                .id(patientId)
+                .codTipoIdentificacion("CC")
+                .numIdentificacion("123")
+                .build();
+
+        Appointment appointment = Appointment.scheduleNew(
+                patientId,
+                UUID.randomUUID().toString(),
+                null,
+                new AppointmentScheduleData(scheduleId, sedeId, LocalDate.now().plusDays(2), LocalTime.of(10, 0), 30, AppointmentType.PRESENCIAL, AppointmentStatus.SCHEDULED, "Control")
+        );
+
+        when(tipoIdentificacionResolver.findPaciente("CC", "123")).thenReturn(Optional.of(paciente));
+        when(appointmentRepository.findByPatientIdOrderByAppointmentDateDescAppointmentTimeDesc(patientId))
+                .thenReturn(List.of(appointment));
+        when(scheduleRepository.findById(scheduleId)).thenReturn(Optional.of(
+                Schedule.builder().id(scheduleId).doctorId(appointment.getDoctorId()).sedeId(sedeId).specialty("Medico fisiatria").build()
+        ));
+
+        var response = service.listAppointmentsByDocument("CC", "123");
+
+        assertEquals(1, response.appointments().size());
+        var summary = response.appointments().getFirst();
+        assertEquals("BELEN", summary.facilityCode());
+        assertEquals(scheduleId, summary.scheduleId());
+        assertEquals("Medico fisiatria", summary.specialty());
+        assertEquals("MEDICO_FISIATRIA", summary.serviceType());
+    }
+
+    @Test
+    void shouldFallbackToDoctorSpecialtyWhenScheduleIsMissing() {
+        UUID patientId = UUID.randomUUID();
+        Integer sedeId = FacilityMasterData.SEDE_ID_CONQUISTADORES;
+        String doctorId = UUID.randomUUID().toString();
+        Paciente paciente = Paciente.builder()
+                .id(patientId)
+                .codTipoIdentificacion("CC")
+                .numIdentificacion("456")
+                .build();
+
+        Appointment appointment = Appointment.scheduleNew(
+                patientId,
+                doctorId,
+                null,
+                new AppointmentScheduleData(null, sedeId, LocalDate.now().plusDays(2), LocalTime.of(10, 0), 30, AppointmentType.PRESENCIAL, AppointmentStatus.SCHEDULED, "Control")
+        );
+
+        when(tipoIdentificacionResolver.findPaciente("CC", "456")).thenReturn(Optional.of(paciente));
+        when(appointmentRepository.findByPatientIdOrderByAppointmentDateDescAppointmentTimeDesc(patientId))
+                .thenReturn(List.of(appointment));
+        when(specialistJpaRepository.findById(doctorId)).thenReturn(Optional.of(
+                Specialist.builder().id(doctorId).numeroMedico("M-1").firstName("Ana").lastName("Lopez").specialty("Psicologia").build()
+        ));
+
+        var response = service.listAppointmentsByDocument("CC", "456");
+
+        var summary = response.appointments().getFirst();
+        assertEquals("Psicologia", summary.specialty());
+        assertEquals("PSICOLOGIA", summary.serviceType());
+        assertEquals("CONQUISTADORES", summary.facilityCode());
+    }
+
+    @Test
+    void shouldReturnNullServicePairWhenTextDoesNotMatchCatalog() {
+        UUID patientId = UUID.randomUUID();
+        Integer sedeId = FacilityMasterData.SEDE_ID_BELEN;
+        String doctorId = UUID.randomUUID().toString();
+        Paciente paciente = Paciente.builder()
+                .id(patientId)
+                .codTipoIdentificacion("CC")
+                .numIdentificacion("789")
+                .build();
+
+        Appointment appointment = Appointment.scheduleNew(
+                patientId,
+                doctorId,
+                null,
+                new AppointmentScheduleData(null, sedeId, LocalDate.now().plusDays(2), LocalTime.of(10, 0), 30, AppointmentType.PRESENCIAL, AppointmentStatus.SCHEDULED, "Control")
+        );
+
+        when(tipoIdentificacionResolver.findPaciente("CC", "789")).thenReturn(Optional.of(paciente));
+        when(appointmentRepository.findByPatientIdOrderByAppointmentDateDescAppointmentTimeDesc(patientId))
+                .thenReturn(List.of(appointment));
+        when(specialistJpaRepository.findById(doctorId)).thenReturn(Optional.of(
+                Specialist.builder().id(doctorId).numeroMedico("M-2").firstName("Luis").lastName("Perez").specialty("Ortopedia general").build()
+        ));
+
+        var summary = service.listAppointmentsByDocument("CC", "789").appointments().getFirst();
+
+        assertEquals(null, summary.serviceType());
+        assertEquals(null, summary.specialty());
     }
 
     @Test
@@ -154,7 +271,7 @@ class N8nPatientIntegrationServiceTest {
                 patientId,
                 doctorId,
                 null,
-                new AppointmentScheduleData(UUID.randomUUID(), UUID.randomUUID(), date, time, 30, AppointmentType.PRESENCIAL, AppointmentStatus.SCHEDULED, "Checkup")
+                new AppointmentScheduleData(UUID.randomUUID(), FacilityMasterData.SEDE_ID_BELEN, date, time, 30, AppointmentType.PRESENCIAL, AppointmentStatus.SCHEDULED, "Checkup")
         );
 
         when(pacienteRepository.existsById(patientId)).thenReturn(true);
@@ -162,8 +279,8 @@ class N8nPatientIntegrationServiceTest {
                 .thenReturn(Optional.of(appointmentId));
         when(appointmentRepository.findById(appointmentId)).thenReturn(Optional.of(appointment));
         when(appointmentMapper.toDto(appointment)).thenReturn(new AppointmentDTO(
-                appointmentId, patientId, doctorId, UUID.randomUUID(), null, UUID.randomUUID(), date, time, 30,
-                AppointmentType.PRESENCIAL, AppointmentStatus.SCHEDULED, "Checkup", null, null, null
+                appointmentId, patientId, doctorId, FacilityMasterData.SEDE_ID_BELEN, null, UUID.randomUUID(), date, time, 30,
+                AppointmentType.PRESENCIAL, AppointmentStatus.SCHEDULED, BookingChannel.STAFF, null, "Checkup", null, null, null
         ));
 
         var response = service.createAppointment(new N8nPatientAppointmentRequest(
@@ -177,22 +294,19 @@ class N8nPatientIntegrationServiceTest {
     void shouldMapCreatedAppointmentResponse() {
         UUID patientId = UUID.randomUUID();
         String doctorId = UUID.randomUUID().toString();
-        UUID facilityId = UUID.randomUUID();
+        Integer sedeId = FacilityMasterData.SEDE_ID_BELEN;
         UUID scheduleId = UUID.randomUUID();
         LocalDate date = LocalDate.now().plusDays(2);
         LocalTime time = LocalTime.of(10, 0);
 
         AppointmentDTO dto = new AppointmentDTO(
-                UUID.randomUUID(), patientId, doctorId, facilityId, null, scheduleId, date, time, 30,
-                AppointmentType.PRESENCIAL, AppointmentStatus.SCHEDULED, "Checkup", null, null, null
+                UUID.randomUUID(), patientId, doctorId, sedeId, null, scheduleId, date, time, 30,
+                AppointmentType.PRESENCIAL, AppointmentStatus.SCHEDULED, BookingChannel.N8N, null, "Checkup", null, null, null
         );
 
         when(pacienteRepository.existsById(patientId)).thenReturn(true);
         when(n8nIdempotencyService.findAppointmentId(any(), any())).thenReturn(Optional.empty());
         when(appointmentApplicationService.createAppointment(any())).thenReturn(dto);
-        when(facilityJpaRepository.findByCode("SEDE_NORTE")).thenReturn(Optional.of(
-                Facility.builder().id(facilityId).code("SEDE_NORTE").name("Sede Norte").address("NA").active(true).build()
-        ));
 
         var response = service.createAppointment(new N8nPatientAppointmentRequest(
                 patientId, doctorId, N8nFacilityId.BELEN, null, scheduleId, date, time, "Checkup", null, "req-1"
@@ -209,15 +323,15 @@ class N8nPatientIntegrationServiceTest {
                 UUID.randomUUID(),
                 UUID.randomUUID().toString(),
                 null,
-                new AppointmentScheduleData(UUID.randomUUID(), UUID.randomUUID(), LocalDate.now().plusDays(2), LocalTime.of(10, 0), 30, AppointmentType.PRESENCIAL, AppointmentStatus.SCHEDULED, "Checkup")
+                new AppointmentScheduleData(UUID.randomUUID(), FacilityMasterData.SEDE_ID_BELEN, LocalDate.now().plusDays(2), LocalTime.of(10, 0), 30, AppointmentType.PRESENCIAL, AppointmentStatus.SCHEDULED, "Checkup")
         );
 
         when(appointmentRepository.findById(appointmentId)).thenReturn(Optional.of(cancelled));
         when(appointmentBookingService.cancelAppointment(appointmentId, "Cambio de plan")).thenReturn(cancelled);
         when(appointmentMapper.toDto(cancelled)).thenReturn(new AppointmentDTO(
-                cancelled.getId(), cancelled.getPatientId(), cancelled.getDoctorId(), cancelled.getFacilityId(), null,
+                cancelled.getId(), cancelled.getPatientId(), cancelled.getDoctorId(), cancelled.getSedeId(), null,
                 cancelled.getScheduleId(), cancelled.getAppointmentDate(), cancelled.getAppointmentTime(), 30,
-                cancelled.getAppointmentType(), cancelled.getStatus(), cancelled.getReason(), null, null, null
+                cancelled.getAppointmentType(), cancelled.getStatus(), BookingChannel.STAFF, null, cancelled.getReason(), null, null, null
         ));
 
         var response = service.cancelAppointment(appointmentId, new N8nCancelAppointmentRequest("Cambio de plan", null));

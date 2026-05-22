@@ -27,8 +27,8 @@ SELECT
     COALESCE(p.nombres || ' ' || p.apellidos, 'Sin nombre') AS patient_name,
     p.num_identificacion AS patient_id_number,
     a.doctor_id,
-    COALESCE(prof.name, 'Sin asignar') AS doctor_name,
-    prof.email AS doctor_email,
+    COALESCE(TRIM(med.nombre || ' ' || med.apellido), 'Sin asignar') AS doctor_name,
+    med.registro AS doctor_registro,
     a.facility_id,
     f.name AS facility_name,
     f.code AS facility_code,
@@ -55,9 +55,9 @@ SELECT
         THEN true
         ELSE false
     END AS is_past
-FROM appointments a
+FROM appointments.appointments a
 LEFT JOIN core.pacientes p ON a.patient_id = p.id
-LEFT JOIN core.profiles prof ON a.doctor_id = prof.id
+LEFT JOIN hc.medicos med ON med.id::text = a.doctor_id::text
 LEFT JOIN appointments.facilities f ON a.facility_id = f.id;
 
 -- ========================
@@ -69,8 +69,8 @@ CREATE OR REPLACE VIEW v_doctor_available_slots AS
 SELECT 
     s.id as schedule_id,
     s.doctor_id,
-    prof.name as doctor_name,
-    prof.email,
+    COALESCE(TRIM(med.nombre || ' ' || med.apellido), 'Sin asignar') AS doctor_name,
+    med.registro AS doctor_registro,
     s.facility_id,
     f.name as facility_name,
     f.code as facility_code,
@@ -90,12 +90,12 @@ SELECT
     -- Calcula capacidad disponible
     (s.max_patients_per_slot - COALESCE(COUNT(DISTINCT a.id), 0)) as available_slots
 FROM appointments.schedules s
-JOIN core.profiles prof ON s.doctor_id = prof.id
+LEFT JOIN hc.medicos med ON med.id::text = s.doctor_id::text
 JOIN appointments.facilities f ON s.facility_id = f.id
-LEFT JOIN appointments.appointments a ON s.id = a.schedule_id 
+LEFT JOIN appointments.appointments a ON s.id = a.schedule_id
     AND a.status IN ('SCHEDULED', 'CONFIRMED')
 WHERE s.is_active = true
-GROUP BY s.id, prof.id, f.id;
+GROUP BY s.id, med.id, med.nombre, med.apellido, med.registro, f.id;
 
 -- ========================
 -- V3: APPOINTMENTS BY FACILITY
@@ -166,15 +166,15 @@ SELECT
     a.facility_id,
     f.name as facility_name,
     ap.doctor_id,
-    COALESCE(prof.name, 'Sin asignar') AS doctor_name,
-    prof.email AS doctor_email,
+    COALESCE(TRIM(med.nombre || ' ' || med.apellido), 'Sin asignar') AS doctor_name,
+    med.registro AS doctor_registro,
     ap.participant_order,
     ap.participant_role,
     a.status as appointment_status
 FROM appointments.appointment_participants ap
 JOIN appointments.appointments a ON ap.appointment_id = a.id
 LEFT JOIN core.pacientes p ON a.patient_id = p.id
-LEFT JOIN core.profiles prof ON ap.doctor_id = prof.id
+LEFT JOIN hc.medicos med ON med.id::text = ap.doctor_id::text
 LEFT JOIN appointments.facilities f ON a.facility_id = f.id
 ORDER BY ap.appointment_id, ap.participant_order;
 
@@ -194,12 +194,12 @@ SELECT
     a.appointment_type,
     a.status,
     COUNT(DISTINCT ap.id) as participant_count,
-    STRING_AGG(DISTINCT prof.name, ', ') AS participants_names
+    STRING_AGG(DISTINCT TRIM(med.nombre || ' ' || med.apellido), ', ') AS participants_names
 FROM appointments.appointments a
 LEFT JOIN core.pacientes p ON a.patient_id = p.id
 LEFT JOIN appointments.facilities f ON a.facility_id = f.id
 LEFT JOIN appointments.appointment_participants ap ON a.id = ap.appointment_id
-LEFT JOIN core.profiles prof ON ap.doctor_id = prof.id
+LEFT JOIN hc.medicos med ON med.id::text = ap.doctor_id::text
 WHERE a.status = 'PENDIENTE_CONFIRMACION_GRUPO'
 GROUP BY a.id, p.id, f.id
 ORDER BY a.appointment_date;
@@ -210,25 +210,23 @@ ORDER BY a.appointment_date;
 -- Resumen de agendas por médico
 
 CREATE OR REPLACE VIEW v_schedules_summary_by_doctor AS
-SELECT 
-    prof.id as doctor_id,
-    prof.name as doctor_name,
-    prof.email,
-    f.id as facility_id,
-    f.name as facility_name,
-    COUNT(DISTINCT s.id) as total_schedules,
+SELECT
+    med.id::text AS doctor_id,
+    TRIM(med.nombre || ' ' || med.apellido) AS doctor_name,
+    med.registro,
+    f.id AS facility_id,
+    f.name AS facility_name,
+    COUNT(DISTINCT s.id) AS total_schedules,
     STRING_AGG(DISTINCT 'Día ' || s.day_of_week, ', ') AS days_scheduled,
-    MIN(s.start_time) as earliest_start,
-    MAX(s.end_time) as latest_end,
-    COUNT(CASE WHEN s.is_active THEN 1 END) as active_schedules
-FROM core.profiles prof
-LEFT JOIN appointments.schedules s ON prof.id = s.doctor_id
+    MIN(s.start_time) AS earliest_start,
+    MAX(s.end_time) AS latest_end,
+    COUNT(CASE WHEN s.is_active THEN 1 END) AS active_schedules
+FROM hc.medicos med
+LEFT JOIN appointments.schedules s ON med.id::text = s.doctor_id::text
 LEFT JOIN appointments.facilities f ON s.facility_id = f.id
-WHERE prof.role_id IN (
-    SELECT id FROM core.roles WHERE nombre = 'Medico'
-)
-GROUP BY prof.id, f.id
-ORDER BY prof.name, f.name;
+WHERE med.activo = true
+GROUP BY med.id, med.nombre, med.apellido, med.registro, f.id
+ORDER BY doctor_name, f.name;
 
 -- ========================
 -- V8: QUARTERLY PLAN STATUS
@@ -238,8 +236,8 @@ ORDER BY prof.name, f.name;
 CREATE OR REPLACE VIEW v_quarterly_plan_status AS
 SELECT 
     sp.specialist_id,
-    prof.name as specialist_name,
-    prof.email,
+    TRIM(med.nombre || ' ' || med.apellido) AS specialist_name,
+    med.registro AS specialist_registro,
     sp.plan_year,
     sp.plan_quarter,
     sp.version_number,
@@ -251,10 +249,10 @@ SELECT
     sp.created_at,
     sp.updated_at
 FROM appointments.schedule_plans sp
-JOIN core.profiles prof ON sp.specialist_id = prof.id
+LEFT JOIN hc.medicos med ON med.id::text = sp.specialist_id::text
 LEFT JOIN appointments.schedule_plan_slots sps ON sp.id = sps.schedule_plan_id
 LEFT JOIN appointments.schedule_plan_blocks spb ON sp.id = spb.schedule_plan_id
-GROUP BY sp.id, prof.id
+GROUP BY sp.id, med.id, med.nombre, med.apellido, med.registro
 ORDER BY sp.plan_year DESC, sp.plan_quarter DESC, sp.is_active_version DESC;
 
 -- =================================================================

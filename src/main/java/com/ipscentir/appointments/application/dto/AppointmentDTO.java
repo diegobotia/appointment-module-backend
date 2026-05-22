@@ -2,6 +2,7 @@ package com.ipscentir.appointments.application.dto;
 
 import com.ipscentir.appointments.domain.model.appointment.AppointmentStatus;
 import com.ipscentir.appointments.domain.model.appointment.AppointmentType;
+import com.ipscentir.appointments.domain.model.appointment.BookingChannel;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -12,7 +13,7 @@ public record AppointmentDTO(
         UUID id,
         UUID patientId,
         String doctorId,
-        UUID facilityId,
+        Integer sedeId,
         String secondaryDoctorId,
         UUID scheduleId,
         LocalDate appointmentDate,
@@ -20,6 +21,8 @@ public record AppointmentDTO(
         Integer durationMinutes,
         AppointmentType appointmentType,
         AppointmentStatus status,
+        BookingChannel bookingChannel,
+        String n8nConversationId,
         String reason,
         String notes,
         LocalDateTime createdAt,

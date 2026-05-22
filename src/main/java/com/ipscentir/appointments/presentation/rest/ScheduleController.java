@@ -31,46 +31,46 @@ public class ScheduleController {
     private final ScheduleApplicationService scheduleApplicationService;
 
     @GetMapping("/doctors/{doctorId}/day/{dayOfWeek}")
-    @PreAuthorize("hasAnyRole('ADMINISTRACION', 'ADMISIONES', 'MEDICO', 'FACTURACION')")
+    @PreAuthorize("hasAnyRole('ADMINISTRACION', 'ADMISIONES', 'ASESOR', 'MEDICO', 'FACTURACION')")
     @Operation(summary = "Plantilla de agenda semanal (día)")
     public ResponseEntity<ScheduleDTO> getDoctorSchedule(
             @PathVariable String doctorId,
             @PathVariable DayOfWeek dayOfWeek,
-            @RequestParam @NotNull UUID facilityId
+            @RequestParam @NotNull Integer sedeId
     ) {
-        return ResponseEntity.ok(scheduleApplicationService.getScheduleForDoctorAndFacility(doctorId, facilityId, dayOfWeek));
+        return ResponseEntity.ok(scheduleApplicationService.getScheduleForDoctorAndFacility(doctorId, sedeId, dayOfWeek));
     }
 
     @GetMapping("/doctors/{doctorId}/templates")
-    @PreAuthorize("hasAnyRole('ADMINISTRACION', 'ADMISIONES', 'MEDICO', 'FACTURACION')")
+    @PreAuthorize("hasAnyRole('ADMINISTRACION', 'ADMISIONES', 'ASESOR', 'MEDICO', 'FACTURACION')")
     @Operation(summary = "Todas las plantillas activas del médico en una sede")
     public ResponseEntity<List<ScheduleDTO>> listDoctorScheduleTemplates(
             @PathVariable String doctorId,
-            @RequestParam @NotNull UUID facilityId
+            @RequestParam @NotNull Integer sedeId
     ) {
-        return ResponseEntity.ok(scheduleApplicationService.listScheduleTemplatesForDoctor(doctorId, facilityId));
+        return ResponseEntity.ok(scheduleApplicationService.listScheduleTemplatesForDoctor(doctorId, sedeId));
     }
 
     @GetMapping("/doctors/{doctorId}/availability")
-    @PreAuthorize("hasAnyRole('ADMINISTRACION', 'ADMISIONES', 'MEDICO', 'FACTURACION')")
+    @PreAuthorize("hasAnyRole('ADMINISTRACION', 'ADMISIONES', 'ASESOR', 'MEDICO', 'FACTURACION')")
     @Operation(summary = "Slots disponibles en una fecha")
     public ResponseEntity<List<AvailableSlotDTO>> getAvailabilityForDate(
             @PathVariable String doctorId,
-            @RequestParam @NotNull UUID facilityId,
+            @RequestParam @NotNull Integer sedeId,
             @RequestParam @NotNull @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date
     ) {
-        return ResponseEntity.ok(scheduleApplicationService.getAvailabilityForDate(doctorId, facilityId, date));
+        return ResponseEntity.ok(scheduleApplicationService.getAvailabilityForDate(doctorId, sedeId, date));
     }
 
     @GetMapping("/doctors/{doctorId}/availability/range")
-    @PreAuthorize("hasAnyRole('ADMINISTRACION', 'ADMISIONES', 'MEDICO', 'FACTURACION')")
+    @PreAuthorize("hasAnyRole('ADMINISTRACION', 'ADMISIONES', 'ASESOR', 'MEDICO', 'FACTURACION')")
     @Operation(summary = "Slots disponibles en rango de fechas")
     public ResponseEntity<DoctorAvailabilityResponse> getAvailabilityInRange(
             @PathVariable String doctorId,
-            @RequestParam @NotNull UUID facilityId,
+            @RequestParam @NotNull Integer sedeId,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to
     ) {
-        return ResponseEntity.ok(scheduleApplicationService.getAvailabilityInRange(doctorId, facilityId, from, to));
+        return ResponseEntity.ok(scheduleApplicationService.getAvailabilityInRange(doctorId, sedeId, from, to));
     }
 }

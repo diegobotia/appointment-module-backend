@@ -3,6 +3,7 @@ package com.ipscentir.appointments.domain.repository;
 import com.ipscentir.appointments.domain.model.appointment.Appointment;
 import com.ipscentir.appointments.domain.model.appointment.AppointmentStatus;
 import com.ipscentir.appointments.domain.model.appointment.AppointmentType;
+import com.ipscentir.appointments.domain.model.appointment.BookingChannel;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -19,6 +20,8 @@ public interface AppointmentRepository {
     Optional<Appointment> findById(UUID id);
     
     boolean existsByPatientIdAndDate(UUID patientId, LocalDate date);
+
+    boolean existsByPatientIdAndDateExcluding(UUID patientId, LocalDate date, UUID excludeAppointmentId);
 
     List<Appointment> findByScheduleAndDateAndTimeAndType(UUID scheduleId, LocalDate date, LocalTime time, AppointmentType type);
 
@@ -44,11 +47,14 @@ public interface AppointmentRepository {
 
     long countByAppointmentDateBetweenAndStatus(LocalDate fromDate, LocalDate toDate, AppointmentStatus status);
 
+    long countByBookingChannel(BookingChannel bookingChannel);
+
     record AppointmentSearchFilter(
-            UUID facilityId,
+            Integer sedeId,
             String doctorId,
             UUID patientId,
             AppointmentStatus status,
+            BookingChannel bookingChannel,
             java.time.LocalDate fromDate,
             java.time.LocalDate toDate
     ) {

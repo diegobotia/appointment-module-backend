@@ -6,7 +6,7 @@ import java.util.UUID;
 
 public record AppointmentScheduleData(
         UUID scheduleId,
-        UUID facilityId,
+        Integer sedeId,
         LocalDate date,
         LocalTime time,
         Integer duration,

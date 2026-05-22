@@ -4,6 +4,7 @@ import com.ipscentir.appointments.application.service.N8nEventJournalService;
 import com.ipscentir.appointments.application.service.NotificationDispatchService;
 import com.ipscentir.appointments.domain.model.appointment.AppointmentCancelledEvent;
 import com.ipscentir.appointments.domain.model.appointment.AppointmentCreatedEvent;
+import com.ipscentir.appointments.domain.model.appointment.AppointmentRescheduledEvent;
 import com.ipscentir.appointments.domain.model.notification.Notification;
 import com.ipscentir.appointments.domain.model.notification.NotificationPurpose;
 import com.ipscentir.appointments.domain.model.notification.NotificationType;
@@ -90,6 +91,13 @@ public class AppointmentEventListener {
         }
 
         n8nEventJournalService.recordAppointmentCancelled(event);
+    }
+
+    @Async
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void handleAppointmentRescheduled(AppointmentRescheduledEvent event) {
+        log.info("AppointmentRescheduledEvent appointmentId={} channel={}", event.appointmentId(), event.channel());
+        n8nEventJournalService.recordAppointmentRescheduled(event);
     }
 
     private String resolvePatientPhone(java.util.UUID patientId) {

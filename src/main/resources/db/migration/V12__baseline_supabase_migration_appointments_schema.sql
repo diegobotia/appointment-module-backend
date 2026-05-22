@@ -3,7 +3,7 @@
 -- Fecha: 2026-05-16
 -- Descripción: Refactorización completa para Supabase multi-schema
 --   - Schema appointments contiene solo operaciones de citas
---   - Referencias cross-schema a core.pacientes y core.profiles
+--   - Referencias: core.pacientes (UUID), hc.medicos (doctor_id VARCHAR)
 --   - Tabla temporal specialist_metadata para resolver cuello de botella hc
 -- =================================================================
 
@@ -19,7 +19,7 @@ CREATE SCHEMA IF NOT EXISTS appointments;
 -- 2.1 SCHEDULES (Agendas Médicas)
 CREATE TABLE IF NOT EXISTS appointments.schedules (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    doctor_id UUID NOT NULL REFERENCES core.profiles(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    doctor_id VARCHAR(64) NOT NULL,
     facility_id UUID NOT NULL,  -- Se asume que facilities ya existe en appointments
     specialty VARCHAR(100),
     day_of_week INTEGER NOT NULL CHECK (day_of_week BETWEEN 1 AND 7),
@@ -61,7 +61,7 @@ CREATE INDEX IF NOT EXISTS idx_schedule_blocks_schedule_date ON appointments.sch
 CREATE TABLE IF NOT EXISTS appointments.appointments (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     patient_id UUID NOT NULL REFERENCES core.pacientes(id) ON DELETE RESTRICT ON UPDATE CASCADE,
-    doctor_id UUID NOT NULL REFERENCES core.profiles(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    doctor_id VARCHAR(64) NOT NULL,
     schedule_id UUID REFERENCES appointments.schedules(id),
     facility_id UUID NOT NULL,
     appointment_date DATE NOT NULL,
@@ -135,7 +135,7 @@ CREATE INDEX IF NOT EXISTS idx_specialist_metadata_synced ON appointments.specia
 CREATE TABLE IF NOT EXISTS appointments.appointment_participants (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     appointment_id UUID NOT NULL REFERENCES appointments.appointments(id) ON DELETE CASCADE,
-    doctor_id UUID NOT NULL REFERENCES core.profiles(id) ON DELETE RESTRICT,
+    doctor_id VARCHAR(64) NOT NULL,
     participant_order INTEGER NOT NULL CHECK (participant_order BETWEEN 1 AND 10),
     participant_role VARCHAR(20) NOT NULL CHECK (participant_role IN ('PRIMARY', 'SECONDARY')),
     confirmed_at TIMESTAMP,
@@ -281,7 +281,7 @@ CREATE INDEX IF NOT EXISTS idx_appointment_audit_log_performed_at ON appointment
 
 CREATE TABLE IF NOT EXISTS appointments.schedule_plans (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    specialist_id UUID NOT NULL REFERENCES core.profiles(id) ON DELETE CASCADE,
+    specialist_id VARCHAR(64) NOT NULL,
     plan_year INTEGER NOT NULL,
     plan_quarter INTEGER NOT NULL CHECK (plan_quarter BETWEEN 1 AND 4),
     version_number INTEGER NOT NULL,
@@ -426,6 +426,29 @@ CREATE TRIGGER trg_schedule_plans_updated_at
     EXECUTE FUNCTION appointments.update_updated_at_column();
 
 -- ================================================================
+-- 15b. Quitar FKs erróneas de doctor_id hacia core.profiles (legacy Supabase)
+-- doctor_id permanece VARCHAR; referencia lógica a hc.medicos.id
+-- ================================================================
+
+ALTER TABLE IF EXISTS appointments.schedules
+    DROP CONSTRAINT IF EXISTS schedules_doctor_id_fkey,
+    DROP CONSTRAINT IF EXISTS fk_schedules_doctor;
+
+ALTER TABLE IF EXISTS appointments.appointments
+    DROP CONSTRAINT IF EXISTS appointments_doctor_id_fkey,
+    DROP CONSTRAINT IF EXISTS fk_appointments_doctor;
+
+ALTER TABLE IF EXISTS appointments.appointment_participants
+    DROP CONSTRAINT IF EXISTS appointment_participants_doctor_id_fkey,
+    DROP CONSTRAINT IF EXISTS fk_appointment_participants_doctor;
+
+ALTER TABLE IF EXISTS appointments.schedule_plans
+    DROP CONSTRAINT IF EXISTS schedule_plans_specialist_id_fkey,
+    DROP CONSTRAINT IF EXISTS fk_schedule_plans_specialist;
+
+DROP FUNCTION IF EXISTS appointments.resolve_medico_uuid(TEXT);
+
+-- ================================================================
 -- 16. VISTAS ÚTILES
 -- ================================================================
 
@@ -436,8 +459,8 @@ SELECT
     p.nombres || ' ' || p.apellidos AS patient_name,
     p.num_identificacion AS patient_id_number,
     a.doctor_id,
-    prof.name AS doctor_name,
-    prof.email AS doctor_email,
+    COALESCE(TRIM(med.nombre || ' ' || med.apellido), 'Sin asignar') AS doctor_name,
+    med.registro AS doctor_registro,
     a.facility_id,
     f.name AS facility_name,
     a.appointment_date,
@@ -456,7 +479,7 @@ SELECT
      ORDER BY changed_at DESC LIMIT 1) AS last_status_change
 FROM appointments.appointments a
 LEFT JOIN core.pacientes p ON a.patient_id = p.id
-LEFT JOIN core.profiles prof ON a.doctor_id = prof.id
+LEFT JOIN hc.medicos med ON med.id::text = a.doctor_id::text
 LEFT JOIN appointments.facilities f ON a.facility_id = f.id;
 
 -- Vista para especialista ver sus citas disponibles
@@ -464,7 +487,7 @@ CREATE OR REPLACE VIEW appointments.v_doctor_available_slots AS
 SELECT 
     s.id as schedule_id,
     s.doctor_id,
-    prof.name as doctor_name,
+    COALESCE(TRIM(med.nombre || ' ' || med.apellido), 'Sin asignar') as doctor_name,
     s.facility_id,
     f.name as facility_name,
     s.day_of_week,
@@ -477,9 +500,9 @@ SELECT
      WHERE schedule_id = s.id 
      AND status IN ('SCHEDULED', 'CONFIRMED')) as appointments_count
 FROM appointments.schedules s
-JOIN core.profiles prof ON s.doctor_id = prof.id
+LEFT JOIN hc.medicos med ON med.id::text = s.doctor_id::text
 JOIN appointments.facilities f ON s.facility_id = f.id
-LEFT JOIN appointments.specialist_metadata sm ON prof.id = sm.profile_id
+LEFT JOIN appointments.specialist_metadata sm ON sm.profile_id::text = s.doctor_id::text
 WHERE s.is_active = true;
 
 -- ================================================================
@@ -487,7 +510,7 @@ WHERE s.is_active = true;
 -- ================================================================
 -- Esta migración establece el baseline para Supabase con:
 -- ✅ Schema appointments separado
--- ✅ Referencias cruzadas a core.pacientes y core.profiles
+-- ✅ Referencias: core.pacientes + hc.medicos (doctor_id VARCHAR)
 -- ✅ Tabla temporal specialist_metadata para resolver hc
 -- ✅ Auditoría completa
 -- ✅ Índices para performance

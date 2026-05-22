@@ -1,5 +1,6 @@
 package com.ipscentir.appointments.application.service;
 
+import com.ipscentir.appointments.domain.model.facility.FacilityMasterData;
 import com.ipscentir.appointments.domain.model.appointment.Appointment;
 import com.ipscentir.appointments.domain.model.appointment.AppointmentScheduleData;
 import com.ipscentir.appointments.domain.model.appointment.AppointmentStatus;
@@ -108,7 +109,7 @@ class TherapyPendingGroupCutoffServiceTest {
                 null,
                 new AppointmentScheduleData(
                         UUID.randomUUID(),
-                        UUID.randomUUID(),
+                        FacilityMasterData.SEDE_ID_BELEN,
                         LocalDate.from(appointmentDateTime),
                         LocalTime.from(appointmentDateTime),
                         30,

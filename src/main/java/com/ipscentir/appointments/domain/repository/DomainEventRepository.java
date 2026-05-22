@@ -13,4 +13,8 @@ public interface DomainEventRepository {
     Optional<DomainEventRecord> findById(UUID id);
 
     List<DomainEventRecord> findByPublishedFalseOrderByOccurredOnAsc();
+
+    List<DomainEventRecord> search(String eventType, Boolean published, int offset, int limit);
+
+    long countSearch(String eventType, Boolean published);
 }

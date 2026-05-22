@@ -29,10 +29,10 @@ CREATE TABLE IF NOT EXISTS hc.medico (
 );
 
 -- Índices para búsquedas comunes
-CREATE INDEX idx_hc_medico_numero_medico ON hc.medico(numero_medico);
-CREATE INDEX idx_hc_medico_email ON hc.medico(email);
-CREATE INDEX idx_hc_medico_especialidad ON hc.medico(especialidad_principal);
-CREATE INDEX idx_hc_medico_activo ON hc.medico(activo);
+CREATE INDEX IF NOT EXISTS idx_hc_medico_numero_medico ON hc.medico(numero_medico);
+CREATE INDEX IF NOT EXISTS idx_hc_medico_email ON hc.medico(email);
+CREATE INDEX IF NOT EXISTS idx_hc_medico_especialidad ON hc.medico(especialidad_principal);
+CREATE INDEX IF NOT EXISTS idx_hc_medico_activo ON hc.medico(activo);
 
 -- Insertar médicos de ejemplo para testing (si es DB local)
 INSERT INTO hc.medico (

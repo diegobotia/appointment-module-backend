@@ -6,7 +6,7 @@ import java.util.UUID;
 
 public record DoctorAvailabilityResponse(
         String doctorId,
-        UUID facilityId,
+        Integer sedeId,
         LocalDate fromDate,
         LocalDate toDate,
         int totalAvailableSlots,

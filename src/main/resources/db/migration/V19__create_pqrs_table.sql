@@ -1,6 +1,6 @@
--- V12__create_pqrs_table.sql
+-- Tabla PQRS para el módulo de citas (idempotente en local y Supabase)
 
-CREATE TABLE appointments.pqrs (
+CREATE TABLE IF NOT EXISTS appointments.pqrs (
     id UUID PRIMARY KEY,
     cedula VARCHAR(10) NOT NULL,
     tipo VARCHAR(20) NOT NULL,
@@ -16,7 +16,7 @@ CREATE TABLE appointments.pqrs (
 );
 
 -- Índices para consultas frecuentes
-CREATE INDEX idx_pqrs_cedula ON appointments.pqrs(cedula);
-CREATE INDEX idx_pqrs_radicado ON appointments.pqrs(radicado);
-CREATE INDEX idx_pqrs_status ON appointments.pqrs(status);
-CREATE INDEX idx_pqrs_created_at ON appointments.pqrs(created_at);
+CREATE INDEX IF NOT EXISTS idx_pqrs_cedula ON appointments.pqrs(cedula);
+CREATE INDEX IF NOT EXISTS idx_pqrs_radicado ON appointments.pqrs(radicado);
+CREATE INDEX IF NOT EXISTS idx_pqrs_status ON appointments.pqrs(status);
+CREATE INDEX IF NOT EXISTS idx_pqrs_created_at ON appointments.pqrs(created_at);

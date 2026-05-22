@@ -15,6 +15,7 @@ import java.util.UUID;
 public class N8nIdempotencyService {
 
     public static final String SCOPE_BOOK_APPOINTMENT = "BOOK_APPOINTMENT";
+    public static final String SCOPE_RESCHEDULE_APPOINTMENT = "RESCHEDULE_APPOINTMENT";
 
     private final N8nIdempotencyJpaRepository repository;
 
@@ -29,12 +30,21 @@ public class N8nIdempotencyService {
 
     @Transactional
     public void storeAppointmentBooking(String idempotencyKey, UUID appointmentId) {
+        store(SCOPE_BOOK_APPOINTMENT, idempotencyKey, appointmentId);
+    }
+
+    @Transactional
+    public void storeAppointmentBooking(String scope, String idempotencyKey, UUID appointmentId) {
+        store(scope, idempotencyKey, appointmentId);
+    }
+
+    private void store(String scope, String idempotencyKey, UUID appointmentId) {
         if (idempotencyKey == null || idempotencyKey.isBlank()) {
             return;
         }
         try {
             repository.save(N8nIdempotencyRecord.builder()
-                    .scope(SCOPE_BOOK_APPOINTMENT)
+                    .scope(scope)
                     .idempotencyKey(idempotencyKey.trim())
                     .appointmentId(appointmentId)
                     .build());

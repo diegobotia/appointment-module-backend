@@ -1,13 +1,16 @@
 package com.ipscentir.appointments.application.service;
 
+import com.ipscentir.appointments.domain.model.facility.FacilityMasterData;
+
 import com.ipscentir.appointments.application.dto.AppointmentDTO;
 import com.ipscentir.appointments.application.dto.CreateAppointmentCommand;
 import com.ipscentir.appointments.application.mapper.AppointmentMapper;
-import com.ipscentir.appointments.application.security.FacilityAuthorizationService;
+import com.ipscentir.appointments.application.security.SedeAuthorizationService;
 import com.ipscentir.appointments.domain.model.appointment.Appointment;
 import com.ipscentir.appointments.domain.model.appointment.AppointmentStatus;
 import com.ipscentir.appointments.domain.model.appointment.AppointmentScheduleData;
 import com.ipscentir.appointments.domain.model.appointment.AppointmentType;
+import com.ipscentir.appointments.domain.model.appointment.BookingChannel;
 import com.ipscentir.appointments.domain.service.AppointmentBookingRequest;
 import com.ipscentir.appointments.domain.service.AppointmentBookingService;
 import org.junit.jupiter.api.BeforeEach;
@@ -35,8 +38,11 @@ class AppointmentApplicationServiceTest {
     @Mock
     private AppointmentMapper appointmentMapper;
 
-        @Mock
-        private FacilityAuthorizationService facilityAuthorizationService;
+    @Mock
+    private SedeAuthorizationService sedeAuthorizationService;
+
+    @Mock
+    private com.ipscentir.appointments.infrastructure.observability.AppointmentsMetrics appointmentsMetrics;
 
     @InjectMocks
     private AppointmentApplicationService applicationService;
@@ -58,22 +64,22 @@ class AppointmentApplicationServiceTest {
 
     @Test
     void testCreateAppointment_MapsCommandToDtoSuccessfully() {
-        UUID facilityId = UUID.randomUUID();
+        Integer sedeId = FacilityMasterData.SEDE_ID_BELEN;
         CreateAppointmentCommand command = new CreateAppointmentCommand(
-                patientId, doctorId, facilityId, null, scheduleId, date, time, "PRESENCIAL", "Symptoms"
+                patientId, doctorId, sedeId, null, scheduleId, date, time, "PRESENCIAL", "Symptoms", null, null
         );
 
         Appointment appointment = Appointment.scheduleNew(
-                patientId, doctorId.toString(), null, new AppointmentScheduleData(scheduleId, facilityId, date, time, 30, AppointmentType.PRESENCIAL, AppointmentStatus.SCHEDULED, "Symptoms")
+                patientId, doctorId.toString(), null, new AppointmentScheduleData(scheduleId, sedeId, date, time, 30, AppointmentType.PRESENCIAL, AppointmentStatus.SCHEDULED, "Symptoms")
         );
 
         AppointmentDTO mappedDto = new AppointmentDTO(
-                appointment.getId(), patientId, doctorId, facilityId, null, scheduleId, date, time, 30,
-                AppointmentType.PRESENCIAL, AppointmentStatus.SCHEDULED, "Symptoms", null, null, null
+                appointment.getId(), patientId, doctorId, sedeId, null, scheduleId, date, time, 30,
+                AppointmentType.PRESENCIAL, AppointmentStatus.SCHEDULED, BookingChannel.STAFF, null, "Symptoms", null, null, null
         );
 
         when(bookingService.bookAppointment(new AppointmentBookingRequest(
-                patientId, doctorId, null, scheduleId, facilityId, date, time, AppointmentType.PRESENCIAL, "Symptoms"
+                patientId, doctorId, null, scheduleId, sedeId, date, time, AppointmentType.PRESENCIAL, "Symptoms", BookingChannel.STAFF, null
         ))).thenReturn(appointment);
 
         when(appointmentMapper.toDto(appointment)).thenReturn(mappedDto);
@@ -82,9 +88,9 @@ class AppointmentApplicationServiceTest {
 
         assertNotNull(result);
         assertEquals(AppointmentType.PRESENCIAL, result.appointmentType());
-        verify(facilityAuthorizationService).assertCurrentUserCanAccessFacility(facilityId);
+        verify(sedeAuthorizationService).assertCurrentUserCanAccessSede(sedeId);
         verify(bookingService).bookAppointment(new AppointmentBookingRequest(
-                patientId, doctorId, null, scheduleId, facilityId, date, time, AppointmentType.PRESENCIAL, "Symptoms"
+                patientId, doctorId, null, scheduleId, sedeId, date, time, AppointmentType.PRESENCIAL, "Symptoms", BookingChannel.STAFF, null
         ));
         verify(appointmentMapper).toDto(appointment);
     }

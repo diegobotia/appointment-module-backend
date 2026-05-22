@@ -3,6 +3,7 @@ package com.ipscentir.appointments.infrastructure.persistence.impl;
 import com.ipscentir.appointments.domain.model.appointment.Appointment;
 import com.ipscentir.appointments.domain.model.appointment.AppointmentStatus;
 import com.ipscentir.appointments.domain.model.appointment.AppointmentType;
+import com.ipscentir.appointments.domain.model.appointment.BookingChannel;
 import com.ipscentir.appointments.domain.repository.AppointmentRepository;
 import com.ipscentir.appointments.infrastructure.persistence.jpa.AppointmentJpaRepository;
 import lombok.RequiredArgsConstructor;
@@ -43,6 +44,15 @@ public class AppointmentRepositoryImpl implements AppointmentRepository {
     }
 
     @Override
+    public boolean existsByPatientIdAndDateExcluding(UUID patientId, LocalDate date, UUID excludeAppointmentId) {
+        return jpaRepository.existsByPatientIdAndAppointmentDateAndActiveStatusExcluding(
+                patientId,
+                date,
+                excludeAppointmentId
+        );
+    }
+
+    @Override
     public List<Appointment> findByScheduleAndDateAndTimeAndType(UUID scheduleId, LocalDate date, LocalTime time, AppointmentType type) {
         return jpaRepository.findByScheduleIdAndAppointmentDateAndAppointmentTimeAndAppointmentType(scheduleId, date, time, type);
     }
@@ -71,8 +81,8 @@ public class AppointmentRepositoryImpl implements AppointmentRepository {
     public List<Appointment> search(AppointmentSearchFilter filter) {
         Stream<Appointment> stream = baseStream(filter);
 
-        if (filter.facilityId() != null) {
-            stream = stream.filter(a -> filter.facilityId().equals(a.getFacilityId()));
+        if (filter.sedeId() != null) {
+            stream = stream.filter(a -> filter.sedeId().equals(a.getSedeId()));
         }
         if (filter.doctorId() != null && !filter.doctorId().isBlank()) {
             stream = stream.filter(a -> a.isAssignedToDoctor(filter.doctorId()));
@@ -82,6 +92,9 @@ public class AppointmentRepositoryImpl implements AppointmentRepository {
         }
         if (filter.status() != null) {
             stream = stream.filter(a -> filter.status() == a.getStatus());
+        }
+        if (filter.bookingChannel() != null) {
+            stream = stream.filter(a -> filter.bookingChannel() == a.getBookingChannel());
         }
         if (filter.fromDate() != null) {
             stream = stream.filter(a -> !a.getAppointmentDate().isBefore(filter.fromDate()));
@@ -103,9 +116,9 @@ public class AppointmentRepositoryImpl implements AppointmentRepository {
                     filter.doctorId(), filter.fromDate(), filter.toDate()
             ).stream();
         }
-        if (filter.facilityId() != null && filter.fromDate() != null && filter.toDate() != null) {
-            return jpaRepository.findByFacilityIdAndAppointmentDateBetween(
-                    filter.facilityId(), filter.fromDate(), filter.toDate()
+        if (filter.sedeId() != null && filter.fromDate() != null && filter.toDate() != null) {
+            return jpaRepository.findBySedeIdAndAppointmentDateBetween(
+                    filter.sedeId(), filter.fromDate(), filter.toDate()
             ).stream();
         }
         if (filter.fromDate() != null && filter.toDate() != null) {
@@ -114,8 +127,8 @@ public class AppointmentRepositoryImpl implements AppointmentRepository {
         if (filter.doctorId() != null && !filter.doctorId().isBlank()) {
             return jpaRepository.findByDoctorId(filter.doctorId()).stream();
         }
-        if (filter.facilityId() != null) {
-            return jpaRepository.findByFacilityId(filter.facilityId()).stream();
+        if (filter.sedeId() != null) {
+            return jpaRepository.findBySedeId(filter.sedeId()).stream();
         }
         if (filter.patientId() != null) {
             return jpaRepository.findByPatientId(filter.patientId()).stream();
@@ -154,5 +167,10 @@ public class AppointmentRepositoryImpl implements AppointmentRepository {
     @Override
     public long countByAppointmentDateBetweenAndStatus(LocalDate fromDate, LocalDate toDate, AppointmentStatus status) {
         return jpaRepository.countByAppointmentDateBetweenAndStatus(fromDate, toDate, status);
+    }
+
+    @Override
+    public long countByBookingChannel(BookingChannel bookingChannel) {
+        return jpaRepository.countByBookingChannel(bookingChannel);
     }
 }

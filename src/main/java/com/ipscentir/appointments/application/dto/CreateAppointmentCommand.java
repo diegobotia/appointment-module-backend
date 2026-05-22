@@ -1,5 +1,6 @@
 package com.ipscentir.appointments.application.dto;
 
+import com.ipscentir.appointments.domain.model.appointment.BookingChannel;
 import jakarta.validation.constraints.FutureOrPresent;
 import jakarta.validation.constraints.NotNull;
 import java.time.LocalDate;
@@ -14,7 +15,7 @@ public record CreateAppointmentCommand(
         String doctorId,
 
         @NotNull(message = "Facility ID is required")
-        UUID facilityId,
+        Integer sedeId,
 
         String secondaryDoctorId,
         
@@ -31,5 +32,11 @@ public record CreateAppointmentCommand(
         @NotNull(message = "Appointment type is required")
         String appointmentType,
         
-        String reason
-) {}
+        String reason,
+        BookingChannel bookingChannel,
+        String n8nConversationId
+) {
+    public BookingChannel resolvedChannel() {
+        return bookingChannel != null ? bookingChannel : BookingChannel.STAFF;
+    }
+}

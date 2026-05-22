@@ -29,10 +29,10 @@ public class MeScheduleController {
     @GetMapping
     @Operation(summary = "Agenda propia: plantillas, citas y disponibilidad contextual")
     public ResponseEntity<MyScheduleResponse> getMySchedule(
-            @RequestParam @NotNull UUID facilityId,
+            @RequestParam @NotNull Integer sedeId,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to
     ) {
-        return ResponseEntity.ok(scheduleApplicationService.getMySchedule(facilityId, from, to));
+        return ResponseEntity.ok(scheduleApplicationService.getMySchedule(sedeId, from, to));
     }
 }

@@ -50,7 +50,7 @@ class AppointmentOperationsSecurityTest {
                 {
                   "patientId": "00000000-0000-0000-0000-000000000099",
                   "doctorId": "00000000-0000-0000-0000-000000000001",
-                  "facilityId": "00000000-0000-0000-0000-000000000002",
+                  "sedeId": 2,
                   "scheduleId": "00000000-0000-0000-0000-000000000003",
                   "appointmentDate": "2099-12-01",
                   "appointmentTime": "10:00:00",
@@ -69,6 +69,41 @@ class AppointmentOperationsSecurityTest {
     void shouldForbidAdmisionesTherapyCutoff() throws Exception {
         mockMvc.perform(post("/api/v1/appointments/therapy/pending-group/process-cutoff"))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @WithMockUser(roles = "ASESOR")
+    void shouldAllowAsesorListAppointments() throws Exception {
+        mockMvc.perform(get("/api/v1/appointments"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @WithMockUser(roles = "ASESOR")
+    void shouldForbidAsesorTherapyCutoff() throws Exception {
+        mockMvc.perform(post("/api/v1/appointments/therapy/pending-group/process-cutoff"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @WithMockUser(roles = "ASESOR")
+    void shouldForbidAsesorAdminDashboard() throws Exception {
+        mockMvc.perform(get("/api/v1/admin/dashboard/kpis"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @WithMockUser(roles = "ASESOR")
+    void shouldAllowAsesorAdminAppointmentsSearch() throws Exception {
+        mockMvc.perform(get("/api/v1/admin/appointments"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMISIONES")
+    void shouldAllowAdmisionesAdminAppointmentsSearch() throws Exception {
+        mockMvc.perform(get("/api/v1/admin/appointments"))
+                .andExpect(status().isOk());
     }
 
     @Test

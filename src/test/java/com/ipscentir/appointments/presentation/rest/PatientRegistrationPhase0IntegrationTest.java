@@ -36,7 +36,10 @@ class PatientRegistrationPhase0IntegrationTest {
         mockMvc.perform(get("/api/v1/forms/patients/config"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.formBaseUrl").exists())
-                .andExpect(jsonPath("$.urlTemplate").exists());
+                .andExpect(jsonPath("$.urlTemplate").exists())
+                .andExpect(jsonPath("$.supportedDocumentTypes[?(@.codigo=='13')].descripcion")
+                        .value("Cédula de ciudadanía"))
+                .andExpect(jsonPath("$.supportedDocumentTypes.length()").value(13));
     }
 
     @Test
@@ -75,7 +78,7 @@ class PatientRegistrationPhase0IntegrationTest {
                 .nombres("Ana")
                 .apellidos("Lopez")
                 .numIdentificacion(uniqueDocument)
-                .codTipoIdentificacion("CC")
+                .codTipoIdentificacion("13")
                 .fechaNacimiento(LocalDate.of(1995, 3, 10))
                 .idGenero(UUID.randomUUID().toString())
                 .idEstadoCivil(UUID.randomUUID().toString())

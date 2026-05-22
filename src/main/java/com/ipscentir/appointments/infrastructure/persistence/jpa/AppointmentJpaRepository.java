@@ -3,6 +3,7 @@ package com.ipscentir.appointments.infrastructure.persistence.jpa;
 import com.ipscentir.appointments.domain.model.appointment.Appointment;
 import com.ipscentir.appointments.domain.model.appointment.AppointmentStatus;
 import com.ipscentir.appointments.domain.model.appointment.AppointmentType;
+import com.ipscentir.appointments.domain.model.appointment.BookingChannel;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
@@ -23,6 +24,19 @@ public interface AppointmentJpaRepository extends JpaRepository<Appointment, UUI
     @Query("SELECT COUNT(a) > 0 FROM Appointment a WHERE a.patientId = :patientId AND a.appointmentDate = :date AND a.status NOT IN ('CANCELLED', 'NO_SHOW')")
     boolean existsByPatientIdAndAppointmentDateAndActiveStatus(UUID patientId, LocalDate date);
 
+    @Query("""
+            SELECT COUNT(a) > 0 FROM Appointment a
+            WHERE a.patientId = :patientId
+              AND a.appointmentDate = :date
+              AND a.status NOT IN ('CANCELLED', 'NO_SHOW')
+              AND a.id <> :excludeAppointmentId
+            """)
+    boolean existsByPatientIdAndAppointmentDateAndActiveStatusExcluding(
+            UUID patientId,
+            LocalDate date,
+            UUID excludeAppointmentId
+    );
+
     List<Appointment> findByStatusAndAppointmentTypeIn(AppointmentStatus status, List<AppointmentType> appointmentTypes);
 
     List<Appointment> findByScheduleIdAndAppointmentDateAndAppointmentTimeAndAppointmentType(UUID scheduleId, LocalDate date, LocalTime time, AppointmentType type);
@@ -31,7 +45,7 @@ public interface AppointmentJpaRepository extends JpaRepository<Appointment, UUI
 
     List<Appointment> findByPatientIdOrderByAppointmentDateDescAppointmentTimeDesc(UUID patientId);
 
-    List<Appointment> findByFacilityId(UUID facilityId);
+    List<Appointment> findBySedeId(Integer sedeId);
 
     List<Appointment> findByDoctorId(String doctorId);
 
@@ -41,7 +55,7 @@ public interface AppointmentJpaRepository extends JpaRepository<Appointment, UUI
 
     List<Appointment> findByAppointmentDateBetween(LocalDate fromDate, LocalDate toDate);
 
-    List<Appointment> findByFacilityIdAndAppointmentDateBetween(UUID facilityId, LocalDate fromDate, LocalDate toDate);
+    List<Appointment> findBySedeIdAndAppointmentDateBetween(Integer sedeId, LocalDate fromDate, LocalDate toDate);
 
     List<Appointment> findByDoctorIdAndAppointmentDateBetween(String doctorId, LocalDate fromDate, LocalDate toDate);
 
@@ -54,6 +68,8 @@ public interface AppointmentJpaRepository extends JpaRepository<Appointment, UUI
     long countByAppointmentDateBetween(LocalDate fromDate, LocalDate toDate);
 
     long countByAppointmentDateBetweenAndStatus(LocalDate fromDate, LocalDate toDate, AppointmentStatus status);
+
+    long countByBookingChannel(BookingChannel bookingChannel);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT a FROM Appointment a WHERE a.scheduleId = :scheduleId AND a.appointmentDate = :date AND a.appointmentTime = :time AND a.appointmentType = :type")

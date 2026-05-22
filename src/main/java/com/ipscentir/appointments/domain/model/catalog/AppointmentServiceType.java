@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 
 import java.text.Normalizer;
 import java.util.Arrays;
+import java.util.Optional;
 
 import static java.util.Locale.ROOT;
 
@@ -26,14 +27,20 @@ public enum AppointmentServiceType {
     private final String displayName;
 
     public static AppointmentServiceType fromFlexibleValue(String value) {
-        if (value == null || value.isBlank()) {
-            throw new IllegalArgumentException("serviceType is required");
-        }
+        return tryResolve(value)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown serviceType: " + value));
+    }
 
+    /**
+     * Resuelve un valor libre (código, nombre de catálogo o texto de agenda/hc) al ítem del catálogo cerrado.
+     */
+    public static Optional<AppointmentServiceType> tryResolve(String value) {
+        if (value == null || value.isBlank()) {
+            return Optional.empty();
+        }
         return Arrays.stream(values())
                 .filter(type -> type.matches(value))
-                .findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("Unknown serviceType: " + value));
+                .findFirst();
     }
 
     public boolean matches(String value) {

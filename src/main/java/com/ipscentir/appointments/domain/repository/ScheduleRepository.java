@@ -8,11 +8,11 @@ import java.util.UUID;
 
 public interface ScheduleRepository {
 
-    Optional<Schedule> findByDoctorIdAndFacilityIdAndDayOfWeek(String doctorId, UUID facilityId, DayOfWeek dayOfWeek);
+    Optional<Schedule> findByDoctorIdAndSedeIdAndDayOfWeek(String doctorId, Integer sedeId, DayOfWeek dayOfWeek);
 
-    java.util.List<Schedule> findByFacilityIdAndDayOfWeek(UUID facilityId, DayOfWeek dayOfWeek);
+    java.util.List<Schedule> findBySedeIdAndDayOfWeek(Integer sedeId, DayOfWeek dayOfWeek);
 
-    java.util.List<Schedule> findByDoctorIdAndFacilityId(String doctorId, UUID facilityId);
+    java.util.List<Schedule> findByDoctorIdAndSedeId(String doctorId, Integer sedeId);
 
     Optional<Schedule> findByDoctorIdAndDayOfWeek(String doctorId, DayOfWeek dayOfWeek);
     

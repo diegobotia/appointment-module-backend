@@ -12,6 +12,7 @@ import com.ipscentir.appointments.application.dto.integration.n8n.N8nPatientAvai
 import com.ipscentir.appointments.application.dto.integration.n8n.N8nPatientIdentifyRequest;
 import com.ipscentir.appointments.application.dto.integration.n8n.N8nPatientIdentifyResponse;
 import com.ipscentir.appointments.application.dto.integration.n8n.N8nPatientRegistrationStatusResponse;
+import com.ipscentir.appointments.application.dto.integration.n8n.N8nRescheduleAppointmentRequest;
 import com.ipscentir.appointments.application.service.N8nPatientIntegrationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -23,6 +24,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -43,7 +45,11 @@ public class N8nPatientIntegrationController {
     @GetMapping("/registration-status")
     @Operation(summary = "Verificar si el paciente ya se registró y obtener URL del formulario")
     public ResponseEntity<N8nPatientRegistrationStatusResponse> registrationStatus(
-            @RequestParam @NotBlank String codTipoIdentificacion,
+            @RequestParam @NotBlank
+            @io.swagger.v3.oas.annotations.Parameter(
+                    description = "Descripción del tipo de documento (ej. Cédula de ciudadanía), código DIAN o alias CC"
+            )
+            String codTipoIdentificacion,
             @RequestParam @NotBlank String numIdentificacion
     ) {
         return ResponseEntity.ok(n8nPatientIntegrationService.getPatientRegistrationStatus(
@@ -72,7 +78,11 @@ public class N8nPatientIntegrationController {
     @GetMapping("/appointments")
     @Operation(summary = "Listar citas de un paciente por documento")
     public ResponseEntity<N8nPatientAppointmentsResponse> listAppointmentsByDocument(
-            @RequestParam @NotBlank String codTipoIdentificacion,
+            @RequestParam @NotBlank
+            @io.swagger.v3.oas.annotations.Parameter(
+                    description = "Descripción del tipo de documento (ej. Cédula de ciudadanía), código DIAN o alias CC"
+            )
+            String codTipoIdentificacion,
             @RequestParam @NotBlank String numIdentificacion
     ) {
         return ResponseEntity.ok(n8nPatientIntegrationService.listAppointmentsByDocument(
@@ -91,6 +101,15 @@ public class N8nPatientIntegrationController {
     @Operation(summary = "Create appointment from n8n chat flow")
     public ResponseEntity<N8nPatientAppointmentResponse> createAppointment(@Valid @RequestBody N8nPatientAppointmentRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(n8nPatientIntegrationService.createAppointment(request));
+    }
+
+    @PatchMapping("/appointments/{appointmentId}/reschedule")
+    @Operation(summary = "Reprogramar cita desde flujo n8n")
+    public ResponseEntity<N8nPatientAppointmentResponse> rescheduleAppointment(
+            @PathVariable UUID appointmentId,
+            @Valid @RequestBody N8nRescheduleAppointmentRequest request
+    ) {
+        return ResponseEntity.ok(n8nPatientIntegrationService.rescheduleAppointment(appointmentId, request));
     }
 
     @PostMapping("/appointments/{appointmentId}/cancel")

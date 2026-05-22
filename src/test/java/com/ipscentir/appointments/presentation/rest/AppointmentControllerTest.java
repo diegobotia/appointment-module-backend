@@ -1,5 +1,7 @@
 package com.ipscentir.appointments.presentation.rest;
 
+import com.ipscentir.appointments.domain.model.facility.FacilityMasterData;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.ipscentir.appointments.application.dto.AppointmentDTO;
@@ -7,6 +9,7 @@ import com.ipscentir.appointments.application.dto.CreateAppointmentCommand;
 import com.ipscentir.appointments.application.service.AppointmentOperationsService;
 import com.ipscentir.appointments.domain.model.appointment.AppointmentStatus;
 import com.ipscentir.appointments.domain.model.appointment.AppointmentType;
+import com.ipscentir.appointments.domain.model.appointment.BookingChannel;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -53,16 +56,16 @@ class AppointmentControllerTest {
     void testBookAppointment_Success() throws Exception {
         String doctorId = UUID.randomUUID().toString();
         UUID patientId = UUID.randomUUID();
-        UUID facilityId = UUID.randomUUID();
+        Integer sedeId = FacilityMasterData.SEDE_ID_BELEN;
         UUID scheduleId = UUID.randomUUID();
 
         CreateAppointmentCommand command = new CreateAppointmentCommand(
-                patientId, doctorId, facilityId, null, scheduleId, LocalDate.now().plusDays(2), LocalTime.of(10, 0), "PRESENCIAL", "Routine Visit"
+                patientId, doctorId, sedeId, null, scheduleId, LocalDate.now().plusDays(2), LocalTime.of(10, 0), "PRESENCIAL", "Routine Visit", null, null
         );
 
         AppointmentDTO dto = new AppointmentDTO(
-                UUID.randomUUID(), patientId, doctorId, facilityId, null, scheduleId, LocalDate.now().plusDays(2), LocalTime.of(10, 0),
-                30, AppointmentType.PRESENCIAL, AppointmentStatus.SCHEDULED, "Routine Visit", null, LocalDateTime.now(), null
+                UUID.randomUUID(), patientId, doctorId, sedeId, null, scheduleId, LocalDate.now().plusDays(2), LocalTime.of(10, 0),
+                30, AppointmentType.PRESENCIAL, AppointmentStatus.SCHEDULED, BookingChannel.STAFF, null, "Routine Visit", null, LocalDateTime.now(), null
         );
 
         Mockito.when(appointmentOperationsService.createAppointment(any(CreateAppointmentCommand.class))).thenReturn(dto);
@@ -81,7 +84,7 @@ class AppointmentControllerTest {
     void testBookAppointment_FailsDueToValidationErrors() throws Exception {
         // Missing patientId and doctorId to trigger 400 Bad Request
         CreateAppointmentCommand command = new CreateAppointmentCommand(
-                null, null, null, null, null, LocalDate.now().plusDays(2), LocalTime.of(10, 0), "PRESENCIAL", "Routine Visit"
+                null, null, null, null, null, LocalDate.now().plusDays(2), LocalTime.of(10, 0), "PRESENCIAL", "Routine Visit", null, null
         );
 
         mockMvc.perform(post("/api/v1/appointments")

@@ -1,5 +1,7 @@
 package com.ipscentir.appointments.domain.model.schedule;
 
+import com.ipscentir.appointments.domain.model.facility.FacilityMasterData;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -22,7 +24,7 @@ class ScheduleTest {
         schedule = Schedule.builder()
                 .id(UUID.randomUUID())
                 .doctorId(UUID.randomUUID().toString())
-                .facilityId(UUID.randomUUID())
+                .sedeId(FacilityMasterData.SEDE_ID_BELEN)
                 .dayOfWeek(DayOfWeek.MONDAY)
                 .startTime(LocalTime.of(8, 0))
                 .endTime(LocalTime.of(12, 0))

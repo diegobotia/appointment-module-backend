@@ -3,11 +3,12 @@ package com.ipscentir.appointments.application.service;
 import com.ipscentir.appointments.application.dto.AppointmentDTO;
 import com.ipscentir.appointments.application.dto.CreateAppointmentCommand;
 import com.ipscentir.appointments.application.mapper.AppointmentMapper;
-import com.ipscentir.appointments.application.security.FacilityAuthorizationService;
+import com.ipscentir.appointments.application.security.SedeAuthorizationService;
 import com.ipscentir.appointments.domain.model.appointment.Appointment;
 import com.ipscentir.appointments.domain.model.appointment.AppointmentType;
 import com.ipscentir.appointments.domain.service.AppointmentBookingRequest;
 import com.ipscentir.appointments.domain.service.AppointmentBookingService;
+import com.ipscentir.appointments.infrastructure.observability.AppointmentsMetrics;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -17,29 +18,33 @@ public class AppointmentApplicationService {
 
     private final AppointmentBookingService appointmentBookingService;
     private final AppointmentMapper appointmentMapper;
-    private final FacilityAuthorizationService facilityAuthorizationService;
+    private final SedeAuthorizationService sedeAuthorizationService;
+    private final AppointmentsMetrics appointmentsMetrics;
 
     public AppointmentDTO createAppointment(CreateAppointmentCommand command) {
-        facilityAuthorizationService.assertCurrentUserCanAccessFacility(command.facilityId());
+        sedeAuthorizationService.assertCurrentUserCanAccessSede(command.sedeId());
         
         // El Application Service recibe el Input DTO (Command), extrae los parámetros,
         // maneja la transacción orquestando el Core Domain (Booking Service),
         // y retorna un Output DTO.
         
         Appointment appointment = appointmentBookingService.bookAppointment(
-            new AppointmentBookingRequest(
-                command.patientId(),
-                command.doctorId(),
-                command.secondaryDoctorId(),
-                command.scheduleId(),
-                command.facilityId(),
-                command.appointmentDate(),
-                command.appointmentTime(),
-                AppointmentType.valueOf(command.appointmentType().toUpperCase()),
-                command.reason()
-            )
+                new AppointmentBookingRequest(
+                        command.patientId(),
+                        command.doctorId(),
+                        command.secondaryDoctorId(),
+                        command.scheduleId(),
+                        command.sedeId(),
+                        command.appointmentDate(),
+                        command.appointmentTime(),
+                        AppointmentType.valueOf(command.appointmentType().toUpperCase()),
+                        command.reason(),
+                        command.resolvedChannel(),
+                        command.n8nConversationId()
+                )
         );
 
+        appointmentsMetrics.recordAppointmentCreated(appointment.getBookingChannel());
         return appointmentMapper.toDto(appointment);
     }
 }
