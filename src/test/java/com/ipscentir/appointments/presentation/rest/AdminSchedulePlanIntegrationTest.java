@@ -1,5 +1,7 @@
 package com.ipscentir.appointments.presentation.rest;
 
+import com.ipscentir.appointments.domain.model.facility.FacilityMasterData;
+
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ipscentir.appointments.application.dto.schedule.CreateSchedulePlanBlockRequest;
@@ -7,7 +9,7 @@ import com.ipscentir.appointments.application.dto.schedule.CreateSchedulePlanReq
 import com.ipscentir.appointments.application.dto.schedule.CreateSchedulePlanSlotRequest;
 import com.ipscentir.appointments.application.dto.schedule.PublishSchedulePlanRequest;
 import com.ipscentir.appointments.domain.model.specialist.Specialist;
-import com.ipscentir.appointments.infrastructure.persistence.jpa.FacilityJpaRepository;
+import com.ipscentir.appointments.infrastructure.persistence.jpa.SedeJpaRepository;
 import com.ipscentir.appointments.infrastructure.persistence.jpa.SchedulePlanJpaRepository;
 import com.ipscentir.appointments.infrastructure.persistence.jpa.SpecialistJpaRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -27,6 +29,7 @@ import java.time.LocalTime;
 import java.util.List;
 import java.util.UUID;
 
+import static org.hamcrest.Matchers.containsString;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -50,10 +53,10 @@ class AdminSchedulePlanIntegrationTest {
     private SchedulePlanJpaRepository schedulePlanJpaRepository;
 
     @Autowired
-    private FacilityJpaRepository facilityJpaRepository;
+    private SedeJpaRepository sedeJpaRepository;
 
     private String specialistId;
-    private UUID facilityId;
+    private Integer sedeId;
 
     @BeforeEach
     void setUp() {
@@ -65,11 +68,11 @@ class AdminSchedulePlanIntegrationTest {
                 .numeroMedico("12345")
                 .firstName("Laura")
                 .lastName("Quintero")
-                .active(true)
+                
                 .build());
 
         specialistId = specialist.getId();
-        facilityId = facilityJpaRepository.findByCode("SEDE_NORTE").orElseThrow().getId();
+        sedeId = FacilityMasterData.SEDE_ID_BELEN;
     }
 
     @Test
@@ -100,7 +103,7 @@ class AdminSchedulePlanIntegrationTest {
 
         mockMvc.perform(post("/api/v1/admin/schedule-plans/{planId}/publish", planV1Id)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(new PublishSchedulePlanRequest(facilityId))))
+                        .content(objectMapper.writeValueAsString(new PublishSchedulePlanRequest(sedeId))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.versionNumber").value(1))
                 .andExpect(jsonPath("$.published").value(true))
@@ -110,7 +113,7 @@ class AdminSchedulePlanIntegrationTest {
 
         mockMvc.perform(post("/api/v1/admin/schedule-plans/{planId}/publish", planV2Id)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(new PublishSchedulePlanRequest(facilityId))))
+                        .content(objectMapper.writeValueAsString(new PublishSchedulePlanRequest(sedeId))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.versionNumber").value(2))
                 .andExpect(jsonPath("$.activeVersion").value(true));
@@ -128,6 +131,114 @@ class AdminSchedulePlanIntegrationTest {
                 .andExpect(jsonPath("$[0].versionNumber").value(2))
                 .andExpect(jsonPath("$[0].activeVersion").value(true))
                 .andExpect(jsonPath("$[1].versionNumber").value(1));
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMINISTRACION")
+    void shouldRejectSlotBeforeFacilityOpening() throws Exception {
+        CreateSchedulePlanRequest request = new CreateSchedulePlanRequest(
+                specialistId,
+                2026,
+                2,
+                List.of(new CreateSchedulePlanSlotRequest(
+                        DayOfWeek.MONDAY,
+                        LocalTime.of(6, 0),
+                        LocalTime.of(10, 0),
+                        30,
+                        1
+                ))
+        );
+
+        mockMvc.perform(post("/api/v1/admin/schedule-plans")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.allowedWindow.openTime").value("07:00:00"))
+                .andExpect(jsonPath("$.message", containsString("06:00")));
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMINISTRACION")
+    void shouldRejectSaturdayAfternoonSlot() throws Exception {
+        CreateSchedulePlanRequest request = new CreateSchedulePlanRequest(
+                specialistId,
+                2026,
+                2,
+                List.of(new CreateSchedulePlanSlotRequest(
+                        DayOfWeek.SATURDAY,
+                        LocalTime.of(13, 0),
+                        LocalTime.of(17, 0),
+                        30,
+                        1
+                ))
+        );
+
+        mockMvc.perform(post("/api/v1/admin/schedule-plans")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.allowedWindow.closeTime").value("12:00:00"))
+                .andExpect(jsonPath("$.message", containsString("sábado")));
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMINISTRACION")
+    void shouldAcceptValidSlotAndPublish() throws Exception {
+        CreateSchedulePlanRequest request = new CreateSchedulePlanRequest(
+                specialistId,
+                2026,
+                2,
+                List.of(new CreateSchedulePlanSlotRequest(
+                        DayOfWeek.TUESDAY,
+                        LocalTime.of(9, 0),
+                        LocalTime.of(17, 0),
+                        30,
+                        1
+                ))
+        );
+
+        UUID planId = createPlanAndExtractId(request);
+
+        mockMvc.perform(post("/api/v1/admin/schedule-plans/{planId}/publish", planId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new PublishSchedulePlanRequest(sedeId))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.published").value(true));
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMINISTRACION")
+    void shouldRejectPublishWhenSlotViolatesFacilityHours() throws Exception {
+        CreateSchedulePlanRequest request = new CreateSchedulePlanRequest(
+                specialistId,
+                2026,
+                3,
+                List.of(
+                        new CreateSchedulePlanSlotRequest(DayOfWeek.MONDAY, LocalTime.of(8, 0), LocalTime.of(12, 0), 30, 1),
+                        new CreateSchedulePlanSlotRequest(DayOfWeek.SATURDAY, LocalTime.of(8, 0), LocalTime.of(12, 0), 30, 1)
+                )
+        );
+
+        UUID planId = createPlanAndExtractId(request);
+
+        mockMvc.perform(post("/api/v1/admin/schedule-plans/{planId}/blocks", planId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new CreateSchedulePlanBlockRequest(
+                                LocalDate.of(2026, 7, 11),
+                                LocalDate.of(2026, 7, 11),
+                                LocalTime.of(13, 0),
+                                LocalTime.of(15, 0),
+                                "Bloqueo sábado tarde",
+                                null
+                        ))))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post("/api/v1/admin/schedule-plans/{planId}/publish", planId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new PublishSchedulePlanRequest(sedeId))))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.sedeId").value(sedeId.toString()))
+                .andExpect(jsonPath("$.allowedWindow").exists());
     }
 
     @Test

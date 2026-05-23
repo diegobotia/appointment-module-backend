@@ -1,5 +1,7 @@
 package com.ipscentir.appointments.domain.model.appointment;
 
+import com.ipscentir.appointments.domain.model.facility.FacilityMasterData;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -17,14 +19,14 @@ class AppointmentTest {
     private Appointment appointment;
     private UUID patientId;
     private String doctorId;
-    private UUID facilityId;
+    private Integer sedeId;
     private UUID scheduleId;
 
     @BeforeEach
     void setUp() {
         patientId = UUID.randomUUID();
         doctorId = java.util.UUID.randomUUID().toString();
-        facilityId = UUID.randomUUID();
+        sedeId = FacilityMasterData.SEDE_ID_BELEN;
         scheduleId = UUID.randomUUID();
 
         appointment = Appointment.scheduleNew(
@@ -33,7 +35,7 @@ class AppointmentTest {
                 null,
                 new AppointmentScheduleData(
                         scheduleId,
-                        facilityId,
+                        sedeId,
                         LocalDate.now().plusDays(2),
                         LocalTime.of(10, 0),
                         30,
@@ -112,10 +114,10 @@ class AppointmentTest {
         appointment.confirm();
         LocalDate newDate = LocalDate.now().plusDays(5);
         UUID newSchedule = UUID.randomUUID();
-        UUID newFacility = UUID.randomUUID();
+        Integer newSedeId = FacilityMasterData.SEDE_ID_BELEN;
         String newDoctor = UUID.randomUUID().toString();
 
-        appointment.reschedule(newDate, LocalTime.of(11, 0), newSchedule, newDoctor, newFacility);
+        appointment.reschedule(newDate, LocalTime.of(11, 0), newSchedule, newDoctor, newSedeId, BookingChannel.STAFF, null);
 
         assertEquals(newDate, appointment.getAppointmentDate());
         assertEquals(LocalTime.of(11, 0), appointment.getAppointmentTime());
@@ -127,7 +129,7 @@ class AppointmentTest {
         Appointment pastAppointment = Appointment.builder()
                 .patientId(patientId)
             .doctorId(doctorId.toString())
-                .facilityId(facilityId)
+                .sedeId(sedeId)
                 .appointmentDate(LocalDate.now().minusDays(1))
                 .appointmentTime(LocalTime.of(8, 0))
                 .status(AppointmentStatus.SCHEDULED)

@@ -7,7 +7,7 @@ import com.ipscentir.appointments.application.dto.ScheduleDTO;
 import com.ipscentir.appointments.application.dto.availability.DoctorAvailabilityResponse;
 import com.ipscentir.appointments.application.dto.schedule.MyScheduleResponse;
 import com.ipscentir.appointments.application.mapper.ScheduleMapper;
-import com.ipscentir.appointments.application.security.FacilityAuthorizationService;
+import com.ipscentir.appointments.application.security.SedeAuthorizationService;
 import com.ipscentir.appointments.application.security.StaffSecurityHelper;
 import com.ipscentir.appointments.domain.model.schedule.AvailableSlot;
 import com.ipscentir.appointments.domain.model.schedule.Schedule;
@@ -30,63 +30,63 @@ public class ScheduleApplicationService {
 
     private final ScheduleRepository scheduleRepository;
     private final ScheduleMapper scheduleMapper;
-    private final FacilityAuthorizationService facilityAuthorizationService;
+    private final SedeAuthorizationService sedeAuthorizationService;
     private final AvailabilityService availabilityService;
     private final DoctorApplicationService doctorApplicationService;
     private final AppointmentOperationsService appointmentOperationsService;
     private final StaffSecurityHelper staffSecurityHelper;
 
     @Transactional(readOnly = true)
-    public ScheduleDTO getScheduleForDoctorAndFacility(String doctorId, UUID facilityId, DayOfWeek dayOfWeek) {
+    public ScheduleDTO getScheduleForDoctorAndFacility(String doctorId, Integer sedeId, DayOfWeek dayOfWeek) {
         assertCanViewDoctorSchedule(doctorId);
-        facilityAuthorizationService.assertCurrentUserCanAccessFacility(facilityId);
-        Schedule schedule = scheduleRepository.findByDoctorIdAndFacilityIdAndDayOfWeek(doctorId, facilityId, dayOfWeek)
+        sedeAuthorizationService.assertCurrentUserCanAccessSede(sedeId);
+        Schedule schedule = scheduleRepository.findByDoctorIdAndSedeIdAndDayOfWeek(doctorId, sedeId, dayOfWeek)
                 .orElseThrow(() -> new IllegalArgumentException("No schedule found for this doctor, facility, and specified day"));
 
         return scheduleMapper.toDto(schedule);
     }
 
     @Transactional(readOnly = true)
-    public List<ScheduleDTO> listScheduleTemplatesForDoctor(String doctorId, UUID facilityId) {
+    public List<ScheduleDTO> listScheduleTemplatesForDoctor(String doctorId, Integer sedeId) {
         assertCanViewDoctorSchedule(doctorId);
-        facilityAuthorizationService.assertCurrentUserCanAccessFacility(facilityId);
-        return scheduleRepository.findByDoctorIdAndFacilityId(doctorId, facilityId).stream()
+        sedeAuthorizationService.assertCurrentUserCanAccessSede(sedeId);
+        return scheduleRepository.findByDoctorIdAndSedeId(doctorId, sedeId).stream()
                 .map(scheduleMapper::toDto)
                 .toList();
     }
 
     @Transactional(readOnly = true)
-    public List<AvailableSlotDTO> getAvailabilityForDate(String doctorId, UUID facilityId, LocalDate date) {
+    public List<AvailableSlotDTO> getAvailabilityForDate(String doctorId, Integer sedeId, LocalDate date) {
         assertCanViewDoctorSchedule(doctorId);
-        facilityAuthorizationService.assertCurrentUserCanAccessFacility(facilityId);
-        List<AvailableSlot> slots = availabilityService.getAvailableSlots(doctorId, facilityId, date);
+        sedeAuthorizationService.assertCurrentUserCanAccessSede(sedeId);
+        List<AvailableSlot> slots = availabilityService.getAvailableSlots(doctorId, sedeId, date);
         return slots.stream().map(scheduleMapper::toDto).toList();
     }
 
     @Transactional(readOnly = true)
     public DoctorAvailabilityResponse getAvailabilityInRange(
             String doctorId,
-            UUID facilityId,
+            Integer sedeId,
             LocalDate fromDate,
             LocalDate toDate
     ) {
-        return doctorApplicationService.getDoctorAvailability(doctorId, facilityId, fromDate, toDate);
+        return doctorApplicationService.getDoctorAvailability(doctorId, sedeId, fromDate, toDate);
     }
 
     @Transactional(readOnly = true)
-    public MyScheduleResponse getMySchedule(UUID facilityId, LocalDate fromDate, LocalDate toDate) {
+    public MyScheduleResponse getMySchedule(Integer sedeId, LocalDate fromDate, LocalDate toDate) {
         if (!staffSecurityHelper.hasRole(RoleName.MEDICO)) {
             throw new AccessDeniedException("Solo médicos pueden consultar /me/schedule");
         }
         String doctorId = staffSecurityHelper.requireDoctorIdForMedico();
-        facilityAuthorizationService.assertCurrentUserCanAccessFacility(facilityId);
+        sedeAuthorizationService.assertCurrentUserCanAccessSede(sedeId);
 
         LocalDate from = fromDate != null ? fromDate : LocalDate.now();
         LocalDate to = toDate != null ? toDate : from.plusDays(6);
 
-        List<ScheduleDTO> templates = listScheduleTemplatesForDoctor(doctorId, facilityId);
+        List<ScheduleDTO> templates = listScheduleTemplatesForDoctor(doctorId, sedeId);
         List<AppointmentDTO> appointments = appointmentOperationsService.searchAppointments(
-                new AppointmentSearchCriteria(facilityId, doctorId, null, null, from, to)
+                new AppointmentSearchCriteria(sedeId, doctorId, null, null, null, from, to)
         );
 
         return new MyScheduleResponse(doctorId, from, to, templates, appointments);

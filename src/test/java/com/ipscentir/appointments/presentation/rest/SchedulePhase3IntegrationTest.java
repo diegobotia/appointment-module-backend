@@ -1,8 +1,10 @@
 package com.ipscentir.appointments.presentation.rest;
 
+import com.ipscentir.appointments.domain.model.facility.FacilityMasterData;
+
 import com.ipscentir.appointments.domain.model.schedule.Schedule;
 import com.ipscentir.appointments.domain.model.specialist.Specialist;
-import com.ipscentir.appointments.infrastructure.persistence.jpa.FacilityJpaRepository;
+import com.ipscentir.appointments.infrastructure.persistence.jpa.SedeJpaRepository;
 import com.ipscentir.appointments.infrastructure.persistence.jpa.ScheduleJpaRepository;
 import com.ipscentir.appointments.infrastructure.persistence.jpa.SpecialistJpaRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -38,10 +40,10 @@ class SchedulePhase3IntegrationTest {
     private ScheduleJpaRepository scheduleJpaRepository;
 
     @Autowired
-    private FacilityJpaRepository facilityJpaRepository;
+    private SedeJpaRepository sedeJpaRepository;
 
     private String medicoProfileId;
-    private UUID facilityId;
+    private Integer sedeId;
     private LocalDate monday;
 
     @BeforeEach
@@ -57,10 +59,10 @@ class SchedulePhase3IntegrationTest {
                 .firstName("Ana")
                 .lastName("Rios")
                 .specialty("Medicina general")
-                .active(true)
+                
                 .build());
 
-        facilityId = facilityJpaRepository.findByCode("SEDE_NORTE").orElseThrow().getId();
+        sedeId = FacilityMasterData.SEDE_ID_BELEN;
         monday = LocalDate.now().plusDays(1);
         while (monday.getDayOfWeek() != java.time.DayOfWeek.MONDAY) {
             monday = monday.plusDays(1);
@@ -68,7 +70,7 @@ class SchedulePhase3IntegrationTest {
 
         scheduleJpaRepository.save(Schedule.builder()
                 .doctorId(medicoProfileId)
-                .facilityId(facilityId)
+                .sedeId(sedeId)
                 .specialty("Medicina general")
                 .dayOfWeek(java.time.DayOfWeek.MONDAY)
                 .startTime(LocalTime.of(8, 0))
@@ -83,7 +85,7 @@ class SchedulePhase3IntegrationTest {
     @WithMockUser(roles = "ADMISIONES")
     void shouldReturnDoctorAvailabilityInRange() throws Exception {
         mockMvc.perform(get("/api/v1/doctors/{doctorId}/availability", medicoProfileId)
-                        .param("facilityId", facilityId.toString())
+                        .param("sedeId", sedeId.toString())
                         .param("from", monday.toString())
                         .param("to", monday.toString()))
                 .andExpect(status().isOk())
@@ -96,7 +98,7 @@ class SchedulePhase3IntegrationTest {
     void medicoCannotViewOtherDoctorAvailability() throws Exception {
         mockMvc.perform(get("/api/v1/doctors/{doctorId}/availability", medicoProfileId)
                         .with(user(UUID.randomUUID().toString()).roles("MEDICO"))
-                        .param("facilityId", facilityId.toString())
+                        .param("sedeId", sedeId.toString())
                         .param("from", monday.toString())
                         .param("to", monday.toString()))
                 .andExpect(status().isForbidden());
@@ -106,7 +108,7 @@ class SchedulePhase3IntegrationTest {
     void medicoCanViewOwnAvailabilityAndMeSchedule() throws Exception {
         mockMvc.perform(get("/api/v1/doctors/{doctorId}/availability", medicoProfileId)
                         .with(user(medicoProfileId).roles("MEDICO"))
-                        .param("facilityId", facilityId.toString())
+                        .param("sedeId", sedeId.toString())
                         .param("from", monday.toString())
                         .param("to", monday.toString()))
                 .andExpect(status().isOk())
@@ -114,7 +116,7 @@ class SchedulePhase3IntegrationTest {
 
         mockMvc.perform(get("/api/v1/me/schedule")
                         .with(user(medicoProfileId).roles("MEDICO"))
-                        .param("facilityId", facilityId.toString())
+                        .param("sedeId", sedeId.toString())
                         .param("from", monday.toString())
                         .param("to", monday.toString()))
                 .andExpect(status().isOk())

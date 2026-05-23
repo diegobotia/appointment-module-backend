@@ -1,10 +1,12 @@
 package com.ipscentir.appointments.application.service;
 
 import com.ipscentir.appointments.application.dto.form.CreatePatientRegistrationRequest;
+import com.ipscentir.appointments.application.dto.form.DocumentTypeOptionDTO;
 import com.ipscentir.appointments.application.dto.form.PatientRegistrationFormConfigResponse;
 import com.ipscentir.appointments.application.dto.form.PatientRegistrationResponse;
 import com.ipscentir.appointments.application.dto.form.PatientRegistrationStatusResponse;
 import com.ipscentir.appointments.application.exception.PatientAlreadyExistsException;
+import com.ipscentir.appointments.domain.model.catalog.ColombianIdentificationType;
 import com.ipscentir.appointments.infrastructure.persistence.jpa.ContactoRepository;
 import com.ipscentir.appointments.infrastructure.persistence.jpa.DireccionRepository;
 import com.ipscentir.appointments.infrastructure.persistence.jpa.PacienteRepository;
@@ -18,6 +20,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 
@@ -29,23 +32,28 @@ public class PatientRegistrationService {
     private final ContactoRepository contactoRepository;
     private final DireccionRepository direccionRepository;
     private final PacienteRepository pacienteRepository;
+    private final TipoIdentificacionResolver tipoIdentificacionResolver;
 
     @Value("${patient-registration.form-base-url:https://citas.ipscentir.com/registro}")
     private String formBaseUrl;
 
     public PatientRegistrationFormConfigResponse getFormConfig() {
+        List<DocumentTypeOptionDTO> documentTypes = Arrays.stream(ColombianIdentificationType.values())
+                .map(type -> new DocumentTypeOptionDTO(type.getCodigo(), type.getDescripcion()))
+                .toList();
         return new PatientRegistrationFormConfigResponse(
                 formBaseUrl,
                 "/api/v1/forms/patients",
                 "/api/v1/forms/patients/status",
-                List.of("CC", "TI", "CE", "PA", "RC"),
+                documentTypes,
                 formBaseUrl + "?codTipoIdentificacion={codTipoIdentificacion}&numIdentificacion={numIdentificacion}"
         );
     }
 
     public PatientRegistrationStatusResponse getRegistrationStatus(String codTipoIdentificacion, String numIdentificacion) {
-        return pacienteRepository
-                .findByCodTipoIdentificacionAndNumIdentificacion(codTipoIdentificacion, numIdentificacion)
+        String codigo = tipoIdentificacionResolver.resolveCodigo(codTipoIdentificacion);
+        return tipoIdentificacionResolver
+                .findPaciente(codTipoIdentificacion, numIdentificacion)
                 .map(paciente -> new PatientRegistrationStatusResponse(
                         true,
                         paciente.getId(),
@@ -54,17 +62,17 @@ public class PatientRegistrationService {
                         paciente.getNombres(),
                         paciente.getApellidos()
                 ))
-                .orElseGet(() -> PatientRegistrationStatusResponse.notRegistered(codTipoIdentificacion, numIdentificacion));
+                .orElseGet(() -> PatientRegistrationStatusResponse.notRegistered(codigo, numIdentificacion));
     }
 
     @Transactional
     public PatientRegistrationResponse registerPatient(CreatePatientRegistrationRequest request) {
-        if (pacienteRepository.existsByCodTipoIdentificacionAndNumIdentificacion(
-                request.getCodTipoIdentificacion(),
-                request.getNumIdentificacion()
-        )) {
+        String codigo = tipoIdentificacionResolver.canonicalCodigoForStorage(request.getCodTipoIdentificacion());
+        request.setCodTipoIdentificacion(codigo);
+
+        if (tipoIdentificacionResolver.existsPaciente(request.getCodTipoIdentificacion(), request.getNumIdentificacion())) {
             throw new PatientAlreadyExistsException(
-                    request.getCodTipoIdentificacion(),
+                    codigo,
                     request.getNumIdentificacion()
             );
         }

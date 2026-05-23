@@ -4,6 +4,7 @@ import com.ipscentir.appointments.domain.model.schedule.Schedule;
 import com.ipscentir.appointments.domain.model.schedule.SchedulePlan;
 import com.ipscentir.appointments.domain.model.schedule.SchedulePlanSlot;
 import com.ipscentir.appointments.domain.repository.ScheduleRepository;
+import com.ipscentir.appointments.domain.service.FacilityOperatingHoursService;
 import com.ipscentir.appointments.infrastructure.persistence.jpa.SpecialistJpaRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -17,9 +18,10 @@ public class SchedulePlanMaterializationService {
 
     private final ScheduleRepository scheduleRepository;
     private final SpecialistJpaRepository specialistJpaRepository;
+    private final FacilityOperatingHoursService facilityOperatingHoursService;
 
     @Transactional
-    public void materializePublishedPlan(SchedulePlan plan, UUID facilityId) {
+    public void materializePublishedPlan(SchedulePlan plan, Integer sedeId) {
         var specialist = specialistJpaRepository.findById(plan.getSpecialistId())
                 .orElseThrow(() -> new IllegalArgumentException("Specialist not found"));
 
@@ -30,11 +32,18 @@ public class SchedulePlanMaterializationService {
                 continue;
             }
 
+            facilityOperatingHoursService.assertSlotWithinSedeHours(
+                    sedeId,
+                    slot.getDayOfWeek(),
+                    slot.getStartTime(),
+                    slot.getEndTime()
+            );
+
             Schedule schedule = scheduleRepository
-                    .findByDoctorIdAndFacilityIdAndDayOfWeek(plan.getSpecialistId(), facilityId, slot.getDayOfWeek())
+                    .findByDoctorIdAndSedeIdAndDayOfWeek(plan.getSpecialistId(), sedeId, slot.getDayOfWeek())
                     .orElseGet(() -> Schedule.builder()
                             .doctorId(plan.getSpecialistId())
-                            .facilityId(facilityId)
+                            .sedeId(sedeId)
                             .specialty(specialty)
                             .dayOfWeek(slot.getDayOfWeek())
                             .startTime(slot.getStartTime())

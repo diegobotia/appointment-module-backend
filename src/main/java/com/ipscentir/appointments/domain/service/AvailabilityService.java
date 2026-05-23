@@ -2,6 +2,7 @@ package com.ipscentir.appointments.domain.service;
 
 import com.ipscentir.appointments.domain.model.catalog.AppointmentServiceType;
 import com.ipscentir.appointments.domain.model.appointment.Appointment;
+import com.ipscentir.appointments.domain.model.appointment.AppointmentType;
 import com.ipscentir.appointments.domain.model.schedule.AvailableSlot;
 import com.ipscentir.appointments.domain.model.schedule.AvailableSlotDetail;
 import com.ipscentir.appointments.domain.model.schedule.Schedule;
@@ -32,10 +33,12 @@ public class AvailabilityService {
 
     private final ScheduleRepository scheduleRepository;
     private final AppointmentRepository appointmentRepository;
+    private final ResourceCapacityService resourceCapacityService;
+    private final FacilityOperatingHoursService facilityOperatingHoursService;
 
     public List<AvailableSlotDetail> getNearestAvailableSlotsByServiceType(
             AppointmentServiceType serviceType,
-            UUID facilityId,
+            Integer sedeId,
             LocalDate fromDate,
             int limit
     ) {
@@ -48,9 +51,12 @@ public class AvailabilityService {
 
         for (int offset = 0; offset < DEFAULT_SEARCH_DAYS && nearestSlots.size() < limit; offset++) {
             LocalDate currentDate = startDate.plusDays(offset);
+            if (facilityOperatingHoursService.isHoliday(currentDate)) {
+                continue;
+            }
             DayOfWeek dayOfWeek = currentDate.getDayOfWeek();
 
-            List<Schedule> schedules = scheduleRepository.findByFacilityIdAndDayOfWeek(facilityId, dayOfWeek);
+            List<Schedule> schedules = scheduleRepository.findBySedeIdAndDayOfWeek(sedeId, dayOfWeek);
             for (Schedule schedule : schedules) {
                 if (!matchesServiceType(schedule.getSpecialty(), serviceType)) {
                     continue;
@@ -69,16 +75,29 @@ public class AvailabilityService {
                         continue;
                     }
 
+                    boolean physicalCapacity = resourceCapacityService.hasPhysicalCapacityForService(
+                            sedeId,
+                            serviceType,
+                            schedule.getId(),
+                            currentDate,
+                            time,
+                            schedule.getSlotDurationMinutes()
+                    );
+                    if (!physicalCapacity) {
+                        continue;
+                    }
+
                     nearestSlots.add(new AvailableSlotDetail(
                             schedule.getId(),
                             schedule.getDoctorId(),
-                            schedule.getFacilityId(),
+                            schedule.getSedeId(),
                             serviceType,
                             schedule.getSpecialty(),
                             currentDate,
                             time,
                             schedule.getSlotDurationMinutes(),
-                            availableSeats
+                            availableSeats,
+                            true
                     ));
                 }
             }
@@ -93,11 +112,15 @@ public class AvailabilityService {
                 .toList();
     }
 
-    public List<AvailableSlot> getAvailableSlots(String doctorId, UUID facilityId, LocalDate date) {
+    public List<AvailableSlot> getAvailableSlots(String doctorId, Integer sedeId, LocalDate date) {
+
+        if (facilityOperatingHoursService.isHoliday(date)) {
+            return List.of();
+        }
 
         // 1. Obtener agenda del doctor para sede y día de la semana.
         Schedule schedule = scheduleRepository
-            .findByDoctorIdAndFacilityIdAndDayOfWeek(doctorId, facilityId, date.getDayOfWeek())
+            .findByDoctorIdAndSedeIdAndDayOfWeek(doctorId, sedeId, date.getDayOfWeek())
             .orElseThrow(() -> new IllegalArgumentException(
                 "No hay agenda configurada para este medico en la sede solicitada para " + date.getDayOfWeek()
             ));
@@ -130,7 +153,9 @@ public class AvailabilityService {
     }
 
     public List<AvailableSlot> getAvailableSlots(String doctorId, LocalDate date) {
-        
+        if (facilityOperatingHoursService.isHoliday(date)) {
+            return List.of();
+        }
         // 1. Obtener agenda del doctor para ese día de la semana
         Schedule schedule = scheduleRepository
             .findByDoctorIdAndDayOfWeek(doctorId, date.getDayOfWeek())
@@ -176,14 +201,58 @@ public class AvailabilityService {
         }
     }
 
-    public boolean isSlotAvailable(String doctorId, UUID facilityId, LocalDate date, LocalTime time) {
+    public boolean isSlotAvailable(String doctorId, Integer sedeId, LocalDate date, LocalTime time) {
+        return isSlotAvailable(doctorId, sedeId, date, time, null, null, 30);
+    }
+
+    /**
+     * Disponibilidad del médico en agenda (cupo por slot), sin validar inventario físico de sede.
+     */
+    public boolean isDoctorSlotAvailable(String doctorId, Integer sedeId, LocalDate date, LocalTime time) {
         try {
-            List<AvailableSlot> availableSlots = getAvailableSlots(doctorId, facilityId, date);
-            return availableSlots.stream()
-                    .anyMatch(slot -> slot.getTime().equals(time));
+            List<AvailableSlot> availableSlots = getAvailableSlots(doctorId, sedeId, date);
+            return availableSlots.stream().anyMatch(slot -> slot.getTime().equals(time));
         } catch (IllegalArgumentException ex) {
             return false;
         }
+    }
+
+    public boolean isSlotAvailable(
+            String doctorId,
+            Integer sedeId,
+            LocalDate date,
+            LocalTime time,
+            AppointmentType appointmentType,
+            UUID scheduleId,
+            int durationMinutes
+    ) {
+        if (!isDoctorSlotAvailable(doctorId, sedeId, date, time)) {
+            return false;
+        }
+        if (appointmentType == null) {
+            return true;
+        }
+        try {
+            UUID effectiveScheduleId = scheduleId != null ? scheduleId : resolveScheduleId(doctorId, sedeId, date);
+            return resourceCapacityService.hasPhysicalCapacity(
+                    sedeId,
+                    appointmentType,
+                    effectiveScheduleId,
+                    date,
+                    time,
+                    durationMinutes,
+                    null
+            );
+        } catch (IllegalArgumentException ex) {
+            return false;
+        }
+    }
+
+    private UUID resolveScheduleId(String doctorId, Integer sedeId, LocalDate date) {
+        return scheduleRepository
+                .findByDoctorIdAndSedeIdAndDayOfWeek(doctorId, sedeId, date.getDayOfWeek())
+                .map(Schedule::getId)
+                .orElse(null);
     }
 
     /**
@@ -191,7 +260,7 @@ public class AvailabilityService {
      */
     public List<AvailableSlotDetail> getAvailableSlotsInRange(
             String doctorId,
-            UUID facilityId,
+            Integer sedeId,
             LocalDate fromDate,
             LocalDate toDate
     ) {
@@ -207,9 +276,12 @@ public class AvailabilityService {
 
         List<AvailableSlotDetail> result = new ArrayList<>();
         for (LocalDate date = fromDate; !date.isAfter(toDate); date = date.plusDays(1)) {
+            if (facilityOperatingHoursService.isHoliday(date)) {
+                continue;
+            }
             try {
                 Schedule schedule = scheduleRepository
-                        .findByDoctorIdAndFacilityIdAndDayOfWeek(doctorId, facilityId, date.getDayOfWeek())
+                        .findByDoctorIdAndSedeIdAndDayOfWeek(doctorId, sedeId, date.getDayOfWeek())
                         .orElse(null);
                 if (schedule == null || !Boolean.TRUE.equals(schedule.getIsActive())) {
                     continue;
@@ -229,7 +301,7 @@ public class AvailabilityService {
                     result.add(new AvailableSlotDetail(
                             schedule.getId(),
                             schedule.getDoctorId(),
-                            schedule.getFacilityId(),
+                            schedule.getSedeId(),
                             null,
                             schedule.getSpecialty(),
                             date,

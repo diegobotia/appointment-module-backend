@@ -57,7 +57,7 @@ public class SupabaseJwtAuthenticationConverter implements Converter<Jwt, Abstra
                         .flatMap(role -> RoleName.fromSupabaseNombre(role.getNombre())))
                 .orElseThrow(() -> new IllegalStateException("Rol no autorizado para el módulo de citas: " + profileId));
 
-        return new StaffPrincipal(profileId, Optional.of(roleName), extractFacilityIds(jwt), true);
+        return new StaffPrincipal(profileId, Optional.of(roleName), true);
     }
 
     private Optional<String> extractRoleNombre(Jwt jwt) {
@@ -91,15 +91,4 @@ public class SupabaseJwtAuthenticationConverter implements Converter<Jwt, Abstra
         return Optional.empty();
     }
 
-    @SuppressWarnings("unchecked")
-    private List<UUID> extractFacilityIds(Jwt jwt) {
-        Object claim = jwt.getClaim("facility_ids");
-        if (claim instanceof List<?> list) {
-            return list.stream()
-                    .map(Object::toString)
-                    .map(UUID::fromString)
-                    .toList();
-        }
-        return List.of();
-    }
 }

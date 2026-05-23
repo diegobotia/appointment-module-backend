@@ -2,6 +2,7 @@ package com.ipscentir.appointments.application.service;
 
 import com.ipscentir.appointments.application.dto.AppointmentDTO;
 import com.ipscentir.appointments.application.dto.CreateAppointmentCommand;
+import com.ipscentir.appointments.application.dto.RescheduleAppointmentCommand;
 import com.ipscentir.appointments.application.dto.form.CreatePatientRegistrationRequest;
 import com.ipscentir.appointments.application.dto.form.PatientRegistrationFormConfigResponse;
 import com.ipscentir.appointments.application.dto.form.PatientRegistrationResponse;
@@ -20,26 +21,34 @@ import com.ipscentir.appointments.application.dto.integration.n8n.N8nPatientAvai
 import com.ipscentir.appointments.application.dto.integration.n8n.N8nPatientIdentifyRequest;
 import com.ipscentir.appointments.application.dto.integration.n8n.N8nPatientIdentifyResponse;
 import com.ipscentir.appointments.application.dto.integration.n8n.N8nPatientRegistrationStatusResponse;
+import com.ipscentir.appointments.application.dto.integration.n8n.N8nRescheduleAppointmentRequest;
 import com.ipscentir.appointments.application.dto.integration.n8n.N8nWebhookEventRequest;
 import com.ipscentir.appointments.application.dto.integration.n8n.N8nWebhookEventResponse;
+import com.ipscentir.appointments.application.exception.SedeNotFoundException;
 import com.ipscentir.appointments.application.exception.PatientNotFoundException;
 import com.ipscentir.appointments.application.mapper.AppointmentMapper;
 import com.ipscentir.appointments.domain.model.appointment.Appointment;
 import com.ipscentir.appointments.domain.model.appointment.AppointmentType;
+import com.ipscentir.appointments.domain.model.appointment.BookingChannel;
 import com.ipscentir.appointments.domain.model.catalog.AppointmentServiceType;
-import com.ipscentir.appointments.domain.model.facility.Facility;
+import com.ipscentir.appointments.domain.model.sede.Sede;
+import com.ipscentir.appointments.domain.model.specialist.Specialist;
 import com.ipscentir.appointments.domain.model.schedule.AvailableSlotDetail;
+import com.ipscentir.appointments.domain.model.schedule.Schedule;
 import com.ipscentir.appointments.domain.repository.AppointmentRepository;
+import com.ipscentir.appointments.domain.repository.ScheduleRepository;
 import com.ipscentir.appointments.domain.service.AppointmentBookingService;
 import com.ipscentir.appointments.domain.service.AvailabilityService;
-import com.ipscentir.appointments.infrastructure.persistence.jpa.FacilityJpaRepository;
 import com.ipscentir.appointments.infrastructure.persistence.jpa.PacienteRepository;
+import com.ipscentir.appointments.infrastructure.persistence.jpa.SpecialistJpaRepository;
 import com.ipscentir.appointments.infrastructure.persistence.jpa.entity.Paciente;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -54,18 +63,22 @@ public class N8nPatientIntegrationService {
     private final N8nEventJournalService n8nEventJournalService;
     private final PatientRegistrationService patientRegistrationService;
     private final PacienteRepository pacienteRepository;
-    private final FacilityJpaRepository facilityJpaRepository;
+    private final SedeLookupService sedeLookupService;
+    private final ScheduleRepository scheduleRepository;
+    private final SpecialistJpaRepository specialistJpaRepository;
     private final N8nIdempotencyService n8nIdempotencyService;
+    private final AppointmentOperationsService appointmentOperationsService;
+    private final TipoIdentificacionResolver tipoIdentificacionResolver;
 
     @Transactional(readOnly = true)
     public N8nPatientAvailabilityResponse getAvailability(N8nPatientAvailabilityRequest request) {
         String requestedServiceType = request.canonicalServiceType();
         AppointmentServiceType serviceType = AppointmentServiceType.fromFlexibleValue(requestedServiceType);
-        UUID resolvedFacilityId = resolveFacilityId(request.facilityId());
+        Integer resolvedSedeId = resolveSedeId(request.facilityId());
 
         List<AvailableSlotDetail> slots = availabilityService.getNearestAvailableSlotsByServiceType(
                 serviceType,
-                resolvedFacilityId,
+                resolvedSedeId,
                 request.fromDate(),
                 request.limit()
         );
@@ -136,19 +149,21 @@ public class N8nPatientIntegrationService {
             }
         }
 
-        UUID resolvedFacilityId = resolveFacilityId(request.facilityId());
+        Integer resolvedSedeId = resolveSedeId(request.facilityId());
 
         AppointmentDTO appointment = appointmentApplicationService.createAppointment(
                 new CreateAppointmentCommand(
                         request.patientId(),
                         request.doctorId(),
-                        resolvedFacilityId,
+                        resolvedSedeId,
                         request.secondaryDoctorId(),
                         request.scheduleId(),
                         request.appointmentDate(),
                         request.appointmentTime(),
                         AppointmentType.PRESENCIAL.name(),
-                        request.reason()
+                        request.reason(),
+                        BookingChannel.N8N,
+                        request.conversationId()
                 )
         );
 
@@ -164,11 +179,8 @@ public class N8nPatientIntegrationService {
 
     @Transactional(readOnly = true)
     public N8nPatientIdentifyResponse identifyPatient(N8nPatientIdentifyRequest request) {
-        return pacienteRepository
-                .findByCodTipoIdentificacionAndNumIdentificacion(
-                        request.codTipoIdentificacion(),
-                        request.numIdentificacion()
-                )
+        return tipoIdentificacionResolver
+                .findPaciente(request.codTipoIdentificacion(), request.numIdentificacion())
                 .map(this::toIdentifyResponse)
                 .orElseGet(() -> toIdentifyNotFound(request.codTipoIdentificacion(), request.numIdentificacion()));
     }
@@ -180,24 +192,17 @@ public class N8nPatientIntegrationService {
 
     @Transactional(readOnly = true)
     public N8nPatientAppointmentsResponse listAppointmentsByDocument(String codTipoIdentificacion, String numIdentificacion) {
-        Paciente paciente = pacienteRepository
-                .findByCodTipoIdentificacionAndNumIdentificacion(codTipoIdentificacion, numIdentificacion)
-                .orElseThrow(() -> new PatientNotFoundException(codTipoIdentificacion, numIdentificacion));
+        Paciente paciente = tipoIdentificacionResolver
+                .findPaciente(codTipoIdentificacion, numIdentificacion)
+                .orElseThrow(() -> new PatientNotFoundException(
+                        tipoIdentificacionResolver.resolveCodigo(codTipoIdentificacion),
+                        numIdentificacion
+                ));
 
         List<N8nPatientAppointmentSummaryDTO> appointments = appointmentRepository
                 .findByPatientIdOrderByAppointmentDateDescAppointmentTimeDesc(paciente.getId())
                 .stream()
-                .map(appointment -> new N8nPatientAppointmentSummaryDTO(
-                        appointment.getId(),
-                        appointment.getPatientId(),
-                        appointment.getDoctorId(),
-                        appointment.getFacilityId(),
-                        appointment.getAppointmentDate(),
-                        appointment.getAppointmentTime(),
-                        appointment.getAppointmentType(),
-                        appointment.getStatus(),
-                        appointment.getReason()
-                ))
+                .map(this::toAppointmentSummary)
                 .toList();
 
         String summary = appointments.isEmpty()
@@ -218,12 +223,20 @@ public class N8nPatientIntegrationService {
             String codTipoIdentificacion,
             String numIdentificacion
     ) {
-        PatientRegistrationStatusResponse status = patientRegistrationService.getRegistrationStatus(
-                codTipoIdentificacion,
-                numIdentificacion
-        );
+        String codigo = tipoIdentificacionResolver.resolveCodigo(codTipoIdentificacion);
+        PatientRegistrationStatusResponse status = tipoIdentificacionResolver
+                .findPaciente(codTipoIdentificacion, numIdentificacion)
+                .map(paciente -> new PatientRegistrationStatusResponse(
+                        true,
+                        paciente.getId(),
+                        paciente.getCodTipoIdentificacion(),
+                        paciente.getNumIdentificacion(),
+                        paciente.getNombres(),
+                        paciente.getApellidos()
+                ))
+                .orElseGet(() -> PatientRegistrationStatusResponse.notRegistered(codigo, numIdentificacion));
         PatientRegistrationFormConfigResponse config = patientRegistrationService.getFormConfig();
-        String formUrl = buildFormUrl(config, codTipoIdentificacion, numIdentificacion);
+        String formUrl = buildFormUrl(config, codigo, numIdentificacion);
 
         String summary = status.registered()
                 ? "Paciente registrado: " + status.nombres() + " " + status.apellidos()
@@ -239,6 +252,54 @@ public class N8nPatientIntegrationService {
                 formUrl,
                 summary
         );
+    }
+
+    @Transactional
+    public N8nPatientAppointmentResponse rescheduleAppointment(UUID appointmentId, N8nRescheduleAppointmentRequest request) {
+        Appointment appointment = appointmentRepository.findById(appointmentId)
+                .orElseThrow(() -> new IllegalArgumentException("Appointment not found"));
+
+        if (request.patientId() != null && !request.patientId().equals(appointment.getPatientId())) {
+            throw new IllegalStateException("La cita no pertenece al paciente indicado");
+        }
+
+        String idempotencyKey = request.resolveIdempotencyKey();
+        if (idempotencyKey != null) {
+            var existingId = n8nIdempotencyService.findAppointmentId(
+                    N8nIdempotencyService.SCOPE_RESCHEDULE_APPOINTMENT,
+                    idempotencyKey
+            );
+            if (existingId.isPresent() && existingId.get().equals(appointmentId)) {
+                Appointment existing = appointmentRepository.findById(appointmentId).orElseThrow();
+                return new N8nPatientAppointmentResponse(
+                        appointmentMapper.toDto(existing),
+                        "Cita ya reprogramada previamente para esta conversación (idempotencia n8n)."
+                );
+            }
+        }
+
+        Integer resolvedSedeId = resolveSedeId(request.facilityId());
+        AppointmentDTO dto = appointmentOperationsService.rescheduleAppointmentFromN8n(
+                appointmentId,
+                new RescheduleAppointmentCommand(
+                        request.appointmentDate(),
+                        request.appointmentTime(),
+                        request.scheduleId(),
+                        request.doctorId(),
+                        resolvedSedeId
+                ),
+                request.conversationId()
+        );
+
+        if (idempotencyKey != null) {
+            n8nIdempotencyService.storeAppointmentBooking(
+                    N8nIdempotencyService.SCOPE_RESCHEDULE_APPOINTMENT,
+                    idempotencyKey,
+                    appointmentId
+            );
+        }
+
+        return new N8nPatientAppointmentResponse(dto, "Cita reprogramada correctamente desde el flujo n8n.");
     }
 
     @Transactional
@@ -272,28 +333,30 @@ public class N8nPatientIntegrationService {
 
     private N8nPatientIdentifyResponse toIdentifyResponse(Paciente paciente) {
         PatientRegistrationFormConfigResponse config = patientRegistrationService.getFormConfig();
+        String codigo = tipoIdentificacionResolver.resolveCodigo(paciente.getCodTipoIdentificacion());
         return new N8nPatientIdentifyResponse(
                 true,
                 paciente.getId(),
-                paciente.getCodTipoIdentificacion(),
+                tipoIdentificacionResolver.resolveDescripcion(paciente.getCodTipoIdentificacion()),
                 paciente.getNumIdentificacion(),
                 paciente.getNombres(),
                 paciente.getApellidos(),
-                buildFormUrl(config, paciente.getCodTipoIdentificacion(), paciente.getNumIdentificacion()),
+                buildFormUrl(config, codigo, paciente.getNumIdentificacion()),
                 "Paciente identificado: " + paciente.getNombres() + " " + paciente.getApellidos()
         );
     }
 
-    private N8nPatientIdentifyResponse toIdentifyNotFound(String codTipoIdentificacion, String numIdentificacion) {
+    private N8nPatientIdentifyResponse toIdentifyNotFound(String tipoIdentificacion, String numIdentificacion) {
         PatientRegistrationFormConfigResponse config = patientRegistrationService.getFormConfig();
+        String codigo = tipoIdentificacionResolver.resolveCodigo(tipoIdentificacion);
         return new N8nPatientIdentifyResponse(
                 false,
                 null,
-                codTipoIdentificacion,
+                tipoIdentificacionResolver.resolveDescripcion(tipoIdentificacion),
                 numIdentificacion,
                 null,
                 null,
-                buildFormUrl(config, codTipoIdentificacion, numIdentificacion),
+                buildFormUrl(config, codigo, numIdentificacion),
                 "Paciente no encontrado. Debe completar el formulario de registro."
         );
     }
@@ -304,9 +367,80 @@ public class N8nPatientIntegrationService {
                 .replace("{numIdentificacion}", numId);
     }
 
-    private UUID resolveFacilityId(N8nFacilityId facilityId) {
-        return facilityJpaRepository.findByCode(facilityId.persistenceCode())
-                .map(Facility::getId)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown facilityId: " + facilityId));
+    private Integer resolveSedeId(N8nFacilityId facilityId) {
+        return facilityId.sedeId();
+    }
+
+    private N8nPatientAppointmentSummaryDTO toAppointmentSummary(Appointment appointment) {
+        Schedule schedule = appointment.getScheduleId() != null
+                ? scheduleRepository.findById(appointment.getScheduleId()).orElse(null)
+                : null;
+        Optional<AppointmentServiceType> catalogService = resolveCatalogService(
+                schedule,
+                appointment.getDoctorId(),
+                appointment.getAppointmentType()
+        );
+
+        return new N8nPatientAppointmentSummaryDTO(
+                appointment.getId(),
+                appointment.getPatientId(),
+                appointment.getDoctorId(),
+                appointment.getSedeId(),
+                resolveN8nFacilityCode(appointment.getSedeId()),
+                appointment.getScheduleId(),
+                appointment.getAppointmentDate(),
+                appointment.getAppointmentTime(),
+                appointment.getAppointmentType(),
+                catalogService.map(Enum::name).orElse(null),
+                catalogService.map(AppointmentServiceType::getDisplayName).orElse(null),
+                appointment.getStatus(),
+                appointment.getReason()
+        );
+    }
+
+    /**
+     * Catálogo cerrado: serviceType (código) y specialty (nombre para UI) salen del mismo
+     * {@link AppointmentServiceType}. Si no hay match, ambos quedan null.
+     *
+     * Fuentes, en orden: agenda → hc.medicos.especialidad → tipo de cita (terapia/junta).
+     */
+    private Optional<AppointmentServiceType> resolveCatalogService(
+            Schedule schedule,
+            String doctorId,
+            AppointmentType appointmentType
+    ) {
+        if (schedule != null && schedule.getSpecialty() != null && !schedule.getSpecialty().isBlank()) {
+            Optional<AppointmentServiceType> fromSchedule = AppointmentServiceType.tryResolve(schedule.getSpecialty());
+            if (fromSchedule.isPresent()) {
+                return fromSchedule;
+            }
+        }
+
+        if (doctorId != null) {
+            Optional<AppointmentServiceType> fromDoctor = specialistJpaRepository.findById(doctorId)
+                    .map(Specialist::getSpecialty)
+                    .flatMap(AppointmentServiceType::tryResolve);
+            if (fromDoctor.isPresent()) {
+                return fromDoctor;
+            }
+        }
+
+        return switch (appointmentType) {
+            case TERAPIA_FISICA -> Optional.of(AppointmentServiceType.TERAPIA_FISICA);
+            case TERAPIA_OCUPACIONAL -> Optional.of(AppointmentServiceType.TERAPIA_OCUPACIONAL);
+            case JUNTA_MEDICA -> Optional.of(AppointmentServiceType.JUNTA_MEDICA);
+            case PRESENCIAL -> Optional.empty();
+        };
+    }
+
+    private String resolveN8nFacilityCode(Integer sedeId) {
+        if (sedeId == null) {
+            return null;
+        }
+        return Arrays.stream(N8nFacilityId.values())
+                .filter(n8n -> n8n.sedeId() == sedeId)
+                .findFirst()
+                .map(Enum::name)
+                .orElse(null);
     }
 }

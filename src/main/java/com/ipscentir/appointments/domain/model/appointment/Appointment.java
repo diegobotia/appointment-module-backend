@@ -44,8 +44,8 @@ public class Appointment extends AbstractAggregateRoot<Appointment> {
     @Column(nullable = false)
     private String doctorId;
 
-    @Column(nullable = false)
-    private UUID facilityId;
+    @Column(name = "sede_id", nullable = false)
+    private Integer sedeId;
 
     private UUID scheduleId;
 
@@ -67,6 +67,14 @@ public class Appointment extends AbstractAggregateRoot<Appointment> {
     @Column(nullable = false)
     @Builder.Default
     private AppointmentStatus status = AppointmentStatus.SCHEDULED;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "booking_channel", nullable = false)
+    @Builder.Default
+    private BookingChannel bookingChannel = BookingChannel.STAFF;
+
+    @Column(name = "n8n_conversation_id")
+    private String n8nConversationId;
 
     private String reason;
     private String notes;
@@ -115,13 +123,23 @@ public class Appointment extends AbstractAggregateRoot<Appointment> {
         ));
     }
 
-    // Factory method wrapper for domain driven design instantiation
-        public static Appointment scheduleNew(
+    public static Appointment scheduleNew(
             UUID patientId,
             String primaryDoctorId,
             String secondaryDoctorId,
             AppointmentScheduleData scheduleData
-        ) {
+    ) {
+        return scheduleNew(patientId, primaryDoctorId, secondaryDoctorId, scheduleData, BookingChannel.STAFF, null);
+    }
+
+    public static Appointment scheduleNew(
+            UUID patientId,
+            String primaryDoctorId,
+            String secondaryDoctorId,
+            AppointmentScheduleData scheduleData,
+            BookingChannel bookingChannel,
+            String n8nConversationId
+    ) {
         UUID appointmentId = UUID.randomUUID();
 
         if (scheduleData.type() == AppointmentType.JUNTA_MEDICA && secondaryDoctorId == null) {
@@ -132,7 +150,7 @@ public class Appointment extends AbstractAggregateRoot<Appointment> {
                 .id(appointmentId)
                 .patientId(patientId)
                 .doctorId(primaryDoctorId)
-            .facilityId(scheduleData.facilityId())
+            .sedeId(scheduleData.sedeId())
             .scheduleId(scheduleData.scheduleId())
             .appointmentDate(scheduleData.date())
             .appointmentTime(scheduleData.time())
@@ -140,6 +158,8 @@ public class Appointment extends AbstractAggregateRoot<Appointment> {
             .appointmentType(scheduleData.type())
             .status(scheduleData.status())
             .reason(scheduleData.reason())
+            .bookingChannel(bookingChannel != null ? bookingChannel : BookingChannel.STAFF)
+            .n8nConversationId(n8nConversationId)
                 .build();
 
         appointment.addParticipant(primaryDoctorId, 1, AppointmentParticipantRole.PRIMARY);
@@ -154,7 +174,9 @@ public class Appointment extends AbstractAggregateRoot<Appointment> {
                 appointment.doctorId,
                 appointment.appointmentDate,
                 appointment.appointmentTime,
-                appointment.appointmentType
+                appointment.appointmentType,
+                appointment.bookingChannel,
+                appointment.n8nConversationId
         ));
         return appointment;
     }
@@ -187,7 +209,9 @@ public class Appointment extends AbstractAggregateRoot<Appointment> {
             LocalTime newTime,
             UUID newScheduleId,
             String newDoctorId,
-            UUID newFacilityId
+            Integer newSedeId,
+            BookingChannel channel,
+            String conversationId
     ) {
         if (this.status == AppointmentStatus.CANCELLED || this.status == AppointmentStatus.COMPLETED) {
             throw new IllegalStateException("Cannot reschedule an appointment in its current state");
@@ -196,16 +220,31 @@ public class Appointment extends AbstractAggregateRoot<Appointment> {
             throw new IllegalStateException("Cannot reschedule to a date in the past");
         }
 
+        LocalDate previousDate = this.appointmentDate;
+        LocalTime previousTime = this.appointmentTime;
+
         this.appointmentDate = newDate;
         this.appointmentTime = newTime;
         this.scheduleId = newScheduleId;
         this.doctorId = newDoctorId;
-        this.facilityId = newFacilityId;
+        this.sedeId = newSedeId;
 
         if (this.status == AppointmentStatus.CONFIRMED) {
             this.status = AppointmentStatus.SCHEDULED;
             this.confirmedAt = null;
         }
+
+        registerEvent(new AppointmentRescheduledEvent(
+                this.id,
+                this.patientId,
+                this.doctorId,
+                previousDate,
+                previousTime,
+                newDate,
+                newTime,
+                channel != null ? channel : BookingChannel.STAFF,
+                conversationId
+        ));
     }
 
     public boolean isAssignedToDoctor(String doctorId) {

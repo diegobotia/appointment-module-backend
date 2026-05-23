@@ -3,6 +3,7 @@ package com.ipscentir.appointments.application.service;
 import com.ipscentir.appointments.domain.model.notification.Notification;
 import com.ipscentir.appointments.domain.repository.NotificationRepository;
 import com.ipscentir.appointments.domain.service.NotificationProvider;
+import com.ipscentir.appointments.infrastructure.observability.AppointmentsMetrics;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -18,6 +19,7 @@ public class NotificationDispatchService {
 
     private final NotificationProvider notificationProvider;
     private final NotificationRepository notificationRepository;
+    private final AppointmentsMetrics appointmentsMetrics;
 
     @Value("${notifications.enabled:true}")
     private boolean notificationsEnabled;
@@ -38,6 +40,7 @@ public class NotificationDispatchService {
             notification.markAsSent();
         } else {
             notification.recordFailedAttempt("Provider rejected or failed transmission");
+            appointmentsMetrics.recordNotificationFailed();
         }
         return notificationRepository.save(notification);
     }

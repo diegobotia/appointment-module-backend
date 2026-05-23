@@ -59,7 +59,6 @@ public class AuthApplicationService {
                 && jwtAuth.getDetails() instanceof StaffPrincipal principal) {
             profile.put("id", principal.profileId());
             profile.put("role", principal.roleName().map(RoleName::getSupabaseNombre).orElse(null));
-            profile.put("facilityIds", principal.facilityIds());
         }
 
         try {

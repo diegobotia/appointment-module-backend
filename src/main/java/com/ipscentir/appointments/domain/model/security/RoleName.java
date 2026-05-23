@@ -10,8 +10,25 @@ import java.util.Optional;
 public enum RoleName {
     MEDICO("Medico"),
     ADMISIONES("Admisiones"),
+    ASESOR("Asesor"),
     ADMINISTRACION("Administracion"),
     FACTURACION("Facturacion");
+
+    /**
+     * Mostrador y call center: mismos permisos operativos de citas.
+     * {@link #ASESOR} es equivalente a {@link #ADMISIONES} en el módulo de citas.
+     */
+    public static final RoleName[] FRONT_DESK_ROLES = {ADMISIONES, ASESOR};
+
+    /** Roles que operan el ciclo de vida de citas (incluye administración). */
+    public static final RoleName[] APPOINTMENT_OPERATORS = {
+            ADMINISTRACION, ADMISIONES, ASESOR
+    };
+
+    /** Roles con lectura operativa de citas (incluye facturación). */
+    public static final RoleName[] APPOINTMENT_READERS = {
+            ADMINISTRACION, ADMISIONES, ASESOR, FACTURACION
+    };
 
     private final String supabaseNombre;
 
@@ -25,6 +42,15 @@ public enum RoleName {
 
     public String getAuthority() {
         return "ROLE_" + name();
+    }
+
+    public boolean managesAppointments() {
+        return this == ADMINISTRACION || isFrontDesk();
+    }
+
+    /** Mismos permisos operativos que Admisiones (sin panel de configuración admin). */
+    public boolean isFrontDesk() {
+        return this == ADMISIONES || this == ASESOR;
     }
 
     public static Optional<RoleName> fromSupabaseNombre(String nombre) {

@@ -1,5 +1,7 @@
 package com.ipscentir.appointments.presentation.rest;
 
+import com.ipscentir.appointments.domain.model.facility.FacilityMasterData;
+
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ipscentir.appointments.domain.model.integration.DomainEventRecord;
@@ -8,7 +10,7 @@ import com.ipscentir.appointments.infrastructure.persistence.jpa.AppointmentJpaR
 import com.ipscentir.appointments.infrastructure.persistence.jpa.ContactoRepository;
 import com.ipscentir.appointments.infrastructure.persistence.jpa.DireccionRepository;
 import com.ipscentir.appointments.infrastructure.persistence.jpa.DomainEventJpaRepository;
-import com.ipscentir.appointments.infrastructure.persistence.jpa.FacilityJpaRepository;
+import com.ipscentir.appointments.infrastructure.persistence.jpa.SedeJpaRepository;
 import com.ipscentir.appointments.infrastructure.persistence.jpa.PacienteRepository;
 import com.ipscentir.appointments.infrastructure.persistence.jpa.ScheduleJpaRepository;
 import com.ipscentir.appointments.infrastructure.persistence.jpa.SpecialistJpaRepository;
@@ -26,6 +28,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
@@ -67,7 +70,7 @@ class CriticalE2EFlowsIntegrationTest {
         private SpecialistJpaRepository specialistJpaRepository;
 
         @Autowired
-        private FacilityJpaRepository facilityJpaRepository;
+        private SedeJpaRepository sedeJpaRepository;
 
         @Autowired
         private PacienteRepository pacienteRepository;
@@ -95,19 +98,16 @@ class CriticalE2EFlowsIntegrationTest {
         @Test
         void e2eN8nPatientHappyFlowWithCancellationAndEventJournal() throws Exception {
                 String doctorId = UUID.randomUUID().toString();
-                UUID facilityId = facilityJpaRepository.findByCode("SEDE_NORTE")
-                                .orElseThrow(() -> new IllegalStateException(
-                                                "Expected seed facility SEDE_NORTE in test profile"))
-                                .getId();
-                LocalDate date = LocalDate.now().plusDays(2);
+                Integer sedeId = FacilityMasterData.SEDE_ID_BELEN;
+                LocalDate date = nextOpenWeekday(LocalDate.now().plusDays(2));
                 LocalTime time = LocalTime.of(9, 0);
 
                 UUID patientId = seedPatient("CC", "1122334455");
 
                 Schedule schedule = scheduleJpaRepository.save(Schedule.builder()
                                 .doctorId(doctorId)
-                                .facilityId(facilityId)
-                                .specialty("Terapia fisica")
+                                .sedeId(sedeId)
+                                .specialty("Medico fisiatria")
                                 .dayOfWeek(date.getDayOfWeek())
                                 .startTime(LocalTime.of(8, 0))
                                 .endTime(LocalTime.of(12, 0))
@@ -124,7 +124,8 @@ class CriticalE2EFlowsIntegrationTest {
                                                 "numIdentificacion", "1122334455"))))
                                 .andExpect(status().isOk())
                                 .andExpect(jsonPath("$.found").value(true))
-                                .andExpect(jsonPath("$.patientId").value(patientId.toString()));
+                                .andExpect(jsonPath("$.patientId").value(patientId.toString()))
+                                .andExpect(jsonPath("$.tipoIdentificacion").value("Cédula de ciudadanía"));
 
                 mockMvc.perform(post("/api/v1/integrations/n8n/patient/availability")
                                 .header(N8N_API_KEY_HEADER, N8N_API_KEY)
@@ -132,7 +133,7 @@ class CriticalE2EFlowsIntegrationTest {
                                 .content(asJson(Map.of(
                                                 "doctorId", doctorId,
                                                 "facilityId", "BELEN",
-                                                "serviceType", "TERAPIA_FISICA",
+                                                "serviceType", "MEDICO_FISIATRIA",
                                                 "date", date))))
                                 .andExpect(status().isOk())
                                 .andExpect(jsonPath("$.availableSlotsCount")
@@ -230,5 +231,12 @@ class CriticalE2EFlowsIntegrationTest {
                                 .idContacto(contactId)
                                 .idDireccion(directionId)
                                 .build()).getId();
+        }
+
+        private static LocalDate nextOpenWeekday(LocalDate date) {
+                while (date.getDayOfWeek() == DayOfWeek.SUNDAY) {
+                        date = date.plusDays(1);
+                }
+                return date;
         }
 }

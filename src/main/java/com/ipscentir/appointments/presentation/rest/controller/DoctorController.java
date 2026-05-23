@@ -31,27 +31,27 @@ public class DoctorController {
     private final DoctorApplicationService doctorApplicationService;
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMINISTRACION', 'ADMISIONES', 'MEDICO', 'FACTURACION')")
+    @PreAuthorize("hasAnyRole('ADMINISTRACION', 'ADMISIONES', 'ASESOR', 'MEDICO', 'FACTURACION')")
     @Operation(summary = "Listar médicos disponibles")
     public ResponseEntity<List<DoctorAvailableDTO>> listAvailableDoctors(
             @RequestParam(required = false) String specialty,
-            @RequestParam(required = false) UUID facilityId,
+            @RequestParam(required = false) Integer sedeId,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate availabilityDate
     ) {
-        return ResponseEntity.ok(doctorApplicationService.findAvailableDoctors(specialty, facilityId, availabilityDate));
+        return ResponseEntity.ok(doctorApplicationService.findAvailableDoctors(specialty, sedeId, availabilityDate));
     }
 
     @GetMapping("/{doctorId}/availability")
-    @PreAuthorize("hasAnyRole('ADMINISTRACION', 'ADMISIONES', 'MEDICO', 'FACTURACION')")
+    @PreAuthorize("hasAnyRole('ADMINISTRACION', 'ADMISIONES', 'ASESOR', 'MEDICO', 'FACTURACION')")
     @Operation(summary = "Obtener disponibilidad de un médico en rango de fechas")
     public ResponseEntity<DoctorAvailabilityResponse> getDoctorAvailability(
             @PathVariable String doctorId,
-            @RequestParam @NotNull UUID facilityId,
+            @RequestParam @NotNull Integer sedeId,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate
     ) {
         LocalDate fromDate = from != null ? from : startDate;
-        return ResponseEntity.ok(doctorApplicationService.getDoctorAvailability(doctorId, facilityId, fromDate, to));
+        return ResponseEntity.ok(doctorApplicationService.getDoctorAvailability(doctorId, sedeId, fromDate, to));
     }
 }

@@ -11,6 +11,7 @@ class RoleNameTest {
         assertThat(RoleName.fromSupabaseNombre("Administracion")).contains(RoleName.ADMINISTRACION);
         assertThat(RoleName.fromSupabaseNombre("Medico")).contains(RoleName.MEDICO);
         assertThat(RoleName.fromSupabaseNombre("Admisiones")).contains(RoleName.ADMISIONES);
+        assertThat(RoleName.fromSupabaseNombre("Asesor")).contains(RoleName.ASESOR);
         assertThat(RoleName.fromSupabaseNombre("Facturacion")).contains(RoleName.FACTURACION);
     }
 

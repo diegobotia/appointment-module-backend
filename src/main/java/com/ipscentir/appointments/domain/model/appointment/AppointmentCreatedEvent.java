@@ -10,5 +10,7 @@ public record AppointmentCreatedEvent(
         String doctorId,
         LocalDate appointmentDate,
         LocalTime appointmentTime,
-        AppointmentType appointmentType
+        AppointmentType appointmentType,
+        BookingChannel bookingChannel,
+        String n8nConversationId
 ) {}

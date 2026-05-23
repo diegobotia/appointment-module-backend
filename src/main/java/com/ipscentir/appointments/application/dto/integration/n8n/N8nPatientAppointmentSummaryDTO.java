@@ -11,10 +11,17 @@ public record N8nPatientAppointmentSummaryDTO(
         UUID appointmentId,
         UUID patientId,
         String doctorId,
-        UUID facilityId,
+        Integer sedeId,
+        /** Código n8n de sede: BELEN, CONQUISTADORES */
+        String facilityCode,
+        UUID scheduleId,
         LocalDate appointmentDate,
         LocalTime appointmentTime,
         AppointmentType appointmentType,
+        /** Código del catálogo cerrado (p. ej. MEDICO_FISIATRIA). Siempre va junto con specialty. */
+        String serviceType,
+        /** Nombre del mismo ítem del catálogo (p. ej. Medico fisiatria). Null si serviceType es null. */
+        String specialty,
         AppointmentStatus status,
         String reason
 ) {

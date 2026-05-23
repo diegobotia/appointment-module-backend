@@ -1,5 +1,6 @@
 package com.ipscentir.appointments.presentation.rest;
 
+import com.ipscentir.appointments.domain.model.facility.FacilityMasterData;
 import com.ipscentir.appointments.domain.model.appointment.Appointment;
 import com.ipscentir.appointments.domain.model.appointment.AppointmentScheduleData;
 import com.ipscentir.appointments.domain.model.appointment.AppointmentStatus;
@@ -53,7 +54,7 @@ class AdminDashboardIntegrationTest {
                 null,
                 new AppointmentScheduleData(
                         UUID.randomUUID(),
-                        UUID.randomUUID(),
+                        FacilityMasterData.SEDE_ID_BELEN,
                         today,
                         LocalTime.of(9, 0),
                         30,

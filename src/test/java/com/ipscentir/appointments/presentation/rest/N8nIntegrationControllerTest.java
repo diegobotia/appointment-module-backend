@@ -1,5 +1,7 @@
 package com.ipscentir.appointments.presentation.rest;
 
+import com.ipscentir.appointments.domain.model.facility.FacilityMasterData;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ipscentir.appointments.application.dto.integration.n8n.N8nCancelAppointmentResponse;
 import com.ipscentir.appointments.application.dto.integration.n8n.N8nAvailabilityBookingPayloadDTO;
@@ -12,6 +14,7 @@ import com.ipscentir.appointments.application.service.N8nPatientIntegrationServi
 import com.ipscentir.appointments.application.dto.AppointmentDTO;
 import com.ipscentir.appointments.domain.model.appointment.AppointmentStatus;
 import com.ipscentir.appointments.domain.model.appointment.AppointmentType;
+import com.ipscentir.appointments.domain.model.appointment.BookingChannel;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -127,14 +130,14 @@ class N8nIntegrationControllerTest {
     void shouldCreateAppointmentForN8n() throws Exception {
         UUID patientId = UUID.randomUUID();
         String doctorId = UUID.randomUUID().toString();
-        UUID facilityId = UUID.randomUUID();
+        Integer sedeId = FacilityMasterData.SEDE_ID_BELEN;
         UUID scheduleId = UUID.randomUUID();
         LocalDate date = LocalDate.now().plusDays(2);
         LocalTime time = LocalTime.of(10, 0);
 
         AppointmentDTO dto = new AppointmentDTO(
-                UUID.randomUUID(), patientId, doctorId, facilityId, null, scheduleId, date, time, 30,
-                AppointmentType.PRESENCIAL, AppointmentStatus.SCHEDULED, "Checkup", null, LocalDateTime.now(), null
+                UUID.randomUUID(), patientId, doctorId, sedeId, null, scheduleId, date, time, 30,
+                AppointmentType.PRESENCIAL, AppointmentStatus.SCHEDULED, BookingChannel.N8N, null, "Checkup", null, LocalDateTime.now(), null
         );
 
         when(n8nPatientIntegrationService.createAppointment(any())).thenReturn(new N8nPatientAppointmentResponse(dto, "Cita agendada correctamente para atención por chat n8n."));
@@ -162,9 +165,9 @@ class N8nIntegrationControllerTest {
     void shouldCancelAppointmentForN8n() throws Exception {
         UUID appointmentId = UUID.randomUUID();
         AppointmentDTO dto = new AppointmentDTO(
-                UUID.randomUUID(), UUID.randomUUID(), java.util.UUID.randomUUID().toString(), UUID.randomUUID(), null, UUID.randomUUID(),
+                UUID.randomUUID(), UUID.randomUUID(), java.util.UUID.randomUUID().toString(), FacilityMasterData.SEDE_ID_BELEN, null, UUID.randomUUID(),
                 LocalDate.now().plusDays(2), LocalTime.of(10, 0), 30,
-                AppointmentType.PRESENCIAL, AppointmentStatus.CANCELLED, "Cambio de plan", null, LocalDateTime.now(), LocalDateTime.now()
+                AppointmentType.PRESENCIAL, AppointmentStatus.CANCELLED, BookingChannel.N8N, null, "Cambio de plan", null, LocalDateTime.now(), LocalDateTime.now()
         );
 
         when(n8nPatientIntegrationService.cancelAppointment(any(), any())).thenReturn(new N8nCancelAppointmentResponse(dto, "Cita cancelada correctamente desde el flujo n8n."));

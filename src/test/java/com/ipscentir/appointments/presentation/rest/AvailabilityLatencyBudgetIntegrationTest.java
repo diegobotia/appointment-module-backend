@@ -1,9 +1,11 @@
 package com.ipscentir.appointments.presentation.rest;
 
+import com.ipscentir.appointments.domain.model.facility.FacilityMasterData;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ipscentir.appointments.domain.model.schedule.Schedule;
 import com.ipscentir.appointments.infrastructure.persistence.jpa.AppointmentJpaRepository;
-import com.ipscentir.appointments.infrastructure.persistence.jpa.FacilityJpaRepository;
+import com.ipscentir.appointments.infrastructure.persistence.jpa.SedeJpaRepository;
 import com.ipscentir.appointments.infrastructure.persistence.jpa.ScheduleJpaRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -50,10 +52,10 @@ class AvailabilityLatencyBudgetIntegrationTest {
     private AppointmentJpaRepository appointmentJpaRepository;
 
     @Autowired
-    private FacilityJpaRepository facilityJpaRepository;
+    private SedeJpaRepository sedeJpaRepository;
 
     private String doctorId;
-    private UUID facilityId;
+    private Integer sedeId;
     private LocalDate queryDate;
 
     @BeforeEach
@@ -62,14 +64,12 @@ class AvailabilityLatencyBudgetIntegrationTest {
         scheduleJpaRepository.deleteAll();
 
         doctorId = UUID.randomUUID().toString();
-        facilityId = facilityJpaRepository.findByCode("SEDE_NORTE")
-                .orElseThrow(() -> new IllegalStateException("Expected seed facility SEDE_NORTE in test profile"))
-                .getId();
+        sedeId = FacilityMasterData.SEDE_ID_BELEN;
         queryDate = LocalDate.now().plusDays(2);
 
         scheduleJpaRepository.save(Schedule.builder()
             .doctorId(doctorId.toString())
-                .facilityId(facilityId)
+                .sedeId(sedeId)
                 .specialty("Terapia fisica")
                 .dayOfWeek(queryDate.getDayOfWeek())
                 .startTime(LocalTime.of(8, 0))

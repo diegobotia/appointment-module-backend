@@ -35,18 +35,16 @@ public class SecurityConfig {
                 .requestMatchers("/api/v1/forms/**").permitAll()
                 .requestMatchers("/api/v1/catalogs/**").permitAll()
                 .requestMatchers("/api/v1/integrations/n8n/**").permitAll()
+                .requestMatchers("/api/v1/admin/appointments/**")
+                    .hasAnyRole("ADMINISTRACION", "ADMISIONES", "ASESOR")
                 .requestMatchers("/api/v1/admin/**").hasRole("ADMINISTRACION")
                 .requestMatchers(
                         "/swagger-ui/**",
                         "/swagger-ui.html",
-                        "/v3/api-docs/**",
-                        "/api-docs",
-                        "/api-docs/**",
-                        "/api/swagger-ui/**",
-                        "/api/swagger-ui.html",
-                        "/api/api-docs",
-                        "/api/api-docs/**"
+                        "/v3/api-docs/**"
                 ).permitAll()
+                .requestMatchers("/actuator/health", "/actuator/info").permitAll()
+                .requestMatchers("/actuator/**").hasRole("ADMINISTRACION")
                 .anyRequest().authenticated()
             )
             .oauth2ResourceServer(oauth -> oauth

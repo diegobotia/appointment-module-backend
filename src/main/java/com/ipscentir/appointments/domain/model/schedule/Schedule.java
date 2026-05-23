@@ -38,8 +38,8 @@ public class Schedule {
     @Column(nullable = false)
     private String doctorId;
 
-    @Column(nullable = false)
-    private UUID facilityId;
+    @Column(name = "sede_id", nullable = false)
+    private Integer sedeId;
 
     private String specialty;
 

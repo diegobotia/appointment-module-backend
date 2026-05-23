@@ -1,11 +1,13 @@
 package com.ipscentir.appointments.presentation.rest;
 
+import com.ipscentir.appointments.domain.model.facility.FacilityMasterData;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ipscentir.appointments.domain.model.schedule.Schedule;
 import com.ipscentir.appointments.infrastructure.persistence.jpa.AppointmentJpaRepository;
 import com.ipscentir.appointments.infrastructure.persistence.jpa.ContactoRepository;
 import com.ipscentir.appointments.infrastructure.persistence.jpa.DireccionRepository;
-import com.ipscentir.appointments.infrastructure.persistence.jpa.FacilityJpaRepository;
+import com.ipscentir.appointments.infrastructure.persistence.jpa.SedeJpaRepository;
 import com.ipscentir.appointments.infrastructure.persistence.jpa.PacienteRepository;
 import com.ipscentir.appointments.infrastructure.persistence.jpa.ScheduleJpaRepository;
 import com.ipscentir.appointments.infrastructure.persistence.jpa.entity.Contacto;
@@ -59,11 +61,11 @@ class StaffAppointmentLifecycleIntegrationTest {
     private DireccionRepository direccionRepository;
 
     @Autowired
-    private FacilityJpaRepository facilityJpaRepository;
+    private SedeJpaRepository sedeJpaRepository;
 
     private UUID patientId;
     private String doctorId;
-    private UUID facilityId;
+    private Integer sedeId;
     private UUID scheduleId;
     private LocalDate appointmentDate;
     private LocalTime appointmentTime;
@@ -78,13 +80,13 @@ class StaffAppointmentLifecycleIntegrationTest {
 
         patientId = seedPatient();
         doctorId = UUID.randomUUID().toString();
-        facilityId = facilityJpaRepository.findByCode("SEDE_NORTE").orElseThrow().getId();
+        sedeId = FacilityMasterData.SEDE_ID_BELEN;
         appointmentDate = LocalDate.now().plusDays(4);
         appointmentTime = LocalTime.of(10, 0);
 
         scheduleId = scheduleJpaRepository.save(Schedule.builder()
                 .doctorId(doctorId)
-                .facilityId(facilityId)
+                .sedeId(sedeId)
                 .specialty("Medicina general")
                 .dayOfWeek(appointmentDate.getDayOfWeek())
                 .startTime(LocalTime.of(8, 0))
@@ -103,7 +105,7 @@ class StaffAppointmentLifecycleIntegrationTest {
                         .content(objectMapper.writeValueAsString(Map.of(
                                 "patientId", patientId,
                                 "doctorId", doctorId,
-                                "facilityId", facilityId,
+                                "sedeId", sedeId,
                                 "scheduleId", scheduleId,
                                 "appointmentDate", appointmentDate,
                                 "appointmentTime", appointmentTime,

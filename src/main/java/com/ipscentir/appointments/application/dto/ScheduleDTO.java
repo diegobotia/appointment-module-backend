@@ -7,7 +7,7 @@ import java.util.UUID;
 public record ScheduleDTO(
         UUID id,
         String doctorId,
-        UUID facilityId,
+        Integer sedeId,
         String specialty,
         DayOfWeek dayOfWeek,
         LocalTime startTime,

@@ -5,6 +5,6 @@ import jakarta.validation.constraints.NotNull;
 import java.util.UUID;
 
 public record PublishSchedulePlanRequest(
-        @NotNull UUID facilityId
+        @NotNull Integer sedeId
 ) {
 }

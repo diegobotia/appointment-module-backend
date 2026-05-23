@@ -1,16 +1,41 @@
 -- Alinear notifications con esquema Supabase (V12) y soporte de reintentos
+-- Idempotente: prod puede tener entity_id (V12), external_entity_id (legacy) o ambas.
 
-DO $$
+DO $v20$
 BEGIN
     IF EXISTS (
         SELECT 1 FROM information_schema.columns
         WHERE table_schema = 'appointments'
           AND table_name = 'notifications'
           AND column_name = 'external_entity_id'
+    ) AND NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'appointments'
+          AND table_name = 'notifications'
+          AND column_name = 'entity_id'
     ) THEN
-        ALTER TABLE appointments.notifications RENAME COLUMN external_entity_id TO entity_id;
+        ALTER TABLE appointments.notifications
+            RENAME COLUMN external_entity_id TO entity_id;
+    ELSIF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'appointments'
+          AND table_name = 'notifications'
+          AND column_name = 'external_entity_id'
+    ) AND EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'appointments'
+          AND table_name = 'notifications'
+          AND column_name = 'entity_id'
+    ) THEN
+        UPDATE appointments.notifications
+        SET entity_id = COALESCE(entity_id, external_entity_id)
+        WHERE external_entity_id IS NOT NULL;
+
+        ALTER TABLE appointments.notifications
+            DROP COLUMN external_entity_id;
     END IF;
-END $$;
+END
+$v20$;
 
 ALTER TABLE appointments.notifications
     ADD COLUMN IF NOT EXISTS entity_type VARCHAR(50) NOT NULL DEFAULT 'APPOINTMENT';

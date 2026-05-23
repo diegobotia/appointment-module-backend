@@ -32,6 +32,9 @@ class NotificationDispatchServiceTest {
     @Mock
     private NotificationRepository notificationRepository;
 
+    @Mock
+    private com.ipscentir.appointments.infrastructure.observability.AppointmentsMetrics appointmentsMetrics;
+
     @InjectMocks
     private NotificationDispatchService notificationDispatchService;
 

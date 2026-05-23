@@ -67,6 +67,7 @@ INSERT INTO core.roles (nombre, descripcion)
 VALUES
     ('Medico', 'Gestiona historia clínica'),
     ('Admisiones', 'Gestiona admisiones'),
+    ('Asesor', 'Call center: gestión del ciclo de vida de citas'),
     ('Administracion', 'Acceso total al sistema'),
     ('Facturacion', 'Gestiona cuentas médicas')
 ON CONFLICT (nombre) DO NOTHING;

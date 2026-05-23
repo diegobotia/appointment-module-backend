@@ -1,85 +1,133 @@
 # Módulo de Citas - IPS Centir
 
-Repositorio para el desarrollo del **Módulo de Gestión de Citas Médicas** de IPS Centir.
+Backend del **módulo de gestión de citas médicas** de IPS Centir (Java 21, Spring Boot 3.2, PostgreSQL, DDD).
 
-## Alcance del Proyecto
+## Funcionalidades
 
-1. **Objetivo:** Modernización del sistema de gestión de citas médicas.
-2. **Funcionalidades principales:**
-   - Consulta de disponibilidad de agendas y bloqueo de horarios.
-   - Creación, confirmación, cancelación y reprogramación de citas.
-   - Check-in, No-Show y completado de citas.
-   - Notificaciones automáticas por Email, SMS y WhatsApp.
-3. **Integraciones:**
-   - Opcional validación de pacientes con módulo externo.
-   - Afiliación, Historia Clínica, Facturación (vía adapatadores y eventos locales).
+- Disponibilidad, creación, confirmación, cancelación y reprogramación de citas
+- Check-in, no-show y completado
+- Flujos paciente vía **n8n** (`X-API-Key`) y formulario público
+- Staff con JWT Supabase: `Medico`, `Admisiones`, **`Asesor`** (call center), `Administracion`, `Facturacion`
+- Capacidad operativa por sede (horarios, inventario físico, cupos)
+- Notificaciones (SMS/email), panel admin, auditoría n8n
 
 ## Arquitectura
 
-Se ha definido una arquitectura basada en un **Monolito Modular** puro:
+Monolito modular: `domain` → `application` → `infrastructure` → `presentation`. Eventos de dominio procesados en proceso (sin bus externo).
 
-- **Tecnología:** Java 21 + Spring Boot 3.2
-- **Base de Datos:** PostgreSQL 15 (Única base de datos para citas, agendas, notificaciones y event log)
-- **Patrones de Diseño:** Domain-Driven Design (DDD), Eventos de Dominio (Spring Events, procesados localmente sin bus de mensajería externo como RabbitMQ).
-- **Justificación:** Simplicidad operacional para el equipo de 3 personas, un solo endpoint de despliegue, y eliminación de complejidad de red innecesaria para el alcance acotado actual.
+## Inicio rápido
 
-## Estructura Base Ajustada
+### Requisitos
 
-```text
-appointments-module/
-├── src/
-│   ├── main/
-│   │   ├── java/com/ipscentir/appointments/
-│   │   │   ├── domain/        # Modelos (Appointment, Schedule), Eventos, Interfaces
-│   │   │   ├── application/   # Use cases y DTOs
-│   │   │   ├── infrastructure/# Adaptadores de persistencia, integración, config
-│   │   │   ├── presentation/  # Controladores REST API
-│   │   │   └── shared/        # Utilidades, Base Exceptions
-│   │   └── resources/
-│   │       ├── db/migration/  # Flyway scripts
-│   │       └── application.yml
-├── docker-compose.yml         # Solo PostgreSQL 15 (opcionalmente PgAdmin o MailHog)
-└── pom.xml
+- Java 21, Maven 3.9+
+- PostgreSQL 15 (Docker o Supabase)
+
+### Local con Docker
+
+```bash
+docker-compose up -d
+SPRING_FLYWAY_ENABLED=true mvn spring-boot:run
 ```
 
-## 🚀 Guía de Inicio (Quick Start)
+API: `http://localhost:8080/api/v1/...`  
+Swagger (solo dev): `http://localhost:8080/swagger-ui.html`
 
-El proyecto puede ejecutarse en dos modalidades: **Local** (usando base de datos Docker) o integrado con **Supabase** (usando variables de entorno).
+### Supabase
 
-### Opción 1: Ejecución Local (con base de datos local y Flyway)
+```bash
+cp .env.example .env
+# Editar credenciales
+chmod +x scripts/run-with-env.sh
+SPRING_PROFILES_ACTIVE=supabase SPRING_FLYWAY_ENABLED=true ./scripts/run-with-env.sh
+```
 
-1. **Levantar base de datos local:**
-   Inicie el contenedor de base de datos y herramientas auxiliares usando Docker:
-   ```bash
-   docker-compose up -d
-   ```
-   *(Nota: Por defecto, `docker-compose.yml` crea la base de datos `ipscentir_appointments`. Asegúrese de que coincida con la URL en su `application.yml` o use variables de entorno para adaptarla)*
+Variables: ver [`.env.example`](.env.example).
 
-2. **Iniciar la aplicación con Flyway:**
-   Por defecto, la ejecución automática de Flyway está desactivada en la configuración para prevenir mutaciones involuntarias. Para habilitar Flyway y aplicar las migraciones locales en el arranque, ejecute:
-   ```bash
-   SPRING_FLYWAY_ENABLED=true mvn spring-boot:run
-   ```
+### Producción
 
----
+Perfil recomendado: `prod` (+ `supabase` si aplica).
 
-### Opción 2: Ejecución con Supabase
+```bash
+SPRING_PROFILES_ACTIVE=prod,supabase SPRING_FLYWAY_ENABLED=true mvn spring-boot:run
+```
 
-1. **Configurar variables de entorno:**
-   Cree su archivo `.env` a partir de la plantilla y configure sus credenciales de Supabase:
-   ```bash
-   cp .env.example .env
-   # Edite el archivo .env con sus credenciales reales de Supabase
-   ```
+| Aspecto | Comportamiento |
+|---------|----------------|
+| Flyway | Habilitado (`application-prod.yml`) |
+| Hibernate | `ddl-auto: none` |
+| Swagger / OpenAPI | Deshabilitado |
+| Métricas | `/actuator/prometheus` (rol `ADMINISTRACION`) |
 
-2. **Iniciar la aplicación:**
-   Para arrancar la aplicación cargando las variables del `.env` (incluyendo la activación del perfil `supabase` y la habilitación de Flyway si requiere aplicar cambios sobre su instancia), ejecute:
-   ```bash
-   # Habilitar permisos de ejecución si es necesario
-   chmod +x scripts/run-with-env.sh
+## API y documentación
 
-   # Ejecutar cargando perfil y habilitando Flyway
-   SPRING_PROFILES_ACTIVE=supabase SPRING_FLYWAY_ENABLED=true ./scripts/run-with-env.sh
-   ```
+| Recurso | Ruta |
+|---------|------|
+| REST | `/api/v1/**` |
+| OpenAPI JSON | `/v3/api-docs` |
+| Swagger UI | `/swagger-ui.html` (no prod) |
+| Health | `/actuator/health` |
+| **Flujos API (referencia)** | [`docs/flujos-api.md`](docs/flujos-api.md) |
+| Plan de fases | [`plan_ejecucion.md`](plan_ejecucion.md) |
+| Capacidad por sede | [`plan_capacidad_operativa_sedes.md`](plan_capacidad_operativa_sedes.md) |
 
-En entornos de integración continua (CI/CD), configure estas mismas variables de entorno como secretos de su repositorio.
+## Calidad y CI
+
+Pipeline GitHub Actions (`.github/workflows/ci.yml`):
+
+```bash
+mvn verify -Dspring.profiles.active=test
+```
+
+En cada **pull request hacia `main`** (y en push a `main`/`dev`):
+
+| Control | Herramienta | Efecto si falla |
+|---------|-------------|-----------------|
+| Tests unitarios e integración | Maven Surefire | ❌ bloquea merge |
+| Cobertura servicios críticos ≥80% | JaCoCo (`mvn verify`) | ❌ bloquea merge |
+| Análisis estático bytecode | SpotBugs | ❌ bloquea merge (reporte en artifact) |
+| CVEs en dependencias nuevas/modificadas | GitHub Dependency Review | ❌ si severidad **high+** |
+| Visibilidad en PR | Comentario JaCoCo + check "Maven Tests" | informativo |
+
+**Branch protection (pedir al owner del repo):** exigir que pase el check `Build, tests y calidad` antes de merge a `main`.
+
+Artefactos descargables 14 días: `quality-reports` (JaCoCo HTML + SpotBugs).
+
+Métricas Micrometer:
+
+- `appointments.created` (tag `channel`: N8N / STAFF)
+- `security.unauthorized` / `security.forbidden`
+- `notifications.failed`
+
+## Roles y seguridad
+
+| Rol | Auth | Citas (`/appointments`) | Panel (`/admin/**`) |
+|-----|------|-------------------------|---------------------|
+| **Asesor** | JWT | **Igual que Admisiones** (`/appointments` + `/admin/appointments`) | No (resto `/admin/**`) |
+| Admisiones | JWT | Ciclo de vida + búsqueda admin citas | No (resto `/admin/**`) |
+| Administracion | JWT | Operación + corte terapia grupal | Sí (exclusivo) |
+| Medico | JWT | Lectura; check-in/completar propias | No |
+| Facturacion | JWT | Solo lectura | No |
+| Paciente | n8n / formulario | Integración y registro | — |
+
+En Supabase, el rol debe existir en `core.roles` con nombre **`Asesor`** (migración `V28`).
+
+## Integraciones paciente
+
+- **n8n:** tipo de documento por **descripción** (ej. `Cédula de ciudadanía`); el backend resuelve al código DIAN (`13`).
+- **Formulario:** `GET /forms/patients/config` expone catálogo `{ codigo, descripcion }` desde `ColombianIdentificationType`.
+
+## Sedes
+
+API admin: `/api/v1/admin/sedes` (no `/admin/facilities`). Códigos n8n: `BELEN`, `CONQUISTADORES`.
+
+## Estructura
+
+```text
+src/main/java/com/ipscentir/appointments/
+├── domain/
+├── application/
+├── infrastructure/
+└── presentation/
+docs/flujos-api.md              # Referencia API actualizada
+src/main/resources/db/migration/   # Flyway V0…V28
+```

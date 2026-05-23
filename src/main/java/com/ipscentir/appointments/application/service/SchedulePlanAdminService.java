@@ -11,6 +11,7 @@ import com.ipscentir.appointments.application.dto.schedule.SchedulePlanSlotDTO;
 import com.ipscentir.appointments.domain.model.schedule.SchedulePlan;
 import com.ipscentir.appointments.domain.model.schedule.SchedulePlanBlock;
 import com.ipscentir.appointments.domain.model.schedule.SchedulePlanSlot;
+import com.ipscentir.appointments.domain.service.FacilityOperatingHoursService;
 import com.ipscentir.appointments.infrastructure.persistence.jpa.SchedulePlanJpaRepository;
 import com.ipscentir.appointments.infrastructure.persistence.jpa.SpecialistJpaRepository;
 import lombok.RequiredArgsConstructor;
@@ -28,6 +29,7 @@ public class SchedulePlanAdminService {
     private final SchedulePlanJpaRepository schedulePlanJpaRepository;
     private final SpecialistJpaRepository specialistJpaRepository;
     private final SchedulePlanMaterializationService schedulePlanMaterializationService;
+    private final FacilityOperatingHoursService facilityOperatingHoursService;
 
     @Transactional
     public SchedulePlanDTO createPlan(CreateSchedulePlanRequest request) {
@@ -58,6 +60,11 @@ public class SchedulePlanAdminService {
                 throw new IllegalArgumentException("Slot end time must be after start time");
             }
             validateSlotDoesNotOverlap(plan.getSlots(), slotRequest.dayOfWeek(), slotRequest.startTime(), slotRequest.endTime());
+            facilityOperatingHoursService.assertSlotWithinInstitutionalHours(
+                    slotRequest.dayOfWeek(),
+                    slotRequest.startTime(),
+                    slotRequest.endTime()
+            );
 
             plan.addSlot(SchedulePlanSlot.builder()
                     .dayOfWeek(slotRequest.dayOfWeek())
@@ -89,6 +96,11 @@ public class SchedulePlanAdminService {
         if (!request.endTime().isAfter(request.startTime())) {
             throw new IllegalArgumentException("Block end time must be after start time");
         }
+
+        facilityOperatingHoursService.assertBlockTimeWithinInstitutionalEnvelope(
+                request.startTime(),
+                request.endTime()
+        );
 
         for (SchedulePlanBlock existing : plan.getBlocks()) {
             if (blocksOverlap(existing, request.startDate(), request.endDate(), request.startTime(), request.endTime())) {
@@ -122,6 +134,9 @@ public class SchedulePlanAdminService {
             throw new IllegalArgumentException("Cannot publish a schedule plan without active slots");
         }
 
+        facilityOperatingHoursService.assertPlanSlotsWithinSedeHours(request.sedeId(), plan);
+        facilityOperatingHoursService.assertPlanBlocksWithinSedeHours(request.sedeId(), plan);
+
         schedulePlanJpaRepository.findBySpecialistIdAndPlanYearAndPlanQuarterAndActiveVersionTrue(
                 plan.getSpecialistId(),
                 plan.getPlanYear(),
@@ -135,7 +150,7 @@ public class SchedulePlanAdminService {
 
         plan.publishAsActive();
         SchedulePlan saved = schedulePlanJpaRepository.save(plan);
-        schedulePlanMaterializationService.materializePublishedPlan(saved, request.facilityId());
+        schedulePlanMaterializationService.materializePublishedPlan(saved, request.sedeId());
         return toDto(saved);
     }
 

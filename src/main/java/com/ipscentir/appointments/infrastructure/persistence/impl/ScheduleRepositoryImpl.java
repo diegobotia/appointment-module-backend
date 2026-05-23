@@ -18,18 +18,18 @@ public class ScheduleRepositoryImpl implements ScheduleRepository {
     private final ScheduleJpaRepository jpaRepository;
 
     @Override
-    public Optional<Schedule> findByDoctorIdAndFacilityIdAndDayOfWeek(String doctorId, UUID facilityId, DayOfWeek dayOfWeek) {
-        return jpaRepository.findByDoctorIdAndFacilityIdAndDayOfWeekWithBlocks(doctorId, facilityId, dayOfWeek);
+    public Optional<Schedule> findByDoctorIdAndSedeIdAndDayOfWeek(String doctorId, Integer sedeId, DayOfWeek dayOfWeek) {
+        return jpaRepository.findByDoctorIdAndSedeIdAndDayOfWeekWithBlocks(doctorId, sedeId, dayOfWeek);
     }
 
     @Override
-    public List<Schedule> findByFacilityIdAndDayOfWeek(UUID facilityId, DayOfWeek dayOfWeek) {
-        return jpaRepository.findByFacilityIdAndDayOfWeekWithBlocks(facilityId, dayOfWeek);
+    public List<Schedule> findBySedeIdAndDayOfWeek(Integer sedeId, DayOfWeek dayOfWeek) {
+        return jpaRepository.findBySedeIdAndDayOfWeekWithBlocks(sedeId, dayOfWeek);
     }
 
     @Override
-    public List<Schedule> findByDoctorIdAndFacilityId(String doctorId, UUID facilityId) {
-        return jpaRepository.findByDoctorIdAndFacilityIdWithBlocks(doctorId, facilityId);
+    public List<Schedule> findByDoctorIdAndSedeId(String doctorId, Integer sedeId) {
+        return jpaRepository.findByDoctorIdAndSedeIdWithBlocks(doctorId, sedeId);
     }
 
     @Override
