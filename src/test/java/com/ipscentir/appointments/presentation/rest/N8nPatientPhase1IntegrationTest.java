@@ -125,7 +125,8 @@ class N8nPatientPhase1IntegrationTest {
                         ))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.found").value(true))
-                .andExpect(jsonPath("$.patientId").value(patientId.toString()));
+                .andExpect(jsonPath("$.patientId").value(patientId.toString()))
+                .andExpect(jsonPath("$.tipoIdentificacion").value("Cédula de ciudadanía"));
     }
 
     @Test

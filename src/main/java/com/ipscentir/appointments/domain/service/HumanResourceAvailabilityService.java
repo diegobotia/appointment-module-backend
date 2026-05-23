@@ -27,6 +27,8 @@ public class HumanResourceAvailabilityService {
     private final AppointmentRepository appointmentRepository;
 
     public void assertBookingAllowed(HumanResourceBookingContext context) {
+        // No se permiten reservas en días festivos
+        facilityOperatingHoursService.assertDateNotHoliday(context.date());
         assertBookingAllowed(context, null);
     }
 

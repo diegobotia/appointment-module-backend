@@ -21,6 +21,8 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.time.LocalDate;
+import com.ipscentir.appointments.domain.service.ColombiaPublicHoliday;
 
 @Service
 @RequiredArgsConstructor
@@ -84,6 +86,16 @@ public class FacilityOperatingHoursService {
                 .orElseThrow(() -> new IllegalArgumentException("Sede no encontrada: " + sedeId));
 
         for (LocalDate date = startDate; !date.isAfter(endDate); date = date.plusDays(1)) {
+            // Prohibir reservas/materialización en festivos nacionales
+            if (ColombiaPublicHoliday.isHoliday(date)) {
+            String name = ColombiaPublicHoliday.getHolidayName(date);
+            throw new FacilityOperatingHoursViolationException(
+                "El bloque solicitado incluye el festivo: " + name + " (" + date + ")",
+                sede.getId(),
+                sede.getNombre(),
+                null
+            );
+            }
             DayOfWeek dayOfWeek = date.getDayOfWeek();
             FacilityOperatingWindow window = resolveWindow(sedeId, dayOfWeek);
             try {
@@ -99,6 +111,22 @@ public class FacilityOperatingHoursService {
                         window
                 );
             }
+        }
+    }
+
+    public boolean isHoliday(LocalDate date) {
+        return ColombiaPublicHoliday.isHoliday(date);
+    }
+
+    public void assertDateNotHoliday(LocalDate date) {
+        if (ColombiaPublicHoliday.isHoliday(date)) {
+            String name = ColombiaPublicHoliday.getHolidayName(date);
+            throw new FacilityOperatingHoursViolationException(
+                    "No se pueden agendar citas en festivo: " + name + " (" + date + ")",
+                    null,
+                    "festivo",
+                    null
+            );
         }
     }
 

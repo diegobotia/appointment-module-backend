@@ -124,6 +124,7 @@ class N8nPatientIntegrationServiceTest {
                 .build();
 
         when(tipoIdentificacionResolver.resolveCodigo("CC")).thenReturn("13");
+        when(tipoIdentificacionResolver.resolveDescripcion("CC")).thenReturn("Cédula de ciudadanía");
         when(tipoIdentificacionResolver.findPaciente("CC", "123")).thenReturn(Optional.of(paciente));
         when(patientRegistrationService.getFormConfig()).thenReturn(
                 new com.ipscentir.appointments.application.dto.form.PatientRegistrationFormConfigResponse(
@@ -139,6 +140,7 @@ class N8nPatientIntegrationServiceTest {
 
         assertTrue(response.found());
         assertEquals(patientId, response.patientId());
+        assertEquals("Cédula de ciudadanía", response.tipoIdentificacion());
     }
 
     @Test

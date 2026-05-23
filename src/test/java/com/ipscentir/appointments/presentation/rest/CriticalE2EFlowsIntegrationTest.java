@@ -124,7 +124,8 @@ class CriticalE2EFlowsIntegrationTest {
                                                 "numIdentificacion", "1122334455"))))
                                 .andExpect(status().isOk())
                                 .andExpect(jsonPath("$.found").value(true))
-                                .andExpect(jsonPath("$.patientId").value(patientId.toString()));
+                                .andExpect(jsonPath("$.patientId").value(patientId.toString()))
+                                .andExpect(jsonPath("$.tipoIdentificacion").value("Cédula de ciudadanía"));
 
                 mockMvc.perform(post("/api/v1/integrations/n8n/patient/availability")
                                 .header(N8N_API_KEY_HEADER, N8N_API_KEY)

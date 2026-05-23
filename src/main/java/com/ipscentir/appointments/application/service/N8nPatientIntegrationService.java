@@ -179,11 +179,10 @@ public class N8nPatientIntegrationService {
 
     @Transactional(readOnly = true)
     public N8nPatientIdentifyResponse identifyPatient(N8nPatientIdentifyRequest request) {
-        String codigo = tipoIdentificacionResolver.resolveCodigo(request.codTipoIdentificacion());
         return tipoIdentificacionResolver
                 .findPaciente(request.codTipoIdentificacion(), request.numIdentificacion())
                 .map(this::toIdentifyResponse)
-                .orElseGet(() -> toIdentifyNotFound(codigo, request.numIdentificacion()));
+                .orElseGet(() -> toIdentifyNotFound(request.codTipoIdentificacion(), request.numIdentificacion()));
     }
 
     @Transactional
@@ -334,28 +333,30 @@ public class N8nPatientIntegrationService {
 
     private N8nPatientIdentifyResponse toIdentifyResponse(Paciente paciente) {
         PatientRegistrationFormConfigResponse config = patientRegistrationService.getFormConfig();
+        String codigo = tipoIdentificacionResolver.resolveCodigo(paciente.getCodTipoIdentificacion());
         return new N8nPatientIdentifyResponse(
                 true,
                 paciente.getId(),
-                paciente.getCodTipoIdentificacion(),
+                tipoIdentificacionResolver.resolveDescripcion(paciente.getCodTipoIdentificacion()),
                 paciente.getNumIdentificacion(),
                 paciente.getNombres(),
                 paciente.getApellidos(),
-                buildFormUrl(config, paciente.getCodTipoIdentificacion(), paciente.getNumIdentificacion()),
+                buildFormUrl(config, codigo, paciente.getNumIdentificacion()),
                 "Paciente identificado: " + paciente.getNombres() + " " + paciente.getApellidos()
         );
     }
 
-    private N8nPatientIdentifyResponse toIdentifyNotFound(String codTipoIdentificacion, String numIdentificacion) {
+    private N8nPatientIdentifyResponse toIdentifyNotFound(String tipoIdentificacion, String numIdentificacion) {
         PatientRegistrationFormConfigResponse config = patientRegistrationService.getFormConfig();
+        String codigo = tipoIdentificacionResolver.resolveCodigo(tipoIdentificacion);
         return new N8nPatientIdentifyResponse(
                 false,
                 null,
-                codTipoIdentificacion,
+                tipoIdentificacionResolver.resolveDescripcion(tipoIdentificacion),
                 numIdentificacion,
                 null,
                 null,
-                buildFormUrl(config, codTipoIdentificacion, numIdentificacion),
+                buildFormUrl(config, codigo, numIdentificacion),
                 "Paciente no encontrado. Debe completar el formulario de registro."
         );
     }

@@ -34,6 +34,7 @@ public class AvailabilityService {
     private final ScheduleRepository scheduleRepository;
     private final AppointmentRepository appointmentRepository;
     private final ResourceCapacityService resourceCapacityService;
+    private final FacilityOperatingHoursService facilityOperatingHoursService;
 
     public List<AvailableSlotDetail> getNearestAvailableSlotsByServiceType(
             AppointmentServiceType serviceType,
@@ -50,6 +51,9 @@ public class AvailabilityService {
 
         for (int offset = 0; offset < DEFAULT_SEARCH_DAYS && nearestSlots.size() < limit; offset++) {
             LocalDate currentDate = startDate.plusDays(offset);
+            if (facilityOperatingHoursService.isHoliday(currentDate)) {
+                continue;
+            }
             DayOfWeek dayOfWeek = currentDate.getDayOfWeek();
 
             List<Schedule> schedules = scheduleRepository.findBySedeIdAndDayOfWeek(sedeId, dayOfWeek);
@@ -110,6 +114,10 @@ public class AvailabilityService {
 
     public List<AvailableSlot> getAvailableSlots(String doctorId, Integer sedeId, LocalDate date) {
 
+        if (facilityOperatingHoursService.isHoliday(date)) {
+            return List.of();
+        }
+
         // 1. Obtener agenda del doctor para sede y día de la semana.
         Schedule schedule = scheduleRepository
             .findByDoctorIdAndSedeIdAndDayOfWeek(doctorId, sedeId, date.getDayOfWeek())
@@ -145,7 +153,9 @@ public class AvailabilityService {
     }
 
     public List<AvailableSlot> getAvailableSlots(String doctorId, LocalDate date) {
-        
+        if (facilityOperatingHoursService.isHoliday(date)) {
+            return List.of();
+        }
         // 1. Obtener agenda del doctor para ese día de la semana
         Schedule schedule = scheduleRepository
             .findByDoctorIdAndDayOfWeek(doctorId, date.getDayOfWeek())
@@ -266,6 +276,9 @@ public class AvailabilityService {
 
         List<AvailableSlotDetail> result = new ArrayList<>();
         for (LocalDate date = fromDate; !date.isAfter(toDate); date = date.plusDays(1)) {
+            if (facilityOperatingHoursService.isHoliday(date)) {
+                continue;
+            }
             try {
                 Schedule schedule = scheduleRepository
                         .findByDoctorIdAndSedeIdAndDayOfWeek(doctorId, sedeId, date.getDayOfWeek())

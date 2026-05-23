@@ -72,7 +72,7 @@ class AppointmentOperationsServiceTest {
         when(staffSecurityHelper.hasRole(RoleName.MEDICO)).thenReturn(true);
         when(staffSecurityHelper.requireDoctorIdForMedico()).thenReturn(medicoId);
         when(appointmentRepository.search(any())).thenReturn(List.of(appointment));
-        when(staffSecurityHelper.hasAnyRole(RoleName.ADMINISTRACION, RoleName.ADMISIONES, RoleName.FACTURACION))
+        when(staffSecurityHelper.hasAnyRole(RoleName.APPOINTMENT_READERS))
                 .thenReturn(false);
         when(staffSecurityHelper.hasRole(RoleName.MEDICO)).thenReturn(true);
         when(sedeAuthorizationService.canAccessSede(sedeId)).thenReturn(true);
@@ -89,7 +89,7 @@ class AppointmentOperationsServiceTest {
     @Test
     void confirmAppointmentRequiresWriteRole() {
         UUID appointmentId = UUID.randomUUID();
-        when(staffSecurityHelper.hasAnyRole(RoleName.ADMINISTRACION, RoleName.ADMISIONES)).thenReturn(false);
+        when(staffSecurityHelper.hasAnyRole(RoleName.APPOINTMENT_OPERATORS)).thenReturn(false);
 
         assertThrows(AccessDeniedException.class, () -> appointmentOperationsService.confirmAppointment(appointmentId));
     }
@@ -101,9 +101,9 @@ class AppointmentOperationsServiceTest {
         String doctorId = UUID.randomUUID().toString();
         Appointment appointment = sampleAppointment(doctorId, sedeId);
 
-        when(staffSecurityHelper.hasAnyRole(RoleName.ADMINISTRACION, RoleName.ADMISIONES)).thenReturn(true);
+        when(staffSecurityHelper.hasAnyRole(RoleName.APPOINTMENT_OPERATORS)).thenReturn(true);
         when(appointmentRepository.findById(appointmentId)).thenReturn(Optional.of(appointment));
-        when(staffSecurityHelper.hasAnyRole(RoleName.ADMINISTRACION, RoleName.ADMISIONES, RoleName.FACTURACION))
+        when(staffSecurityHelper.hasAnyRole(RoleName.APPOINTMENT_READERS))
                 .thenReturn(true);
         when(sedeAuthorizationService.canAccessSede(sedeId)).thenReturn(true);
         when(appointmentRepository.save(appointment)).thenReturn(appointment);
@@ -123,7 +123,7 @@ class AppointmentOperationsServiceTest {
         Appointment appointment = sampleAppointment(doctorId, sedeId);
 
         when(appointmentRepository.findById(appointmentId)).thenReturn(Optional.of(appointment));
-        when(staffSecurityHelper.hasAnyRole(RoleName.ADMINISTRACION, RoleName.ADMISIONES, RoleName.FACTURACION))
+        when(staffSecurityHelper.hasAnyRole(RoleName.APPOINTMENT_READERS))
                 .thenReturn(true);
         when(sedeAuthorizationService.canAccessSede(sedeId)).thenReturn(true);
         when(appointmentMapper.toDto(appointment)).thenReturn(sampleDto(appointment));
@@ -151,7 +151,7 @@ class AppointmentOperationsServiceTest {
         );
         AppointmentDTO created = sampleDto(sampleAppointment(command.doctorId(), sedeId));
 
-        when(staffSecurityHelper.hasAnyRole(RoleName.ADMINISTRACION, RoleName.ADMISIONES)).thenReturn(true);
+        when(staffSecurityHelper.hasAnyRole(RoleName.APPOINTMENT_OPERATORS)).thenReturn(true);
         when(appointmentApplicationService.createAppointment(any())).thenReturn(created);
 
         AppointmentDTO result = appointmentOperationsService.createAppointment(command);

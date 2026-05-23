@@ -44,6 +44,9 @@ class AvailabilityServiceTest {
     @Mock
     private ResourceCapacityService resourceCapacityService;
 
+    @Mock
+    private FacilityOperatingHoursService facilityOperatingHoursService;
+
     @InjectMocks
     private AvailabilityService availabilityService;
 

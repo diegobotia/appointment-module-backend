@@ -55,4 +55,13 @@ public class TipoIdentificacionResolver {
     public String canonicalCodigoForStorage(String tipoIdentificacion) {
         return resolveCodigo(tipoIdentificacion);
     }
+
+    /**
+     * Descripción oficial DIAN a partir de descripción, código o alias legacy (CC, TI…).
+     */
+    public String resolveDescripcion(String tipoIdentificacion) {
+        return ColombianIdentificationType.tryResolve(tipoIdentificacion)
+                .map(ColombianIdentificationType::getDescripcion)
+                .orElse(tipoIdentificacion);
+    }
 }

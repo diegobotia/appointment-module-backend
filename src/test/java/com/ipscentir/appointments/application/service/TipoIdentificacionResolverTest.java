@@ -44,4 +44,11 @@ class TipoIdentificacionResolverTest {
         assertTrue(found.isPresent());
         assertEquals(patientId, found.get().getId());
     }
+
+    @Test
+    void shouldResolveDescriptionFromCodigoAliasOrDescription() {
+        assertEquals("Cédula de ciudadanía", resolver.resolveDescripcion("CC"));
+        assertEquals("Cédula de ciudadanía", resolver.resolveDescripcion("13"));
+        assertEquals("Cédula de ciudadanía", resolver.resolveDescripcion("Cédula de ciudadanía"));
+    }
 }
