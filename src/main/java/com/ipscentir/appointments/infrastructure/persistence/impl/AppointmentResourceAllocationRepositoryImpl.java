@@ -35,16 +35,23 @@ public class AppointmentResourceAllocationRepositoryImpl implements AppointmentR
             LocalDate appointmentDate,
             LocalTime startTime,
             LocalTime endTime,
-            UUID excludeAppointmentId
-    ) {
-        return jpaRepository.countOccupiedCapacityUnits(
+            UUID excludeAppointmentId) {
+        if (excludeAppointmentId == null) {
+            return jpaRepository.countOccupiedCapacityUnits(
+                    sedeId,
+                    resourceType,
+                    appointmentDate,
+                    startTime,
+                    endTime);
+        }
+
+        return jpaRepository.countOccupiedCapacityUnitsExcludingAppointment(
                 sedeId,
                 resourceType,
                 appointmentDate,
                 startTime,
                 endTime,
-                excludeAppointmentId
-        );
+                excludeAppointmentId);
     }
 
     @Override
