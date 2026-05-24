@@ -1,7 +1,7 @@
 package com.ipscentir.appointments.domain.model.appointment;
 
-import jakarta.persistence.Column;
 import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -81,7 +81,7 @@ public class Appointment extends AbstractAggregateRoot<Appointment> {
 
     @Column(updatable = false, insertable = false)
     private LocalDateTime createdAt;
-    
+
     @Column(insertable = false)
     private LocalDateTime updatedAt;
 
@@ -94,21 +94,24 @@ public class Appointment extends AbstractAggregateRoot<Appointment> {
     private List<AppointmentParticipant> participants = new ArrayList<>();
 
     public void confirm() {
-        if (this.status != AppointmentStatus.SCHEDULED && this.status != AppointmentStatus.PENDIENTE_CONFIRMACION_GRUPO) {
-            throw new IllegalStateException("Only SCHEDULED or PENDIENTE_CONFIRMACION_GRUPO appointments can be confirmed");
+        if (this.status != AppointmentStatus.SCHEDULED
+                && this.status != AppointmentStatus.PENDIENTE_CONFIRMACION_GRUPO) {
+            throw new IllegalStateException(
+                    "Only SCHEDULED or PENDIENTE_CONFIRMACION_GRUPO appointments can be confirmed");
         }
         this.status = AppointmentStatus.CONFIRMED;
         this.confirmedAt = LocalDateTime.now();
-        
+
         // Registrar Evento de Dominio opcional si hiciera falta notificar al paciente.
-        // La creación de notificaciones la manejamos on-save en el event listener general.
+        // La creación de notificaciones la manejamos on-save en el event listener
+        // general.
     }
 
     public void cancel(String reason) {
         if (this.status == AppointmentStatus.CANCELLED || this.status == AppointmentStatus.COMPLETED) {
             throw new IllegalStateException("Appointment cannot be cancelled from its current state");
         }
-        
+
         if (this.appointmentDate.isBefore(LocalDate.now())) {
             throw new IllegalStateException("Cannot cancel an appointment in the past");
         }
@@ -119,16 +122,14 @@ public class Appointment extends AbstractAggregateRoot<Appointment> {
 
         // Publicar evento de cancelación
         registerEvent(new AppointmentCancelledEvent(
-                this.id, this.patientId, this.doctorId, this.appointmentDate, this.appointmentTime, reason
-        ));
+                this.id, this.patientId, this.doctorId, this.appointmentDate, this.appointmentTime, reason));
     }
 
     public static Appointment scheduleNew(
             UUID patientId,
             String primaryDoctorId,
             String secondaryDoctorId,
-            AppointmentScheduleData scheduleData
-    ) {
+            AppointmentScheduleData scheduleData) {
         return scheduleNew(patientId, primaryDoctorId, secondaryDoctorId, scheduleData, BookingChannel.STAFF, null);
     }
 
@@ -138,8 +139,7 @@ public class Appointment extends AbstractAggregateRoot<Appointment> {
             String secondaryDoctorId,
             AppointmentScheduleData scheduleData,
             BookingChannel bookingChannel,
-            String n8nConversationId
-    ) {
+            String n8nConversationId) {
         UUID appointmentId = UUID.randomUUID();
 
         if (scheduleData.type() == AppointmentType.JUNTA_MEDICA && secondaryDoctorId == null) {
@@ -150,24 +150,25 @@ public class Appointment extends AbstractAggregateRoot<Appointment> {
                 .id(appointmentId)
                 .patientId(patientId)
                 .doctorId(primaryDoctorId)
-            .sedeId(scheduleData.sedeId())
-            .scheduleId(scheduleData.scheduleId())
-            .appointmentDate(scheduleData.date())
-            .appointmentTime(scheduleData.time())
-            .durationMinutes(scheduleData.duration())
-            .appointmentType(scheduleData.type())
-            .status(scheduleData.status())
-            .reason(scheduleData.reason())
-            .bookingChannel(bookingChannel != null ? bookingChannel : BookingChannel.STAFF)
-            .n8nConversationId(n8nConversationId)
+                .sedeId(scheduleData.sedeId())
+                .scheduleId(scheduleData.scheduleId())
+                .appointmentDate(scheduleData.date())
+                .appointmentTime(scheduleData.time())
+                .durationMinutes(scheduleData.duration())
+                .appointmentType(scheduleData.type())
+                .status(scheduleData.status())
+                .reason(scheduleData.reason())
+                .bookingChannel(bookingChannel != null ? bookingChannel : BookingChannel.STAFF)
+                .n8nConversationId(n8nConversationId)
                 .build();
 
         appointment.addParticipant(primaryDoctorId, 1, AppointmentParticipantRole.PRIMARY);
         if (secondaryDoctorId != null) {
             appointment.addParticipant(secondaryDoctorId, 2, AppointmentParticipantRole.SECONDARY);
         }
-        
-        // Registramos evento para disparar asíncronamente notificaciones (SMS/Email) al guardar.
+
+        // Registramos evento para disparar asíncronamente notificaciones (SMS/Email) al
+        // guardar.
         appointment.registerEvent(new AppointmentCreatedEvent(
                 appointment.id,
                 appointment.patientId,
@@ -176,8 +177,7 @@ public class Appointment extends AbstractAggregateRoot<Appointment> {
                 appointment.appointmentTime,
                 appointment.appointmentType,
                 appointment.bookingChannel,
-                appointment.n8nConversationId
-        ));
+                appointment.n8nConversationId));
         return appointment;
     }
 
@@ -211,8 +211,7 @@ public class Appointment extends AbstractAggregateRoot<Appointment> {
             String newDoctorId,
             Integer newSedeId,
             BookingChannel channel,
-            String conversationId
-    ) {
+            String conversationId) {
         if (this.status == AppointmentStatus.CANCELLED || this.status == AppointmentStatus.COMPLETED) {
             throw new IllegalStateException("Cannot reschedule an appointment in its current state");
         }
@@ -243,8 +242,7 @@ public class Appointment extends AbstractAggregateRoot<Appointment> {
                 newDate,
                 newTime,
                 channel != null ? channel : BookingChannel.STAFF,
-                conversationId
-        ));
+                conversationId));
     }
 
     public boolean isAssignedToDoctor(String doctorId) {

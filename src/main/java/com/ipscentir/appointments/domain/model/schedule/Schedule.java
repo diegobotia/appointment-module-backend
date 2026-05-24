@@ -66,9 +66,9 @@ public class Schedule {
     private List<ScheduleBlock> blocks = new ArrayList<>();
 
     // Comportamientos de Dominio
-    
+
     public List<LocalTime> getAvailableSlots(LocalDate date) {
-        if (!this.isActive) {
+        if (!Boolean.TRUE.equals(this.isActive)) {
             return Collections.emptyList();
         }
 
@@ -90,16 +90,17 @@ public class Schedule {
     }
 
     public boolean isAvailable(LocalDate date, LocalTime time) {
-        if (!this.isActive) return false;
-        if (date.getDayOfWeek() != this.dayOfWeek) return false;
-        if (time.isBefore(this.startTime) || time.isAfter(this.endTime) || time.equals(this.endTime)) return false;
-        if (isSlotBlocked(date, time)) return false;
-
-        return true;
+        return Boolean.TRUE.equals(this.isActive)
+                && date.getDayOfWeek() == this.dayOfWeek
+                && !time.isBefore(this.startTime)
+                && !time.isAfter(this.endTime)
+                && !time.equals(this.endTime)
+                && !isSlotBlocked(date, time);
     }
 
     private boolean isSlotBlocked(LocalDate date, LocalTime time) {
-        if (blocks == null || blocks.isEmpty()) return false;
+        if (blocks == null || blocks.isEmpty())
+            return false;
         return blocks.stream().anyMatch(block -> block.isDateTimeBlocked(date, time));
     }
 
@@ -108,8 +109,7 @@ public class Schedule {
             LocalTime startTime,
             LocalTime endTime,
             int slotDurationMinutes,
-            int maxPatientsPerSlot
-    ) {
+            int maxPatientsPerSlot) {
         this.specialty = specialty;
         this.startTime = startTime;
         this.endTime = endTime;

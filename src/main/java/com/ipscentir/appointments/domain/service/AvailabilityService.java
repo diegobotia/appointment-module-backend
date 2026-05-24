@@ -28,7 +28,6 @@ import static java.util.Locale.ROOT;
 @RequiredArgsConstructor
 public class AvailabilityService {
 
-
     private static final int DEFAULT_SEARCH_DAYS = 90;
 
     private final ScheduleRepository scheduleRepository;
@@ -40,8 +39,7 @@ public class AvailabilityService {
             AppointmentServiceType serviceType,
             Integer sedeId,
             LocalDate fromDate,
-            int limit
-    ) {
+            int limit) {
         if (limit <= 0) {
             throw new IllegalArgumentException("limit must be greater than zero");
         }
@@ -63,7 +61,8 @@ public class AvailabilityService {
                 }
 
                 List<LocalTime> possibleSlots = schedule.getAvailableSlots(currentDate);
-                List<Appointment> existingAppointments = appointmentRepository.findByDoctorIdAndDate(schedule.getDoctorId(), currentDate);
+                List<Appointment> existingAppointments = appointmentRepository
+                        .findByDoctorIdAndDate(schedule.getDoctorId(), currentDate);
                 Map<LocalTime, Long> appointmentsPerSlot = existingAppointments.stream()
                         .collect(Collectors.groupingBy(Appointment::getAppointmentTime, Collectors.counting()));
 
@@ -81,8 +80,7 @@ public class AvailabilityService {
                             schedule.getId(),
                             currentDate,
                             time,
-                            schedule.getSlotDurationMinutes()
-                    );
+                            schedule.getSlotDurationMinutes());
                     if (!physicalCapacity) {
                         continue;
                     }
@@ -97,8 +95,7 @@ public class AvailabilityService {
                             time,
                             schedule.getSlotDurationMinutes(),
                             availableSeats,
-                            true
-                    ));
+                            true));
                 }
             }
         }
@@ -113,6 +110,11 @@ public class AvailabilityService {
     }
 
     public List<AvailableSlot> getAvailableSlots(String doctorId, Integer sedeId, LocalDate date) {
+        return getAvailableSlots(doctorId, sedeId, date, null);
+    }
+
+    public List<AvailableSlot> getAvailableSlots(String doctorId, Integer sedeId, LocalDate date,
+            UUID excludeAppointmentId) {
 
         if (facilityOperatingHoursService.isHoliday(date)) {
             return List.of();
@@ -120,23 +122,26 @@ public class AvailabilityService {
 
         // 1. Obtener agenda del doctor para sede y día de la semana.
         Schedule schedule = scheduleRepository
-            .findByDoctorIdAndSedeIdAndDayOfWeek(doctorId, sedeId, date.getDayOfWeek())
-            .orElseThrow(() -> new IllegalArgumentException(
-                "No hay agenda configurada para este medico en la sede solicitada para " + date.getDayOfWeek()
-            ));
+                .findByDoctorIdAndSedeIdAndDayOfWeek(doctorId, sedeId, date.getDayOfWeek())
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "No hay agenda configurada para este medico en la sede solicitada para "
+                                + date.getDayOfWeek()));
 
-        // 2. Obtener slots posibles según configuración (incluye filtrado de bloqueos internos).
+        // 2. Obtener slots posibles según configuración (incluye filtrado de bloqueos
+        // internos).
         List<LocalTime> possibleSlots = schedule.getAvailableSlots(date);
 
         // 3. Obtener citas ya agendadas/confirmadas para ese día.
-        List<Appointment> existingAppointments = appointmentRepository.findByDoctorIdAndDate(doctorId, date);
+        List<Appointment> existingAppointments = appointmentRepository.findByDoctorIdAndDate(doctorId, date).stream()
+                .filter(appointment -> excludeAppointmentId == null
+                        || !excludeAppointmentId.equals(appointment.getId()))
+                .toList();
 
         // 4. Filtrar slots ya ocupados agrupándolos.
         Map<LocalTime, Long> appointmentsPerSlot = existingAppointments.stream()
-            .collect(Collectors.groupingBy(
-                Appointment::getAppointmentTime,
-                Collectors.counting()
-            ));
+                .collect(Collectors.groupingBy(
+                        Appointment::getAppointmentTime,
+                        Collectors.counting()));
 
         // 5. Construir lista de slots disponibles que no excedan el cupo por slot.
         return possibleSlots.stream()
@@ -147,55 +152,64 @@ public class AvailabilityService {
                 .map(time -> new AvailableSlot(
                         date,
                         time,
-                        schedule.getSlotDurationMinutes()
-                ))
+                        schedule.getSlotDurationMinutes()))
                 .toList();
     }
 
     public List<AvailableSlot> getAvailableSlots(String doctorId, LocalDate date) {
+        return getAvailableSlots(doctorId, date, null);
+    }
+
+    public List<AvailableSlot> getAvailableSlots(String doctorId, LocalDate date, UUID excludeAppointmentId) {
         if (facilityOperatingHoursService.isHoliday(date)) {
             return List.of();
         }
         // 1. Obtener agenda del doctor para ese día de la semana
         Schedule schedule = scheduleRepository
-            .findByDoctorIdAndDayOfWeek(doctorId, date.getDayOfWeek())
-            .orElseThrow(() -> new IllegalArgumentException(
-                "No hay agenda configurada para este médico en " + date.getDayOfWeek()
-            ));
+                .findByDoctorIdAndDayOfWeek(doctorId, date.getDayOfWeek())
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "No hay agenda configurada para este médico en " + date.getDayOfWeek()));
 
-        // 2. Obtener slots posibles según configuración (incluye filtrado de bloqueos internos)
+        // 2. Obtener slots posibles según configuración (incluye filtrado de bloqueos
+        // internos)
         List<LocalTime> possibleSlots = schedule.getAvailableSlots(date);
 
         // 3. Obtener citas ya agendadas/confirmadas para ese día
-        List<Appointment> existingAppointments = appointmentRepository.findByDoctorIdAndDate(doctorId, date);
+        List<Appointment> existingAppointments = appointmentRepository.findByDoctorIdAndDate(doctorId, date).stream()
+                .filter(appointment -> excludeAppointmentId == null
+                        || !excludeAppointmentId.equals(appointment.getId()))
+                .toList();
 
         // 4. Filtrar slots ya ocupados agrupándolos
         Map<LocalTime, Long> appointmentsPerSlot = existingAppointments.stream()
-            .collect(Collectors.groupingBy(
-                Appointment::getAppointmentTime,
-                Collectors.counting()
-            ));
+                .collect(Collectors.groupingBy(
+                        Appointment::getAppointmentTime,
+                        Collectors.counting()));
 
         // 5. Construir lista de slots disponibles que no excedan el cupo por slot
         return possibleSlots.stream()
-            .filter(time -> {
-                long appointmentsInSlot = appointmentsPerSlot.getOrDefault(time, 0L);
-                return appointmentsInSlot < schedule.getMaxPatientsPerSlot();
-            })
-            .map(time -> new AvailableSlot(
-                date,
-                time,
-                schedule.getSlotDurationMinutes()
-            ))
-            .toList();
+                .filter(time -> {
+                    long appointmentsInSlot = appointmentsPerSlot.getOrDefault(time, 0L);
+                    return appointmentsInSlot < schedule.getMaxPatientsPerSlot();
+                })
+                .map(time -> new AvailableSlot(
+                        date,
+                        time,
+                        schedule.getSlotDurationMinutes()))
+                .toList();
     }
 
     public boolean isSlotAvailable(String doctorId, LocalDate date, LocalTime time) {
-        // En caso de que el schedule repository falle (porque no haya schedule ese día), asumimos falso
+        return isSlotAvailable(doctorId, date, time, null);
+    }
+
+    public boolean isSlotAvailable(String doctorId, LocalDate date, LocalTime time, UUID excludeAppointmentId) {
+        // En caso de que el schedule repository falle (porque no haya schedule ese
+        // día), asumimos falso
         try {
-            List<AvailableSlot> availableSlots = getAvailableSlots(doctorId, date);
+            List<AvailableSlot> availableSlots = getAvailableSlots(doctorId, date, excludeAppointmentId);
             return availableSlots.stream()
-                .anyMatch(slot -> slot.getTime().equals(time));
+                    .anyMatch(slot -> slot.getTime().equals(time));
         } catch (IllegalArgumentException ex) {
             return false;
         }
@@ -205,12 +219,23 @@ public class AvailabilityService {
         return isSlotAvailable(doctorId, sedeId, date, time, null, null, 30);
     }
 
+    public boolean isSlotAvailable(String doctorId, Integer sedeId, LocalDate date, LocalTime time,
+            UUID excludeAppointmentId) {
+        return isSlotAvailable(doctorId, sedeId, date, time, null, null, 30, excludeAppointmentId);
+    }
+
     /**
-     * Disponibilidad del médico en agenda (cupo por slot), sin validar inventario físico de sede.
+     * Disponibilidad del médico en agenda (cupo por slot), sin validar inventario
+     * físico de sede.
      */
     public boolean isDoctorSlotAvailable(String doctorId, Integer sedeId, LocalDate date, LocalTime time) {
+        return isDoctorSlotAvailable(doctorId, sedeId, date, time, null);
+    }
+
+    public boolean isDoctorSlotAvailable(String doctorId, Integer sedeId, LocalDate date, LocalTime time,
+            UUID excludeAppointmentId) {
         try {
-            List<AvailableSlot> availableSlots = getAvailableSlots(doctorId, sedeId, date);
+            List<AvailableSlot> availableSlots = getAvailableSlots(doctorId, sedeId, date, excludeAppointmentId);
             return availableSlots.stream().anyMatch(slot -> slot.getTime().equals(time));
         } catch (IllegalArgumentException ex) {
             return false;
@@ -224,9 +249,20 @@ public class AvailabilityService {
             LocalTime time,
             AppointmentType appointmentType,
             UUID scheduleId,
-            int durationMinutes
-    ) {
-        if (!isDoctorSlotAvailable(doctorId, sedeId, date, time)) {
+            int durationMinutes) {
+        return isSlotAvailable(doctorId, sedeId, date, time, appointmentType, scheduleId, durationMinutes, null);
+    }
+
+    public boolean isSlotAvailable(
+            String doctorId,
+            Integer sedeId,
+            LocalDate date,
+            LocalTime time,
+            AppointmentType appointmentType,
+            UUID scheduleId,
+            int durationMinutes,
+            UUID excludeAppointmentId) {
+        if (!isDoctorSlotAvailable(doctorId, sedeId, date, time, excludeAppointmentId)) {
             return false;
         }
         if (appointmentType == null) {
@@ -241,8 +277,7 @@ public class AvailabilityService {
                     date,
                     time,
                     durationMinutes,
-                    null
-            );
+                    null);
         } catch (IllegalArgumentException ex) {
             return false;
         }
@@ -256,14 +291,14 @@ public class AvailabilityService {
     }
 
     /**
-     * Slots disponibles con cupos restantes para un médico en sede y rango de fechas (inclusive).
+     * Slots disponibles con cupos restantes para un médico en sede y rango de
+     * fechas (inclusive).
      */
     public List<AvailableSlotDetail> getAvailableSlotsInRange(
             String doctorId,
             Integer sedeId,
             LocalDate fromDate,
-            LocalDate toDate
-    ) {
+            LocalDate toDate) {
         if (fromDate == null || toDate == null) {
             throw new IllegalArgumentException("fromDate and toDate are required");
         }
@@ -307,8 +342,7 @@ public class AvailabilityService {
                             date,
                             time,
                             schedule.getSlotDurationMinutes(),
-                            availableSeats
-                    ));
+                            availableSeats));
                 }
             } catch (IllegalArgumentException ignored) {
                 // Sin agenda ese día de la semana en la sede.
