@@ -1,16 +1,15 @@
 package com.ipscentir.appointments.application.service;
 
-import com.ipscentir.appointments.application.dto.availability.DoctorAvailabilityResponse;
-import com.ipscentir.appointments.application.dto.availability.DoctorAvailabilitySlotDTO;
-import com.ipscentir.appointments.application.dto.availability.DoctorDayAvailabilityDTO;
+import com.ipscentir.appointments.application.dto.availability.MedicoAvailabilityResponse;
+import com.ipscentir.appointments.application.dto.availability.MedicoAvailabilitySlotDTO;
+import com.ipscentir.appointments.application.dto.availability.MedicoDayAvailabilityDTO;
+import com.ipscentir.appointments.application.dto.medico.MedicoAvailableDTO;
 import com.ipscentir.appointments.application.security.SedeAuthorizationService;
 import com.ipscentir.appointments.application.security.StaffSecurityHelper;
-import com.ipscentir.appointments.application.service.dto.DoctorAvailableDTO;
 import com.ipscentir.appointments.domain.model.schedule.AvailableSlotDetail;
 import com.ipscentir.appointments.domain.model.security.RoleName;
 import com.ipscentir.appointments.domain.model.specialist.Specialist;
 import com.ipscentir.appointments.domain.service.AvailabilityService;
-import com.ipscentir.appointments.infrastructure.persistence.jpa.SpecialistJpaRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.access.AccessDeniedException;
@@ -22,27 +21,24 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
-public class DoctorApplicationService {
+public class MedicoApplicationService {
 
-    private final SpecialistJpaRepository specialistJpaRepository;
+    private final MedicoLookupService medicoLookupService;
     private final AvailabilityService availabilityService;
     private final SedeAuthorizationService sedeAuthorizationService;
     private final StaffSecurityHelper staffSecurityHelper;
 
     @Transactional(readOnly = true)
-    public List<DoctorAvailableDTO> findAvailableDoctors(String specialty, Integer sedeId, LocalDate availabilityDate) {
-        log.debug("findAvailableDoctors specialty={}, sedeId={}, date={}", specialty, sedeId, availabilityDate);
+    public List<MedicoAvailableDTO> findAvailableMedicos(String specialty, Integer sedeId, LocalDate availabilityDate) {
+        log.debug("findAvailableMedicos specialty={}, sedeId={}, date={}", specialty, sedeId, availabilityDate);
 
-        List<DoctorAvailableDTO> result = new ArrayList<>();
-        List<Specialist> specialists = specialistJpaRepository.findAllByActiveTrue();
-
-        for (Specialist specialist : specialists) {
+        List<MedicoAvailableDTO> result = new ArrayList<>();
+        for (Specialist specialist : medicoLookupService.findAllActive()) {
             if (specialty != null && !specialty.trim().isEmpty()) {
                 String spec = specialist.getSpecialty();
                 if (spec == null || !spec.equalsIgnoreCase(specialty.trim())) {
@@ -66,9 +62,9 @@ public class DoctorApplicationService {
                     ? List.of(specialist.getSpecialty())
                     : List.of();
 
-            result.add(DoctorAvailableDTO.builder()
-                    .doctorId(specialist.getId())
-                    .name(specialist.getFirstName() + " " + specialist.getLastName())
+            result.add(MedicoAvailableDTO.builder()
+                    .medicoId(specialist.getId())
+                    .name(MedicoLookupService.formatFullName(specialist))
                     .specialties(specs)
                     .build());
         }
@@ -77,20 +73,18 @@ public class DoctorApplicationService {
     }
 
     @Transactional(readOnly = true)
-    public DoctorAvailabilityResponse getDoctorAvailability(
-            String doctorId,
+    public MedicoAvailabilityResponse getMedicoAvailability(
+            String medicoId,
             Integer sedeId,
             LocalDate fromDate,
             LocalDate toDate
     ) {
-        specialistJpaRepository.findById(doctorId)
-                .orElseThrow(() -> new IllegalArgumentException("Doctor not found"));
-
+        medicoLookupService.requireById(medicoId);
         sedeAuthorizationService.assertCurrentUserCanAccessSede(sedeId);
 
         if (staffSecurityHelper.hasRole(RoleName.MEDICO)) {
-            String ownDoctorId = staffSecurityHelper.requireDoctorIdForMedico();
-            if (!ownDoctorId.equals(doctorId)) {
+            String ownMedicoId = staffSecurityHelper.requireDoctorIdForMedico();
+            if (!ownMedicoId.equals(medicoId)) {
                 throw new AccessDeniedException("El médico solo puede consultar su propia disponibilidad");
             }
         }
@@ -98,14 +92,14 @@ public class DoctorApplicationService {
         LocalDate from = fromDate != null ? fromDate : LocalDate.now();
         LocalDate to = toDate != null ? toDate : from.plusDays(6);
 
-        List<AvailableSlotDetail> slots = availabilityService.getAvailableSlotsInRange(doctorId, sedeId, from, to);
+        List<AvailableSlotDetail> slots = availabilityService.getAvailableSlotsInRange(medicoId, sedeId, from, to);
 
-        Map<LocalDate, List<DoctorAvailabilitySlotDTO>> byDay = slots.stream()
+        Map<LocalDate, List<MedicoAvailabilitySlotDTO>> byDay = slots.stream()
                 .collect(Collectors.groupingBy(
                         AvailableSlotDetail::appointmentDate,
                         LinkedHashMap::new,
                         Collectors.mapping(
-                                s -> new DoctorAvailabilitySlotDTO(
+                                s -> new MedicoAvailabilitySlotDTO(
                                         s.appointmentTime(),
                                         s.durationMinutes(),
                                         s.availableSeats()
@@ -114,13 +108,13 @@ public class DoctorApplicationService {
                         )
                 ));
 
-        List<DoctorDayAvailabilityDTO> days = new ArrayList<>();
+        List<MedicoDayAvailabilityDTO> days = new ArrayList<>();
         for (LocalDate date = from; !date.isAfter(to); date = date.plusDays(1)) {
-            days.add(new DoctorDayAvailabilityDTO(date, byDay.getOrDefault(date, List.of())));
+            days.add(new MedicoDayAvailabilityDTO(date, byDay.getOrDefault(date, List.of())));
         }
 
-        return new DoctorAvailabilityResponse(
-                doctorId,
+        return new MedicoAvailabilityResponse(
+                medicoId,
                 sedeId,
                 from,
                 to,

@@ -35,7 +35,10 @@ public class AdminAppointmentController {
     private final AppointmentOperationsService appointmentOperationsService;
 
     @GetMapping
-    @Operation(summary = "Buscar citas (filtro bookingChannel=N8N|STAFF para auditoría)")
+    @Operation(
+            summary = "Buscar citas (filtro bookingChannel=N8N|STAFF para auditoría)",
+            description = "Mismo AppointmentDTO enriquecido que GET /appointments (display names y administrative)."
+    )
     public ResponseEntity<List<AppointmentDTO>> search(
             @RequestParam(required = false) Integer sedeId,
             @RequestParam(required = false) String doctorId,

@@ -137,7 +137,8 @@ class N8nIntegrationControllerTest {
 
         AppointmentDTO dto = new AppointmentDTO(
                 UUID.randomUUID(), patientId, doctorId, sedeId, null, scheduleId, date, time, 30,
-                AppointmentType.PRESENCIAL, AppointmentStatus.SCHEDULED, BookingChannel.N8N, null, "Checkup", null, LocalDateTime.now(), null
+                AppointmentType.PRESENCIAL, AppointmentStatus.SCHEDULED, BookingChannel.N8N, null, "Checkup", null, LocalDateTime.now(), null,
+                null, null, false
         );
 
         when(n8nPatientIntegrationService.createAppointment(any())).thenReturn(new N8nPatientAppointmentResponse(dto, "Cita agendada correctamente para atención por chat n8n."));
@@ -167,7 +168,8 @@ class N8nIntegrationControllerTest {
         AppointmentDTO dto = new AppointmentDTO(
                 UUID.randomUUID(), UUID.randomUUID(), java.util.UUID.randomUUID().toString(), FacilityMasterData.SEDE_ID_BELEN, null, UUID.randomUUID(),
                 LocalDate.now().plusDays(2), LocalTime.of(10, 0), 30,
-                AppointmentType.PRESENCIAL, AppointmentStatus.CANCELLED, BookingChannel.N8N, null, "Cambio de plan", null, LocalDateTime.now(), LocalDateTime.now()
+                AppointmentType.PRESENCIAL, AppointmentStatus.CANCELLED, BookingChannel.N8N, null, "Cambio de plan", null, LocalDateTime.now(), LocalDateTime.now(),
+                null, null, false
         );
 
         when(n8nPatientIntegrationService.cancelAppointment(any(), any())).thenReturn(new N8nCancelAppointmentResponse(dto, "Cita cancelada correctamente desde el flujo n8n."));

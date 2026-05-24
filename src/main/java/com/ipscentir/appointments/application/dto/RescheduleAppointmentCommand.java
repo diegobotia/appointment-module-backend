@@ -1,5 +1,6 @@
 package com.ipscentir.appointments.application.dto;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import jakarta.validation.constraints.FutureOrPresent;
 import jakarta.validation.constraints.NotNull;
 
@@ -11,7 +12,7 @@ public record RescheduleAppointmentCommand(
         @NotNull @FutureOrPresent LocalDate appointmentDate,
         @NotNull LocalTime appointmentTime,
         @NotNull UUID scheduleId,
-        @NotNull String doctorId,
+        @NotNull @JsonAlias("doctorId") String medicoId,
         @NotNull Integer sedeId
 ) {
 }

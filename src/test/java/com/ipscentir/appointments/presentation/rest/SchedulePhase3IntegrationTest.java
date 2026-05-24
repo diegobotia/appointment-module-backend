@@ -1,12 +1,13 @@
 package com.ipscentir.appointments.presentation.rest;
 
 import com.ipscentir.appointments.domain.model.facility.FacilityMasterData;
-
 import com.ipscentir.appointments.domain.model.schedule.Schedule;
-import com.ipscentir.appointments.domain.model.specialist.Specialist;
-import com.ipscentir.appointments.infrastructure.persistence.jpa.SedeJpaRepository;
+import com.ipscentir.appointments.infrastructure.persistence.jpa.ProfileRepository;
+import com.ipscentir.appointments.infrastructure.persistence.jpa.RoleJpaRepository;
 import com.ipscentir.appointments.infrastructure.persistence.jpa.ScheduleJpaRepository;
 import com.ipscentir.appointments.infrastructure.persistence.jpa.SpecialistJpaRepository;
+import com.ipscentir.appointments.support.MedicoProfileTestSupport;
+import com.ipscentir.appointments.support.MedicoProfileTestSupport.MedicoTestIdentity;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -37,30 +38,35 @@ class SchedulePhase3IntegrationTest {
     private SpecialistJpaRepository specialistJpaRepository;
 
     @Autowired
-    private ScheduleJpaRepository scheduleJpaRepository;
+    private ProfileRepository profileRepository;
 
     @Autowired
-    private SedeJpaRepository sedeJpaRepository;
+    private RoleJpaRepository roleJpaRepository;
 
-    private String medicoProfileId;
+    @Autowired
+    private ScheduleJpaRepository scheduleJpaRepository;
+
+    private String medicoId;
+    private UUID medicoProfileId;
     private Integer sedeId;
     private LocalDate monday;
 
     @BeforeEach
     void setUp() {
         scheduleJpaRepository.deleteAll();
+        profileRepository.deleteAll();
         specialistJpaRepository.deleteAll();
 
-        medicoProfileId = UUID.randomUUID().toString();
-
-        specialistJpaRepository.save(Specialist.builder()
-                .id(medicoProfileId)
-                .numeroMedico("99001")
-                .firstName("Ana")
-                .lastName("Rios")
-                .specialty("Medicina general")
-                
-                .build());
+        MedicoTestIdentity identity = MedicoProfileTestSupport.seedMedicoWithProfile(
+                specialistJpaRepository,
+                profileRepository,
+                roleJpaRepository,
+                "99001",
+                "Ana",
+                "Rios"
+        );
+        medicoId = identity.medicoId();
+        medicoProfileId = identity.profileId();
 
         sedeId = FacilityMasterData.SEDE_ID_BELEN;
         monday = LocalDate.now().plusDays(1);
@@ -69,7 +75,7 @@ class SchedulePhase3IntegrationTest {
         }
 
         scheduleJpaRepository.save(Schedule.builder()
-                .doctorId(medicoProfileId)
+                .doctorId(medicoId)
                 .sedeId(sedeId)
                 .specialty("Medicina general")
                 .dayOfWeek(java.time.DayOfWeek.MONDAY)
@@ -84,19 +90,19 @@ class SchedulePhase3IntegrationTest {
     @Test
     @WithMockUser(roles = "ADMISIONES")
     void shouldReturnDoctorAvailabilityInRange() throws Exception {
-        mockMvc.perform(get("/api/v1/doctors/{doctorId}/availability", medicoProfileId)
+        mockMvc.perform(get("/api/v1/medicos/{medicoId}/availability", medicoId)
                         .param("sedeId", sedeId.toString())
                         .param("from", monday.toString())
                         .param("to", monday.toString()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.doctorId").value(medicoProfileId))
+                .andExpect(jsonPath("$.medicoId").value(medicoId))
                 .andExpect(jsonPath("$.totalAvailableSlots").value(4))
                 .andExpect(jsonPath("$.days[0].slots.length()").value(4));
     }
 
     @Test
     void medicoCannotViewOtherDoctorAvailability() throws Exception {
-        mockMvc.perform(get("/api/v1/doctors/{doctorId}/availability", medicoProfileId)
+        mockMvc.perform(get("/api/v1/medicos/{medicoId}/availability", medicoId)
                         .with(user(UUID.randomUUID().toString()).roles("MEDICO"))
                         .param("sedeId", sedeId.toString())
                         .param("from", monday.toString())
@@ -106,8 +112,8 @@ class SchedulePhase3IntegrationTest {
 
     @Test
     void medicoCanViewOwnAvailabilityAndMeSchedule() throws Exception {
-        mockMvc.perform(get("/api/v1/doctors/{doctorId}/availability", medicoProfileId)
-                        .with(user(medicoProfileId).roles("MEDICO"))
+        mockMvc.perform(get("/api/v1/medicos/{medicoId}/availability", medicoId)
+                        .with(user(medicoProfileId.toString()).roles("MEDICO"))
                         .param("sedeId", sedeId.toString())
                         .param("from", monday.toString())
                         .param("to", monday.toString()))
@@ -115,12 +121,12 @@ class SchedulePhase3IntegrationTest {
                 .andExpect(jsonPath("$.totalAvailableSlots").value(4));
 
         mockMvc.perform(get("/api/v1/me/schedule")
-                        .with(user(medicoProfileId).roles("MEDICO"))
+                        .with(user(medicoProfileId.toString()).roles("MEDICO"))
                         .param("sedeId", sedeId.toString())
                         .param("from", monday.toString())
                         .param("to", monday.toString()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.doctorId").value(medicoProfileId))
+                .andExpect(jsonPath("$.medicoId").value(medicoId))
                 .andExpect(jsonPath("$.scheduleTemplates.length()").value(1));
     }
 }

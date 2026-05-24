@@ -1,4 +1,4 @@
-package com.ipscentir.appointments.application.service.dto;
+package com.ipscentir.appointments.application.dto.medico;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -6,14 +6,13 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.util.List;
-import java.util.UUID;
 
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class DoctorAvailableDTO {
-    private String doctorId;
+public class MedicoAvailableDTO {
+    private String medicoId;
     private String name;
     private List<String> specialties;
 }

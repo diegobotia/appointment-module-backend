@@ -65,7 +65,8 @@ class AppointmentControllerTest {
 
         AppointmentDTO dto = new AppointmentDTO(
                 UUID.randomUUID(), patientId, doctorId, sedeId, null, scheduleId, LocalDate.now().plusDays(2), LocalTime.of(10, 0),
-                30, AppointmentType.PRESENCIAL, AppointmentStatus.SCHEDULED, BookingChannel.STAFF, null, "Routine Visit", null, LocalDateTime.now(), null
+                30, AppointmentType.PRESENCIAL, AppointmentStatus.SCHEDULED, BookingChannel.STAFF, null, "Routine Visit", null, LocalDateTime.now(), null,
+                null, null, false
         );
 
         Mockito.when(appointmentOperationsService.createAppointment(any(CreateAppointmentCommand.class))).thenReturn(dto);
@@ -92,6 +93,6 @@ class AppointmentControllerTest {
                 .content(objectMapper.writeValueAsString(command)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.patientId").exists())
-                .andExpect(jsonPath("$.doctorId").exists());
+                .andExpect(jsonPath("$.medicoId").exists());
     }
 }

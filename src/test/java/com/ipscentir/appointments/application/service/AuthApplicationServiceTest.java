@@ -65,7 +65,7 @@ class AuthApplicationServiceTest {
     void getCurrentUserProfileFromStaffPrincipal() {
         UUID profileId = UUID.randomUUID();
         UUID roleId = UUID.randomUUID();
-        StaffPrincipal principal = new StaffPrincipal(profileId, of(RoleName.MEDICO), true);
+        StaffPrincipal principal = new StaffPrincipal(profileId, of(RoleName.MEDICO), true, of("medico-hc-1"));
         Jwt jwt = Jwt.withTokenValue("token")
                 .header("alg", "none")
                 .claim("sub", profileId.toString())
@@ -79,6 +79,7 @@ class AuthApplicationServiceTest {
         profile.setEmail("medico@test.com");
         profile.setName("Dr Test");
         profile.setRoleId(roleId);
+        profile.setMedicoId("medico-hc-1");
         Role role = new Role();
         role.setId(roleId);
         role.setNombre(RoleName.MEDICO.getSupabaseNombre());
@@ -90,6 +91,7 @@ class AuthApplicationServiceTest {
 
         assertEquals(profileId, result.get("id"));
         assertEquals("Medico", result.get("role"));
+        assertEquals("medico-hc-1", result.get("medicoId"));
         assertEquals("medico@test.com", result.get("email"));
     }
 

@@ -38,7 +38,7 @@ public class Appointment extends AbstractAggregateRoot<Appointment> {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @Column(nullable = false)
+    @Column(nullable = true)
     private UUID patientId;
 
     @Column(nullable = false)
@@ -181,7 +181,67 @@ public class Appointment extends AbstractAggregateRoot<Appointment> {
         return appointment;
     }
 
+    /**
+     * Agenda una reunión o bloqueo interno entre personal administrativo (sin paciente).
+     */
+    public static Appointment scheduleStaffMeeting(
+            List<String> participantDoctorIds,
+            AppointmentScheduleData scheduleData,
+            BookingChannel bookingChannel
+    ) {
+        if (participantDoctorIds == null || participantDoctorIds.isEmpty()) {
+            throw new IllegalStateException("Junta staff requiere al menos un participante");
+        }
+        if (scheduleData.type() != AppointmentType.STAFF) {
+            throw new IllegalStateException("scheduleStaffMeeting requiere appointmentType STAFF");
+        }
+
+        String primaryDoctorId = participantDoctorIds.getFirst();
+        UUID appointmentId = UUID.randomUUID();
+
+        Appointment appointment = Appointment.builder()
+                .id(appointmentId)
+                .patientId(null)
+                .doctorId(primaryDoctorId)
+                .sedeId(scheduleData.sedeId())
+                .scheduleId(scheduleData.scheduleId())
+                .appointmentDate(scheduleData.date())
+                .appointmentTime(scheduleData.time())
+                .durationMinutes(scheduleData.duration())
+                .appointmentType(AppointmentType.STAFF)
+                .status(scheduleData.status())
+                .reason(scheduleData.reason())
+                .bookingChannel(bookingChannel != null ? bookingChannel : BookingChannel.STAFF)
+                .build();
+
+        for (int i = 0; i < participantDoctorIds.size(); i++) {
+            AppointmentParticipantRole role = i == 0
+                    ? AppointmentParticipantRole.PRIMARY
+                    : AppointmentParticipantRole.SECONDARY;
+            appointment.addParticipant(participantDoctorIds.get(i), i + 1, role);
+        }
+
+        appointment.registerEvent(new AppointmentCreatedEvent(
+                appointment.id,
+                appointment.patientId,
+                appointment.doctorId,
+                appointment.appointmentDate,
+                appointment.appointmentTime,
+                appointment.appointmentType,
+                appointment.bookingChannel,
+                null
+        ));
+        return appointment;
+    }
+
+    public boolean isAdministrative() {
+        return this.appointmentType == AppointmentType.STAFF;
+    }
+
     public void checkIn() {
+        if (isAdministrative()) {
+            throw new IllegalStateException("Las citas administrativas no admiten check-in de paciente");
+        }
         if (this.status != AppointmentStatus.SCHEDULED && this.status != AppointmentStatus.CONFIRMED) {
             throw new IllegalStateException("Only SCHEDULED or CONFIRMED appointments can be checked in");
         }

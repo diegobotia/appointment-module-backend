@@ -4,6 +4,7 @@ import com.ipscentir.appointments.domain.model.appointment.Appointment;
 import com.ipscentir.appointments.domain.model.appointment.AppointmentStatus;
 import com.ipscentir.appointments.domain.model.appointment.AppointmentType;
 import com.ipscentir.appointments.domain.model.appointment.AppointmentScheduleData;
+import com.ipscentir.appointments.domain.model.appointment.BookingChannel;
 import com.ipscentir.appointments.domain.repository.AppointmentRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -42,6 +43,59 @@ public class AppointmentBookingService {
         appointment.cancel(reason);
         resourceCapacityService.release(appointmentId);
         return appointmentRepository.save(appointment);
+    }
+
+    public Appointment bookAdministrativeAppointment(AdministrativeAppointmentBookingRequest request) {
+        if (transactionTemplate == null) {
+            return bookAdministrativeAppointmentTransactional(request);
+        }
+
+        Appointment appointment = transactionTemplate.execute(status -> bookAdministrativeAppointmentTransactional(request));
+        if (appointment == null) {
+            throw new IllegalStateException("Transaction returned null appointment");
+        }
+        return appointment;
+    }
+
+    private Appointment bookAdministrativeAppointmentTransactional(AdministrativeAppointmentBookingRequest request) {
+        int duration = request.resolvedDurationMinutes();
+
+        humanResourceAvailabilityService.assertAdministrativeBookingAllowed(
+                request.participantDoctorIds(),
+                request.sedeId(),
+                request.date(),
+                request.time(),
+                duration
+        );
+
+        resourceCapacityService.assertCanAllocate(
+                request.sedeId(),
+                AppointmentType.STAFF,
+                null,
+                request.date(),
+                request.time(),
+                duration,
+                null
+        );
+
+        Appointment appointment = Appointment.scheduleStaffMeeting(
+                request.participantDoctorIds(),
+                new AppointmentScheduleData(
+                        null,
+                        request.sedeId(),
+                        request.date(),
+                        request.time(),
+                        duration,
+                        AppointmentType.STAFF,
+                        AppointmentStatus.SCHEDULED,
+                        request.reason()
+                ),
+                BookingChannel.STAFF
+        );
+
+        Appointment saved = appointmentRepository.save(appointment);
+        resourceCapacityService.allocate(saved);
+        return saved;
     }
 
     private Appointment bookTherapyUnderLock(AppointmentBookingRequest request) {

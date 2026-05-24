@@ -19,6 +19,18 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 class ServiceResourceMatrixTest {
 
     @Test
+    void mapsStaffServiceToReunionRoom() {
+        assertEquals(
+                FacilityResourceType.REUNION_STAFF,
+                ServiceResourceMatrix.resourceForServiceType(AppointmentServiceType.STAFF)
+        );
+        assertEquals(
+                FacilityResourceType.REUNION_STAFF,
+                ServiceResourceMatrix.resourceForAppointmentType(AppointmentType.STAFF)
+        );
+    }
+
+    @Test
     void mapsTherapyServicesToCorrectRooms() {
         assertEquals(
                 FacilityResourceType.FISIOTERAPIA,

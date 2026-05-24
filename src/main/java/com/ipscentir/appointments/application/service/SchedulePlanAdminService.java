@@ -13,7 +13,6 @@ import com.ipscentir.appointments.domain.model.schedule.SchedulePlanBlock;
 import com.ipscentir.appointments.domain.model.schedule.SchedulePlanSlot;
 import com.ipscentir.appointments.domain.service.FacilityOperatingHoursService;
 import com.ipscentir.appointments.infrastructure.persistence.jpa.SchedulePlanJpaRepository;
-import com.ipscentir.appointments.infrastructure.persistence.jpa.SpecialistJpaRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,14 +26,13 @@ import java.util.UUID;
 public class SchedulePlanAdminService {
 
     private final SchedulePlanJpaRepository schedulePlanJpaRepository;
-    private final SpecialistJpaRepository specialistJpaRepository;
+    private final MedicoLookupService medicoLookupService;
     private final SchedulePlanMaterializationService schedulePlanMaterializationService;
     private final FacilityOperatingHoursService facilityOperatingHoursService;
 
     @Transactional
     public SchedulePlanDTO createPlan(CreateSchedulePlanRequest request) {
-        var specialist = specialistJpaRepository.findById(request.specialistId())
-            .orElseThrow(() -> new IllegalArgumentException("Specialist not found"));
+        var specialist = medicoLookupService.requireById(request.medicoId());
 
         if (request.slots() == null || request.slots().isEmpty()) {
             throw new IllegalArgumentException("Schedule plan must include at least one slot");
@@ -163,19 +161,18 @@ public class SchedulePlanAdminService {
     }
 
     @Transactional(readOnly = true)
-    public List<SchedulePlanDTO> listBySpecialist(String specialistId, Integer year, Integer quarter) {
-        specialistJpaRepository.findById(specialistId)
-                .orElseThrow(() -> new IllegalArgumentException("Specialist not found"));
+    public List<SchedulePlanDTO> listByMedico(String medicoId, Integer year, Integer quarter) {
+        medicoLookupService.requireById(medicoId);
 
         List<SchedulePlan> plans;
         if (year != null && quarter != null) {
             plans = schedulePlanJpaRepository.findBySpecialistIdAndPlanYearAndPlanQuarterOrderByVersionNumberDesc(
-                    specialistId,
+                    medicoId,
                     year,
                     quarter
             );
         } else {
-            plans = schedulePlanJpaRepository.findBySpecialistIdOrderByPlanYearDescPlanQuarterDescVersionNumberDesc(specialistId);
+            plans = schedulePlanJpaRepository.findBySpecialistIdOrderByPlanYearDescPlanQuarterDescVersionNumberDesc(medicoId);
         }
 
         return plans.stream().map(this::toDto).toList();
@@ -183,11 +180,11 @@ public class SchedulePlanAdminService {
 
     @Transactional(readOnly = true)
     public SchedulePlanPageResponse search(SchedulePlanSearchCriteria criteria) {
-        if (criteria.specialistId() == null || criteria.specialistId().isBlank()) {
-            throw new IllegalArgumentException("specialistId is required for schedule plan search");
+        if (criteria.medicoId() == null || criteria.medicoId().isBlank()) {
+            throw new IllegalArgumentException("medicoId is required for schedule plan search");
         }
 
-        List<SchedulePlanDTO> all = listBySpecialist(criteria.specialistId(), criteria.year(), criteria.quarter())
+        List<SchedulePlanDTO> all = listByMedico(criteria.medicoId(), criteria.year(), criteria.quarter())
                 .stream()
                 .filter(dto -> criteria.published() == null || dto.published() == criteria.published())
                 .filter(dto -> criteria.activeVersion() == null || dto.activeVersion() == criteria.activeVersion())

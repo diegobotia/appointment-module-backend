@@ -1,5 +1,6 @@
 package com.ipscentir.appointments.domain.model.security;
 
+import java.text.Normalizer;
 import java.util.Arrays;
 import java.util.Locale;
 import java.util.Optional;
@@ -57,11 +58,18 @@ public enum RoleName {
         if (nombre == null || nombre.isBlank()) {
             return Optional.empty();
         }
-        String normalized = nombre.trim();
+        String normalized = normalizeNombre(nombre);
         return Arrays.stream(values())
-                .filter(role -> role.supabaseNombre.equalsIgnoreCase(normalized)
+                .filter(role -> normalizeNombre(role.supabaseNombre).equals(normalized)
                         || role.name().equalsIgnoreCase(normalized))
                 .findFirst();
+    }
+
+    private static String normalizeNombre(String nombre) {
+        String trimmed = nombre.trim();
+        String decomposed = Normalizer.normalize(trimmed, Normalizer.Form.NFD);
+        String withoutAccents = decomposed.replaceAll("\\p{M}+", "");
+        return withoutAccents.toLowerCase(Locale.ROOT);
     }
 
     public static Optional<RoleName> fromAuthority(String authority) {

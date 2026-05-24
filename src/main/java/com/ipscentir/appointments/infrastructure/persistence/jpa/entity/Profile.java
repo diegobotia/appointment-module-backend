@@ -20,6 +20,10 @@ public class Profile {
     @Column(name = "role_id", nullable = false)
     private UUID roleId;
 
+  /** FK lógica hacia hc.medicos.id; obligatoria para perfiles con rol Medico. */
+    @Column(name = "medico_id")
+    private String medicoId;
+
     @Column(name = "name")
     private String name;
 

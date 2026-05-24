@@ -3,6 +3,7 @@ package com.ipscentir.appointments.presentation.rest;
 import com.ipscentir.appointments.application.dto.AppointmentDTO;
 import com.ipscentir.appointments.application.dto.AppointmentSearchCriteria;
 import com.ipscentir.appointments.application.dto.CancelAppointmentCommand;
+import com.ipscentir.appointments.application.dto.CreateAdministrativeAppointmentCommand;
 import com.ipscentir.appointments.application.dto.CreateAppointmentCommand;
 import com.ipscentir.appointments.application.dto.RescheduleAppointmentCommand;
 import com.ipscentir.appointments.application.service.AppointmentOperationsService;
@@ -40,26 +41,50 @@ public class AppointmentController {
 
     @GetMapping
     @PreAuthorize("hasAnyRole('ADMINISTRACION', 'ADMISIONES', 'ASESOR', 'MEDICO', 'FACTURACION')")
-    @Operation(summary = "Listar citas con filtros")
+    @Operation(
+            summary = "Listar citas con filtros",
+            description = "Devuelve AppointmentDTO enriquecido (medicoDisplayName, patientDisplayName, administrative). "
+                    + "No es necesario resolver IDs de médico o paciente en el cliente."
+    )
     public ResponseEntity<List<AppointmentDTO>> listAppointments(
             @RequestParam(required = false) Integer sedeId,
-            @RequestParam(required = false) String doctorId,
+            @RequestParam(required = false) String medicoId,
+            @RequestParam(required = false, name = "doctorId") String legacyDoctorId,
             @RequestParam(required = false) UUID patientId,
             @RequestParam(required = false) AppointmentStatus status,
             @RequestParam(required = false) BookingChannel bookingChannel,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fromDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate toDate
     ) {
+        String resolvedMedicoId = medicoId != null && !medicoId.isBlank() ? medicoId : legacyDoctorId;
         return ResponseEntity.ok(appointmentOperationsService.searchAppointments(
-                new AppointmentSearchCriteria(sedeId, doctorId, patientId, status, bookingChannel, fromDate, toDate)
+                new AppointmentSearchCriteria(sedeId, resolvedMedicoId, patientId, status, bookingChannel, fromDate, toDate)
         ));
     }
 
     @GetMapping("/{appointmentId}")
     @PreAuthorize("hasAnyRole('ADMINISTRACION', 'ADMISIONES', 'ASESOR', 'MEDICO', 'FACTURACION')")
-    @Operation(summary = "Obtener cita por ID")
+    @Operation(
+            summary = "Obtener cita por ID",
+            description = "Mismo contrato enriquecido que el listado (display names y flag administrative)."
+    )
     public ResponseEntity<AppointmentDTO> getAppointment(@PathVariable UUID appointmentId) {
         return ResponseEntity.ok(appointmentOperationsService.getAppointment(appointmentId));
+    }
+
+    @PostMapping("/administrative")
+    @PreAuthorize("hasAnyRole('ADMINISTRACION', 'ADMISIONES', 'ASESOR')")
+    @Operation(
+            summary = "Crear cita administrativa (reunión/bloqueo staff sin paciente)",
+            description = "Reserva sala REUNION_STAFF y bloquea disponibilidad de los participantes. "
+                    + "patientId=null, appointmentType=STAFF, administrative=true. "
+                    + "No admite check-in ni flujo clínico de paciente."
+    )
+    public ResponseEntity<AppointmentDTO> createAdministrativeAppointment(
+            @Valid @RequestBody CreateAdministrativeAppointmentCommand command
+    ) {
+        AppointmentDTO appointment = appointmentOperationsService.createAdministrativeAppointment(command);
+        return ResponseEntity.status(HttpStatus.CREATED).body(appointment);
     }
 
     @PostMapping

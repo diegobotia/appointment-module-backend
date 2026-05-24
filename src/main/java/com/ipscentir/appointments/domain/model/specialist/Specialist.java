@@ -36,6 +36,12 @@ public class Specialist {
     @Column(name = "registro", nullable = false)
     private String numeroMedico;
 
+    @Column(name = "tipo_doc")
+    private String tipoDoc;
+
+    @Column(name = "num_doc")
+    private String numDoc;
+
     @Column(name = "nombre", nullable = false)
     private String firstName;
 

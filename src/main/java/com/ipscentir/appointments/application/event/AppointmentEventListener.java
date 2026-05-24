@@ -5,6 +5,7 @@ import com.ipscentir.appointments.application.service.NotificationDispatchServic
 import com.ipscentir.appointments.domain.model.appointment.AppointmentCancelledEvent;
 import com.ipscentir.appointments.domain.model.appointment.AppointmentCreatedEvent;
 import com.ipscentir.appointments.domain.model.appointment.AppointmentRescheduledEvent;
+import com.ipscentir.appointments.domain.model.appointment.AppointmentType;
 import com.ipscentir.appointments.domain.model.notification.Notification;
 import com.ipscentir.appointments.domain.model.notification.NotificationPurpose;
 import com.ipscentir.appointments.domain.model.notification.NotificationType;
@@ -39,6 +40,12 @@ public class AppointmentEventListener {
     public void handleAppointmentCreated(AppointmentCreatedEvent event) {
         log.info("AppointmentCreatedEvent appointmentId={}", event.appointmentId());
 
+        if (event.patientId() == null || event.appointmentType() == AppointmentType.STAFF) {
+            log.info("Skipping patient notification for administrative appointment {}", event.appointmentId());
+            n8nEventJournalService.recordAppointmentCreated(event);
+            return;
+        }
+
         String patientPhone = resolvePatientPhone(event.patientId());
         String messageBody = String.format(
                 "IPS Centir - Su cita para el %s a las %s tipo %s ha sido agendada.",
@@ -68,6 +75,12 @@ public class AppointmentEventListener {
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleAppointmentCancelled(AppointmentCancelledEvent event) {
         log.info("AppointmentCancelledEvent appointmentId={}", event.appointmentId());
+
+        if (event.patientId() == null) {
+            log.info("Skipping patient notification for administrative cancellation {}", event.appointmentId());
+            n8nEventJournalService.recordAppointmentCancelled(event);
+            return;
+        }
 
         String patientPhone = resolvePatientPhone(event.patientId());
         String messageBody = String.format(
@@ -101,6 +114,9 @@ public class AppointmentEventListener {
     }
 
     private String resolvePatientPhone(java.util.UUID patientId) {
+        if (patientId == null) {
+            return null;
+        }
         String fallback = "+573001234567";
         try {
             return pacienteRepository.findById(patientId)

@@ -1,5 +1,6 @@
 package com.ipscentir.appointments.application.dto;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import com.ipscentir.appointments.domain.model.appointment.BookingChannel;
 import jakarta.validation.constraints.FutureOrPresent;
 import jakarta.validation.constraints.NotNull;
@@ -10,28 +11,30 @@ import java.util.UUID;
 public record CreateAppointmentCommand(
         @NotNull(message = "Patient ID is required")
         UUID patientId,
-        
-        @NotNull(message = "Doctor ID is required")
-        String doctorId,
+
+        @NotNull(message = "Medico ID is required")
+        @JsonAlias("doctorId")
+        String medicoId,
 
         @NotNull(message = "Facility ID is required")
         Integer sedeId,
 
-        String secondaryDoctorId,
-        
+        @JsonAlias("secondaryDoctorId")
+        String secondaryMedicoId,
+
         @NotNull(message = "Schedule ID is required")
         UUID scheduleId,
-        
+
         @NotNull(message = "Appointment date is required")
         @FutureOrPresent(message = "Appointment date must be today or in the future")
         LocalDate appointmentDate,
-        
+
         @NotNull(message = "Appointment time is required")
         LocalTime appointmentTime,
-        
+
         @NotNull(message = "Appointment type is required")
         String appointmentType,
-        
+
         String reason,
         BookingChannel bookingChannel,
         String n8nConversationId

@@ -2,6 +2,7 @@ package com.ipscentir.appointments.presentation.rest.exception;
 
 import com.ipscentir.appointments.application.dto.admin.FacilityHoursViolationErrorResponse;
 import com.ipscentir.appointments.application.exception.SedeNotFoundException;
+import com.ipscentir.appointments.application.exception.MedicoNotFoundException;
 import com.ipscentir.appointments.application.exception.FacilityOperatingHoursViolationException;
 import com.ipscentir.appointments.application.exception.ResourceCapacityExceededException;
 import com.ipscentir.appointments.application.exception.PatientAlreadyExistsException;
@@ -16,6 +17,9 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.ConstraintViolationException;
+
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
@@ -28,6 +32,16 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(SedeNotFoundException.class)
     public ResponseEntity<ErrorResponse> handleSedeNotFoundException(SedeNotFoundException ex) {
+        ErrorResponse error = new ErrorResponse(
+                HttpStatus.NOT_FOUND.value(),
+                ex.getMessage(),
+                LocalDateTime.now()
+        );
+        return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+    }
+
+    @ExceptionHandler(MedicoNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleMedicoNotFoundException(MedicoNotFoundException ex) {
         ErrorResponse error = new ErrorResponse(
                 HttpStatus.NOT_FOUND.value(),
                 ex.getMessage(),
@@ -98,6 +112,15 @@ public class GlobalExceptionHandler {
             String errorMessage = error.getDefaultMessage();
             errors.put(fieldName, errorMessage);
         });
+        return new ResponseEntity<>(errors, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<Map<String, String>> handleConstraintViolationException(ConstraintViolationException ex) {
+        Map<String, String> errors = new HashMap<>();
+        for (ConstraintViolation<?> violation : ex.getConstraintViolations()) {
+            errors.put(violation.getPropertyPath().toString(), violation.getMessage());
+        }
         return new ResponseEntity<>(errors, HttpStatus.BAD_REQUEST);
     }
 

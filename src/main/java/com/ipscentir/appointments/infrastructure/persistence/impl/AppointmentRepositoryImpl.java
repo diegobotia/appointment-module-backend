@@ -84,8 +84,8 @@ public class AppointmentRepositoryImpl implements AppointmentRepository {
         if (filter.sedeId() != null) {
             stream = stream.filter(a -> filter.sedeId().equals(a.getSedeId()));
         }
-        if (filter.doctorId() != null && !filter.doctorId().isBlank()) {
-            stream = stream.filter(a -> a.isAssignedToDoctor(filter.doctorId()));
+        if (filter.medicoId() != null && !filter.medicoId().isBlank()) {
+            stream = stream.filter(a -> a.isAssignedToDoctor(filter.medicoId()));
         }
         if (filter.patientId() != null) {
             stream = stream.filter(a -> filter.patientId().equals(a.getPatientId()));
@@ -110,10 +110,10 @@ public class AppointmentRepositoryImpl implements AppointmentRepository {
     }
 
     private Stream<Appointment> baseStream(AppointmentSearchFilter filter) {
-        if (filter.doctorId() != null && !filter.doctorId().isBlank()
+        if (filter.medicoId() != null && !filter.medicoId().isBlank()
                 && filter.fromDate() != null && filter.toDate() != null) {
             return jpaRepository.findByDoctorIdAndAppointmentDateBetween(
-                    filter.doctorId(), filter.fromDate(), filter.toDate()
+                    filter.medicoId(), filter.fromDate(), filter.toDate()
             ).stream();
         }
         if (filter.sedeId() != null && filter.fromDate() != null && filter.toDate() != null) {
@@ -124,8 +124,8 @@ public class AppointmentRepositoryImpl implements AppointmentRepository {
         if (filter.fromDate() != null && filter.toDate() != null) {
             return jpaRepository.findByAppointmentDateBetween(filter.fromDate(), filter.toDate()).stream();
         }
-        if (filter.doctorId() != null && !filter.doctorId().isBlank()) {
-            return jpaRepository.findByDoctorId(filter.doctorId()).stream();
+        if (filter.medicoId() != null && !filter.medicoId().isBlank()) {
+            return jpaRepository.findByDoctorId(filter.medicoId()).stream();
         }
         if (filter.sedeId() != null) {
             return jpaRepository.findBySedeId(filter.sedeId()).stream();

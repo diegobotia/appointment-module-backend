@@ -34,11 +34,11 @@ WHERE id IN (
 -- Borrar metadata de especialistas
 DELETE FROM appointments.specialist_metadata 
 WHERE profile_id IN (
-    'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a01', 
-    'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a02', 
-    'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a03',
-    'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a04',
-    'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a05'
+    'c1eebc99-9c0b-4ef8-bb6d-6bb9bd380a01',
+    'c1eebc99-9c0b-4ef8-bb6d-6bb9bd380a02',
+    'c1eebc99-9c0b-4ef8-bb6d-6bb9bd380a03',
+    'c1eebc99-9c0b-4ef8-bb6d-6bb9bd380a04',
+    'c1eebc99-9c0b-4ef8-bb6d-6bb9bd380a05'
 );
 
 -- Borrar medicos de prueba de hc.medicos (tabla real en Supabase)
@@ -55,11 +55,11 @@ DELETE FROM core.profiles WHERE id IN (
     'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 
     'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a12', 
     'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a13',
-    'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a01',
-    'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a02',
-    'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a03',
-    'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a04',
-    'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a05'
+    'c1eebc99-9c0b-4ef8-bb6d-6bb9bd380a01',
+    'c1eebc99-9c0b-4ef8-bb6d-6bb9bd380a02',
+    'c1eebc99-9c0b-4ef8-bb6d-6bb9bd380a03',
+    'c1eebc99-9c0b-4ef8-bb6d-6bb9bd380a04',
+    'c1eebc99-9c0b-4ef8-bb6d-6bb9bd380a05'
 ) OR email IN (
     'admin@ipscentir.com', 
     'admisiones@ipscentir.com', 
@@ -143,25 +143,25 @@ VALUES
 ON CONFLICT (id) DO NOTHING;
 
 
--- 5. INSERTAR PERFILES DE MÉDICOS (Para autenticación y roles)
-INSERT INTO core.profiles (id, role_id, name, email, password_change_required, esta_activo)
+-- 5. INSERTAR PERFILES DE MÉDICOS (login Supabase; medico_id → hc.medicos.id)
+INSERT INTO core.profiles (id, role_id, medico_id, name, email, password_change_required, esta_activo)
 VALUES 
-    ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a01', (SELECT id FROM core.roles WHERE nombre = 'Medico' LIMIT 1), 'Dr. Carlos Rodriguez', 'carlos.rodriguez@ips.test', false, true),
-    ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a02', (SELECT id FROM core.roles WHERE nombre = 'Medico' LIMIT 1), 'Dra. Ana Martinez', 'ana.martinez@ips.test', false, true),
-    ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a03', (SELECT id FROM core.roles WHERE nombre = 'Medico' LIMIT 1), 'Dr. Roberto Lopez', 'roberto.lopez@ips.test', false, true),
-    ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a04', (SELECT id FROM core.roles WHERE nombre = 'Medico' LIMIT 1), 'Dra. Maria Garcia', 'maria.garcia@ips.test', false, true),
-    ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a05', (SELECT id FROM core.roles WHERE nombre = 'Medico' LIMIT 1), 'Dr. Juan Hernandez', 'juan.hernandez@ips.test', false, true)
-ON CONFLICT (id) DO NOTHING;
+    ('c1eebc99-9c0b-4ef8-bb6d-6bb9bd380a01', (SELECT id FROM core.roles WHERE nombre = 'Medico' LIMIT 1), 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a01', 'Dr. Carlos Rodriguez', 'carlos.rodriguez@ips.test', false, true),
+    ('c1eebc99-9c0b-4ef8-bb6d-6bb9bd380a02', (SELECT id FROM core.roles WHERE nombre = 'Medico' LIMIT 1), 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a02', 'Dra. Ana Martinez', 'ana.martinez@ips.test', false, true),
+    ('c1eebc99-9c0b-4ef8-bb6d-6bb9bd380a03', (SELECT id FROM core.roles WHERE nombre = 'Medico' LIMIT 1), 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a03', 'Dr. Roberto Lopez', 'roberto.lopez@ips.test', false, true),
+    ('c1eebc99-9c0b-4ef8-bb6d-6bb9bd380a04', (SELECT id FROM core.roles WHERE nombre = 'Medico' LIMIT 1), 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a04', 'Dra. Maria Garcia', 'maria.garcia@ips.test', false, true),
+    ('c1eebc99-9c0b-4ef8-bb6d-6bb9bd380a05', (SELECT id FROM core.roles WHERE nombre = 'Medico' LIMIT 1), 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a05', 'Dr. Juan Hernandez', 'juan.hernandez@ips.test', false, true)
+ON CONFLICT (id) DO UPDATE SET medico_id = EXCLUDED.medico_id;
 
 
 -- 6. INSERTAR ESPECIALIDADES METADATA EN APPOINTMENTS
 INSERT INTO appointments.specialist_metadata (profile_id, specialties_json, max_patients_per_slot, is_active, synced_from_hc)
 VALUES 
-    ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a01', '{"primary": "FISIOTERAPIA", "secondary": ["REHABILITACION"], "available": ["FISIOTERAPIA", "REHABILITACION"]}'::jsonb, 4, true, true),
-    ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a02', '{"primary": "DOLOR", "secondary": ["MEDICINA_GENERAL"], "available": ["DOLOR"]}'::jsonb, 1, true, true),
-    ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a03', '{"primary": "MEDICINA_LABORAL", "secondary": [], "available": ["MEDICINA_LABORAL"]}'::jsonb, 1, true, true),
-    ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a04', '{"primary": "PSICOLOGIA", "secondary": ["TERAPIA_GRUPO"], "available": ["PSICOLOGIA", "TERAPIA_GRUPO"]}'::jsonb, 6, true, true),
-    ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a05', '{"primary": "PSIQUIATRIA", "secondary": [], "available": ["PSIQUIATRIA"]}'::jsonb, 1, true, true)
+    ('c1eebc99-9c0b-4ef8-bb6d-6bb9bd380a01', '{"primary": "FISIOTERAPIA", "secondary": ["REHABILITACION"], "available": ["FISIOTERAPIA", "REHABILITACION"]}'::jsonb, 4, true, true),
+    ('c1eebc99-9c0b-4ef8-bb6d-6bb9bd380a02', '{"primary": "DOLOR", "secondary": ["MEDICINA_GENERAL"], "available": ["DOLOR"]}'::jsonb, 1, true, true),
+    ('c1eebc99-9c0b-4ef8-bb6d-6bb9bd380a03', '{"primary": "MEDICINA_LABORAL", "secondary": [], "available": ["MEDICINA_LABORAL"]}'::jsonb, 1, true, true),
+    ('c1eebc99-9c0b-4ef8-bb6d-6bb9bd380a04', '{"primary": "PSICOLOGIA", "secondary": ["TERAPIA_GRUPO"], "available": ["PSICOLOGIA", "TERAPIA_GRUPO"]}'::jsonb, 6, true, true),
+    ('c1eebc99-9c0b-4ef8-bb6d-6bb9bd380a05', '{"primary": "PSIQUIATRIA", "secondary": [], "available": ["PSIQUIATRIA"]}'::jsonb, 1, true, true)
 ON CONFLICT (profile_id) DO NOTHING;
 
 

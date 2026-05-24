@@ -282,7 +282,8 @@ class N8nPatientIntegrationServiceTest {
         when(appointmentRepository.findById(appointmentId)).thenReturn(Optional.of(appointment));
         when(appointmentMapper.toDto(appointment)).thenReturn(new AppointmentDTO(
                 appointmentId, patientId, doctorId, FacilityMasterData.SEDE_ID_BELEN, null, UUID.randomUUID(), date, time, 30,
-                AppointmentType.PRESENCIAL, AppointmentStatus.SCHEDULED, BookingChannel.STAFF, null, "Checkup", null, null, null
+                AppointmentType.PRESENCIAL, AppointmentStatus.SCHEDULED, BookingChannel.STAFF, null, "Checkup", null, null, null,
+                null, null, false
         ));
 
         var response = service.createAppointment(new N8nPatientAppointmentRequest(
@@ -303,7 +304,8 @@ class N8nPatientIntegrationServiceTest {
 
         AppointmentDTO dto = new AppointmentDTO(
                 UUID.randomUUID(), patientId, doctorId, sedeId, null, scheduleId, date, time, 30,
-                AppointmentType.PRESENCIAL, AppointmentStatus.SCHEDULED, BookingChannel.N8N, null, "Checkup", null, null, null
+                AppointmentType.PRESENCIAL, AppointmentStatus.SCHEDULED, BookingChannel.N8N, null, "Checkup", null, null, null,
+                null, null, false
         );
 
         when(pacienteRepository.existsById(patientId)).thenReturn(true);
@@ -333,7 +335,8 @@ class N8nPatientIntegrationServiceTest {
         when(appointmentMapper.toDto(cancelled)).thenReturn(new AppointmentDTO(
                 cancelled.getId(), cancelled.getPatientId(), cancelled.getDoctorId(), cancelled.getSedeId(), null,
                 cancelled.getScheduleId(), cancelled.getAppointmentDate(), cancelled.getAppointmentTime(), 30,
-                cancelled.getAppointmentType(), cancelled.getStatus(), BookingChannel.STAFF, null, cancelled.getReason(), null, null, null
+                cancelled.getAppointmentType(), cancelled.getStatus(), BookingChannel.STAFF, null, cancelled.getReason(), null, null, null,
+                null, null, false
         ));
 
         var response = service.cancelAppointment(appointmentId, new N8nCancelAppointmentRequest("Cambio de plan", null));

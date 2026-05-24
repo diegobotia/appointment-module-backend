@@ -3,9 +3,9 @@ package com.ipscentir.appointments.application.service;
 import com.ipscentir.appointments.application.dto.AppointmentDTO;
 import com.ipscentir.appointments.application.dto.AppointmentSearchCriteria;
 import com.ipscentir.appointments.application.dto.CancelAppointmentCommand;
+import com.ipscentir.appointments.application.dto.CreateAdministrativeAppointmentCommand;
 import com.ipscentir.appointments.application.dto.CreateAppointmentCommand;
 import com.ipscentir.appointments.application.dto.RescheduleAppointmentCommand;
-import com.ipscentir.appointments.application.mapper.AppointmentMapper;
 import com.ipscentir.appointments.application.security.SedeAuthorizationService;
 import com.ipscentir.appointments.application.security.StaffSecurityHelper;
 import com.ipscentir.appointments.domain.model.appointment.Appointment;
@@ -33,7 +33,7 @@ public class AppointmentOperationsService {
     private final AppointmentRepository appointmentRepository;
     private final AppointmentApplicationService appointmentApplicationService;
     private final AppointmentBookingService appointmentBookingService;
-    private final AppointmentMapper appointmentMapper;
+    private final AppointmentEnrichmentService appointmentEnrichmentService;
     private final SedeAuthorizationService sedeAuthorizationService;
     private final StaffSecurityHelper staffSecurityHelper;
     private final TherapyPendingGroupCutoffService therapyPendingGroupCutoffService;
@@ -43,17 +43,16 @@ public class AppointmentOperationsService {
     @Transactional(readOnly = true)
     public List<AppointmentDTO> searchAppointments(AppointmentSearchCriteria criteria) {
         AppointmentSearchCriteria effective = applyRoleFilters(criteria);
-        List<Appointment> appointments = appointmentRepository.search(toFilter(effective));
-        return appointments.stream()
+        List<Appointment> appointments = appointmentRepository.search(toFilter(effective)).stream()
                 .filter(this::canRead)
-                .map(appointmentMapper::toDto)
                 .toList();
+        return appointmentEnrichmentService.toDtos(appointments);
     }
 
     @Transactional(readOnly = true)
     public AppointmentDTO getAppointment(UUID appointmentId) {
         Appointment appointment = requireReadableAppointment(appointmentId);
-        return appointmentMapper.toDto(appointment);
+        return appointmentEnrichmentService.toDto(appointment);
     }
 
     @Transactional
@@ -62,9 +61,9 @@ public class AppointmentOperationsService {
         sedeAuthorizationService.assertCurrentUserCanAccessSede(command.sedeId());
         CreateAppointmentCommand staffCommand = new CreateAppointmentCommand(
                 command.patientId(),
-                command.doctorId(),
+                command.medicoId(),
                 command.sedeId(),
-                command.secondaryDoctorId(),
+                command.secondaryMedicoId(),
                 command.scheduleId(),
                 command.appointmentDate(),
                 command.appointmentTime(),
@@ -77,10 +76,16 @@ public class AppointmentOperationsService {
     }
 
     @Transactional
+    public AppointmentDTO createAdministrativeAppointment(CreateAdministrativeAppointmentCommand command) {
+        requireWriteRole();
+        return appointmentApplicationService.createAdministrativeAppointment(command);
+    }
+
+    @Transactional
     public AppointmentDTO confirmAppointment(UUID appointmentId) {
         Appointment appointment = requireWritableAppointment(appointmentId);
         appointment.confirm();
-        return appointmentMapper.toDto(appointmentRepository.save(appointment));
+        return appointmentEnrichmentService.toDto(appointmentRepository.save(appointment));
     }
 
     @Transactional
@@ -88,7 +93,7 @@ public class AppointmentOperationsService {
         Appointment appointment = requireWritableAppointment(appointmentId);
         sedeAuthorizationService.assertCurrentUserCanAccessSede(appointment.getSedeId());
         Appointment cancelled = appointmentBookingService.cancelAppointment(appointmentId, command.reason());
-        return appointmentMapper.toDto(cancelled);
+        return appointmentEnrichmentService.toDto(cancelled);
     }
 
     @Transactional
@@ -98,7 +103,7 @@ public class AppointmentOperationsService {
         sedeAuthorizationService.assertCurrentUserCanAccessSede(appointment.getSedeId());
 
         rescheduleWithHumanAndPhysicalValidation(appointment, appointmentId, command, BookingChannel.STAFF, null);
-        return appointmentMapper.toDto(appointmentRepository.findById(appointmentId).orElseThrow());
+        return appointmentEnrichmentService.toDto(appointmentRepository.findById(appointmentId).orElseThrow());
     }
 
     /**
@@ -114,7 +119,7 @@ public class AppointmentOperationsService {
                 .orElseThrow(() -> new IllegalArgumentException("Appointment not found"));
 
         rescheduleWithHumanAndPhysicalValidation(appointment, appointmentId, command, BookingChannel.N8N, n8nConversationId);
-        return appointmentMapper.toDto(appointmentRepository.findById(appointmentId).orElseThrow());
+        return appointmentEnrichmentService.toDto(appointmentRepository.findById(appointmentId).orElseThrow());
     }
 
     private void rescheduleWithHumanAndPhysicalValidation(
@@ -126,7 +131,7 @@ public class AppointmentOperationsService {
     ) {
         HumanResourceBookingContext context = HumanResourceBookingContext.forBooking(
                 appointment.getPatientId(),
-                command.doctorId(),
+                command.medicoId(),
                 appointment.getSecondaryDoctorId(),
                 command.scheduleId(),
                 command.sedeId(),
@@ -154,7 +159,7 @@ public class AppointmentOperationsService {
                 command.appointmentDate(),
                 command.appointmentTime(),
                 command.scheduleId(),
-                command.doctorId(),
+                command.medicoId(),
                 command.sedeId(),
                 channel,
                 n8nConversationId
@@ -167,21 +172,21 @@ public class AppointmentOperationsService {
     public AppointmentDTO checkInAppointment(UUID appointmentId) {
         Appointment appointment = requireAppointmentForClinicalAction(appointmentId);
         appointment.checkIn();
-        return appointmentMapper.toDto(appointmentRepository.save(appointment));
+        return appointmentEnrichmentService.toDto(appointmentRepository.save(appointment));
     }
 
     @Transactional
     public AppointmentDTO markNoShow(UUID appointmentId) {
         Appointment appointment = requireWritableAppointment(appointmentId);
         appointment.markNoShow();
-        return appointmentMapper.toDto(appointmentRepository.save(appointment));
+        return appointmentEnrichmentService.toDto(appointmentRepository.save(appointment));
     }
 
     @Transactional
     public AppointmentDTO completeAppointment(UUID appointmentId) {
         Appointment appointment = requireAppointmentForClinicalAction(appointmentId);
         appointment.complete();
-        return appointmentMapper.toDto(appointmentRepository.save(appointment));
+        return appointmentEnrichmentService.toDto(appointmentRepository.save(appointment));
     }
 
     @Transactional(readOnly = true)
@@ -189,7 +194,7 @@ public class AppointmentOperationsService {
         if (!staffSecurityHelper.hasAnyRole(RoleName.APPOINTMENT_OPERATORS)) {
             throw new AccessDeniedException("Solo roles operativos pueden consultar terapias pendientes");
         }
-        return appointmentRepository
+        List<Appointment> pending = appointmentRepository
                 .findByStatusAndAppointmentTypeIn(
                         AppointmentStatus.PENDIENTE_CONFIRMACION_GRUPO,
                         List.of(
@@ -199,8 +204,8 @@ public class AppointmentOperationsService {
                 )
                 .stream()
                 .filter(this::canRead)
-                .map(appointmentMapper::toDto)
                 .toList();
+        return appointmentEnrichmentService.toDtos(pending);
     }
 
     @Transactional
@@ -299,7 +304,7 @@ public class AppointmentOperationsService {
     private AppointmentRepository.AppointmentSearchFilter toFilter(AppointmentSearchCriteria criteria) {
         return new AppointmentRepository.AppointmentSearchFilter(
                 criteria.sedeId(),
-                criteria.doctorId(),
+                criteria.medicoId(),
                 criteria.patientId(),
                 criteria.status(),
                 criteria.bookingChannel(),

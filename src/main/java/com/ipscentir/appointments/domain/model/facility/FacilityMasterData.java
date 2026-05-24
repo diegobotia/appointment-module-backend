@@ -62,12 +62,14 @@ public final class FacilityMasterData {
                     resource(FacilityResourceType.CONSULTORIO, "CONQ-CONS-04", "Consultorio 4"),
                     resource(FacilityResourceType.FISIOTERAPIA, "CONQ-FISIO-01", "Sala fisioterapia 1"),
                     resource(FacilityResourceType.FISIOTERAPIA, "CONQ-FISIO-02", "Sala fisioterapia 2"),
-                    resource(FacilityResourceType.TERAPIA_OCUPACIONAL, "CONQ-TO-01", "Sala terapia ocupacional")
+                    resource(FacilityResourceType.TERAPIA_OCUPACIONAL, "CONQ-TO-01", "Sala terapia ocupacional"),
+                    resource(FacilityResourceType.REUNION_STAFF, "CONQ-STAFF-01", "Sala reunión staff 1")
             ),
             SEDE_ID_BELEN, List.of(
                     resource(FacilityResourceType.CONSULTORIO, "BEL-CONS-01", "Consultorio 1"),
                     resource(FacilityResourceType.FISIOTERAPIA, "BEL-FISIO-01", "Sala fisioterapia 1"),
-                    resource(FacilityResourceType.TERAPIA_OCUPACIONAL, "BEL-TO-01", "Sala terapia ocupacional")
+                    resource(FacilityResourceType.TERAPIA_OCUPACIONAL, "BEL-TO-01", "Sala terapia ocupacional"),
+                    resource(FacilityResourceType.REUNION_STAFF, "BEL-STAFF-01", "Sala reunión staff 1")
             )
     );
 

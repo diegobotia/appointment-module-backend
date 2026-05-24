@@ -72,6 +72,7 @@ public final class ServiceResourceMatrix {
             case TERAPIA_FISICA -> requireService(resolved, AppointmentServiceType.TERAPIA_FISICA);
             case TERAPIA_OCUPACIONAL -> requireService(resolved, AppointmentServiceType.TERAPIA_OCUPACIONAL);
             case JUNTA_MEDICA -> requireService(resolved, AppointmentServiceType.JUNTA_MEDICA);
+            case STAFF -> requireService(resolved, AppointmentServiceType.STAFF);
             case PRESENCIAL -> {
                 if (isTherapyService(resolved)) {
                     throw new IllegalStateException(

@@ -7,10 +7,12 @@ import org.junit.jupiter.api.Test;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.List;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -122,6 +124,53 @@ class AppointmentTest {
         assertEquals(newDate, appointment.getAppointmentDate());
         assertEquals(LocalTime.of(11, 0), appointment.getAppointmentTime());
         assertEquals(AppointmentStatus.SCHEDULED, appointment.getStatus());
+    }
+
+    @Test
+    void scheduleStaffMeetingCreatesAdministrativeAppointmentWithoutPatient() {
+        String primary = UUID.randomUUID().toString();
+        String secondary = UUID.randomUUID().toString();
+
+        Appointment staffMeeting = Appointment.scheduleStaffMeeting(
+                List.of(primary, secondary),
+                new AppointmentScheduleData(
+                        null,
+                        sedeId,
+                        LocalDate.now().plusDays(3),
+                        LocalTime.of(14, 0),
+                        60,
+                        AppointmentType.STAFF,
+                        AppointmentStatus.SCHEDULED,
+                        "Junta interna"
+                ),
+                BookingChannel.STAFF
+        );
+
+        assertNull(staffMeeting.getPatientId());
+        assertEquals(AppointmentType.STAFF, staffMeeting.getAppointmentType());
+        assertTrue(staffMeeting.isAdministrative());
+        assertEquals(primary, staffMeeting.getDoctorId());
+        assertEquals(secondary, staffMeeting.getSecondaryDoctorId());
+    }
+
+    @Test
+    void checkInRejectsAdministrativeAppointment() {
+        Appointment administrative = Appointment.scheduleStaffMeeting(
+                List.of(doctorId),
+                new AppointmentScheduleData(
+                        null,
+                        sedeId,
+                        LocalDate.now().plusDays(3),
+                        LocalTime.of(15, 0),
+                        30,
+                        AppointmentType.STAFF,
+                        AppointmentStatus.SCHEDULED,
+                        "Bloqueo"
+                ),
+                BookingChannel.STAFF
+        );
+
+        assertThrows(IllegalStateException.class, administrative::checkIn);
     }
 
     @Test

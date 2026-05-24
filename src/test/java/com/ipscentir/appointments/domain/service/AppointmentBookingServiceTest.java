@@ -20,6 +20,7 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doNothing;
@@ -148,5 +149,25 @@ class AppointmentBookingServiceTest {
         ));
 
         assertEquals(AppointmentStatus.PENDIENTE_CONFIRMACION_GRUPO, saved.getStatus());
+    }
+
+    @Test
+    void bookAdministrativeAppointmentPersistsStaffMeetingWithoutPatient() {
+        List<String> participants = List.of(doctorId, UUID.randomUUID().toString());
+        doNothing().when(humanResourceAvailabilityService).assertAdministrativeBookingAllowed(
+                participants, sedeId, date, time, 45
+        );
+        doNothing().when(resourceCapacityService).assertCanAllocate(
+                sedeId, AppointmentType.STAFF, null, date, time, 45, null
+        );
+        when(appointmentRepository.save(any(Appointment.class))).thenAnswer(i -> i.getArgument(0));
+
+        Appointment saved = bookingService.bookAdministrativeAppointment(
+                new AdministrativeAppointmentBookingRequest(participants, sedeId, date, time, 45, "Bloqueo")
+        );
+
+        assertNull(saved.getPatientId());
+        assertEquals(AppointmentType.STAFF, saved.getAppointmentType());
+        verify(resourceCapacityService).allocate(saved);
     }
 }

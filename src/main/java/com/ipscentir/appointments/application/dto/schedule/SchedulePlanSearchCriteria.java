@@ -1,7 +1,9 @@
 package com.ipscentir.appointments.application.dto.schedule;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
+
 public record SchedulePlanSearchCriteria(
-        String specialistId,
+        @JsonAlias("specialistId") String medicoId,
         Integer year,
         Integer quarter,
         Boolean published,

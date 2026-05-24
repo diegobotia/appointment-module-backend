@@ -74,6 +74,20 @@ public class HumanResourceAvailabilityService {
     }
 
     /**
+     * Valida disponibilidad para citas administrativas (reuniones staff sin paciente).
+     */
+    public void assertAdministrativeBookingAllowed(
+            List<String> participantDoctorIds,
+            Integer sedeId,
+            LocalDate date,
+            LocalTime startTime,
+            int durationMinutes
+    ) {
+        facilityOperatingHoursService.assertDateNotHoliday(date);
+        assertStaffMeetingParticipantsAvailable(participantDoctorIds, sedeId, date, startTime, durationMinutes);
+    }
+
+    /**
      * Reservado para Fase E (junta staff). Valida que todos los participantes estén libres en la franja.
      */
     public void assertStaffMeetingParticipantsAvailable(
@@ -155,6 +169,9 @@ public class HumanResourceAvailabilityService {
     }
 
     private void assertPatientNoDuplicate(UUID patientId, LocalDate date, UUID excludeAppointmentId) {
+        if (patientId == null) {
+            return;
+        }
         if (excludeAppointmentId != null) {
             if (appointmentRepository.existsByPatientIdAndDateExcluding(patientId, date, excludeAppointmentId)) {
                 throw new IllegalStateException("The patient already has an active appointment for this date.");

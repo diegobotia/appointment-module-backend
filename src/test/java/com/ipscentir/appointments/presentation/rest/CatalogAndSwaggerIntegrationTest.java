@@ -24,7 +24,8 @@ class CatalogAndSwaggerIntegrationTest {
         mockMvc.perform(get("/api/v1/catalogs/appointment-service-types"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(11))
-                .andExpect(jsonPath("$[0].version").value(1));
+                .andExpect(jsonPath("$[0].version").value(1))
+                .andExpect(jsonPath("$[?(@.code == 'STAFF')].displayName").value("Staff"));
     }
 
     @Test
@@ -41,5 +42,20 @@ class CatalogAndSwaggerIntegrationTest {
                 .andExpect(jsonPath("$[2].code").value("DOLOR"))
                 .andExpect(jsonPath("$[2].displayName").value("Dolor"))
                 .andExpect(jsonPath("$[2].version").value(1));
+    }
+
+    @Test
+    void openApiShouldDocumentEnrichedAppointmentAndAdministrativeEndpoints() throws Exception {
+        mockMvc.perform(get("/v3/api-docs"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.info.version").value("1.1"))
+                .andExpect(jsonPath("$.components.schemas.AppointmentDTO.properties.medicoDisplayName").exists())
+                .andExpect(jsonPath("$.components.schemas.AppointmentDTO.properties.patientDisplayName").exists())
+                .andExpect(jsonPath("$.components.schemas.AppointmentDTO.properties.administrative").exists())
+                .andExpect(jsonPath("$.components.schemas.CreateAdministrativeAppointmentCommand").exists())
+                .andExpect(jsonPath("$.paths['/api/v1/appointments/administrative'].post").exists())
+                .andExpect(jsonPath("$.paths['/api/v1/staff/patients/search'].get").exists())
+                .andExpect(jsonPath("$.paths['/api/v1/admin/medicos'].get").exists())
+                .andExpect(jsonPath("$.components.securitySchemes['bearer-jwt']").exists());
     }
 }

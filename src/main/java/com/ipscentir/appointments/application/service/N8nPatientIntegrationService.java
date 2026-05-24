@@ -429,6 +429,7 @@ public class N8nPatientIntegrationService {
             case TERAPIA_FISICA -> Optional.of(AppointmentServiceType.TERAPIA_FISICA);
             case TERAPIA_OCUPACIONAL -> Optional.of(AppointmentServiceType.TERAPIA_OCUPACIONAL);
             case JUNTA_MEDICA -> Optional.of(AppointmentServiceType.JUNTA_MEDICA);
+            case STAFF -> Optional.of(AppointmentServiceType.STAFF);
             case PRESENCIAL -> Optional.empty();
         };
     }

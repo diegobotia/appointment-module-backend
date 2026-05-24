@@ -24,7 +24,17 @@ spring:
     locations: classpath:db/migration
     table: appointments_schema_history
 
+supabase:
+  url: ${SUPABASE_URL:https://project.supabase.co}
+  api-key: ${SUPABASE_API_KEY:}
+
+# true → logs [AUTH-401]/[AUTH-403] + DEBUG de Spring Security OAuth2
+security:
+  auth:
+    diagnostics: ${SECURITY_AUTH_DIAGNOSTICS:true}
+
 logging:
   level:
     root: INFO
     com.ipscentir.appointments: INFO
+    com.ipscentir.appointments.infrastructure.security: DEBUG

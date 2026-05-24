@@ -8,7 +8,7 @@ import java.util.UUID;
 
 public record AppointmentSearchCriteria(
         Integer sedeId,
-        String doctorId,
+        String medicoId,
         UUID patientId,
         AppointmentStatus status,
         BookingChannel bookingChannel,

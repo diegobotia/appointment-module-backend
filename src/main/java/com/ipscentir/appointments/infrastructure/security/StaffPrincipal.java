@@ -8,6 +8,7 @@ import java.util.UUID;
 public record StaffPrincipal(
         UUID profileId,
         Optional<RoleName> roleName,
-        boolean active
+        boolean active,
+        Optional<String> medicoId
 ) {
 }

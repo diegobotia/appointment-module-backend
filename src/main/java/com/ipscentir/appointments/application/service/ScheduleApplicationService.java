@@ -4,7 +4,7 @@ import com.ipscentir.appointments.application.dto.AppointmentDTO;
 import com.ipscentir.appointments.application.dto.AppointmentSearchCriteria;
 import com.ipscentir.appointments.application.dto.AvailableSlotDTO;
 import com.ipscentir.appointments.application.dto.ScheduleDTO;
-import com.ipscentir.appointments.application.dto.availability.DoctorAvailabilityResponse;
+import com.ipscentir.appointments.application.dto.availability.MedicoAvailabilityResponse;
 import com.ipscentir.appointments.application.dto.schedule.MyScheduleResponse;
 import com.ipscentir.appointments.application.mapper.ScheduleMapper;
 import com.ipscentir.appointments.application.security.SedeAuthorizationService;
@@ -22,7 +22,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.util.List;
-import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -32,45 +31,45 @@ public class ScheduleApplicationService {
     private final ScheduleMapper scheduleMapper;
     private final SedeAuthorizationService sedeAuthorizationService;
     private final AvailabilityService availabilityService;
-    private final DoctorApplicationService doctorApplicationService;
+    private final MedicoApplicationService medicoApplicationService;
     private final AppointmentOperationsService appointmentOperationsService;
     private final StaffSecurityHelper staffSecurityHelper;
 
     @Transactional(readOnly = true)
-    public ScheduleDTO getScheduleForDoctorAndFacility(String doctorId, Integer sedeId, DayOfWeek dayOfWeek) {
-        assertCanViewDoctorSchedule(doctorId);
+    public ScheduleDTO getScheduleForMedicoAndFacility(String medicoId, Integer sedeId, DayOfWeek dayOfWeek) {
+        assertCanViewMedicoSchedule(medicoId);
         sedeAuthorizationService.assertCurrentUserCanAccessSede(sedeId);
-        Schedule schedule = scheduleRepository.findByDoctorIdAndSedeIdAndDayOfWeek(doctorId, sedeId, dayOfWeek)
-                .orElseThrow(() -> new IllegalArgumentException("No schedule found for this doctor, facility, and specified day"));
+        Schedule schedule = scheduleRepository.findByDoctorIdAndSedeIdAndDayOfWeek(medicoId, sedeId, dayOfWeek)
+                .orElseThrow(() -> new IllegalArgumentException("No schedule found for this medico, facility, and specified day"));
 
         return scheduleMapper.toDto(schedule);
     }
 
     @Transactional(readOnly = true)
-    public List<ScheduleDTO> listScheduleTemplatesForDoctor(String doctorId, Integer sedeId) {
-        assertCanViewDoctorSchedule(doctorId);
+    public List<ScheduleDTO> listScheduleTemplatesForMedico(String medicoId, Integer sedeId) {
+        assertCanViewMedicoSchedule(medicoId);
         sedeAuthorizationService.assertCurrentUserCanAccessSede(sedeId);
-        return scheduleRepository.findByDoctorIdAndSedeId(doctorId, sedeId).stream()
+        return scheduleRepository.findByDoctorIdAndSedeId(medicoId, sedeId).stream()
                 .map(scheduleMapper::toDto)
                 .toList();
     }
 
     @Transactional(readOnly = true)
-    public List<AvailableSlotDTO> getAvailabilityForDate(String doctorId, Integer sedeId, LocalDate date) {
-        assertCanViewDoctorSchedule(doctorId);
+    public List<AvailableSlotDTO> getAvailabilityForDate(String medicoId, Integer sedeId, LocalDate date) {
+        assertCanViewMedicoSchedule(medicoId);
         sedeAuthorizationService.assertCurrentUserCanAccessSede(sedeId);
-        List<AvailableSlot> slots = availabilityService.getAvailableSlots(doctorId, sedeId, date);
+        List<AvailableSlot> slots = availabilityService.getAvailableSlots(medicoId, sedeId, date);
         return slots.stream().map(scheduleMapper::toDto).toList();
     }
 
     @Transactional(readOnly = true)
-    public DoctorAvailabilityResponse getAvailabilityInRange(
-            String doctorId,
+    public MedicoAvailabilityResponse getAvailabilityInRange(
+            String medicoId,
             Integer sedeId,
             LocalDate fromDate,
             LocalDate toDate
     ) {
-        return doctorApplicationService.getDoctorAvailability(doctorId, sedeId, fromDate, toDate);
+        return medicoApplicationService.getMedicoAvailability(medicoId, sedeId, fromDate, toDate);
     }
 
     @Transactional(readOnly = true)
@@ -78,24 +77,24 @@ public class ScheduleApplicationService {
         if (!staffSecurityHelper.hasRole(RoleName.MEDICO)) {
             throw new AccessDeniedException("Solo médicos pueden consultar /me/schedule");
         }
-        String doctorId = staffSecurityHelper.requireDoctorIdForMedico();
+        String medicoId = staffSecurityHelper.requireDoctorIdForMedico();
         sedeAuthorizationService.assertCurrentUserCanAccessSede(sedeId);
 
         LocalDate from = fromDate != null ? fromDate : LocalDate.now();
         LocalDate to = toDate != null ? toDate : from.plusDays(6);
 
-        List<ScheduleDTO> templates = listScheduleTemplatesForDoctor(doctorId, sedeId);
+        List<ScheduleDTO> templates = listScheduleTemplatesForMedico(medicoId, sedeId);
         List<AppointmentDTO> appointments = appointmentOperationsService.searchAppointments(
-                new AppointmentSearchCriteria(sedeId, doctorId, null, null, null, from, to)
+                new AppointmentSearchCriteria(sedeId, medicoId, null, null, null, from, to)
         );
 
-        return new MyScheduleResponse(doctorId, from, to, templates, appointments);
+        return new MyScheduleResponse(medicoId, from, to, templates, appointments);
     }
 
-    private void assertCanViewDoctorSchedule(String doctorId) {
+    private void assertCanViewMedicoSchedule(String medicoId) {
         if (staffSecurityHelper.hasRole(RoleName.MEDICO)) {
-            String ownDoctorId = staffSecurityHelper.requireDoctorIdForMedico();
-            if (!ownDoctorId.equals(doctorId)) {
+            String ownMedicoId = staffSecurityHelper.requireDoctorIdForMedico();
+            if (!ownMedicoId.equals(medicoId)) {
                 throw new AccessDeniedException("El médico solo puede consultar su propia agenda");
             }
         }

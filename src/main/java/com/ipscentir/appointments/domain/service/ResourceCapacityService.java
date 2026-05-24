@@ -231,6 +231,7 @@ public class ResourceCapacityService {
             case TERAPIA_FISICA -> AppointmentType.TERAPIA_FISICA;
             case TERAPIA_OCUPACIONAL -> AppointmentType.TERAPIA_OCUPACIONAL;
             case JUNTA_MEDICA -> AppointmentType.JUNTA_MEDICA;
+            case STAFF -> AppointmentType.STAFF;
             default -> AppointmentType.PRESENCIAL;
         };
     }

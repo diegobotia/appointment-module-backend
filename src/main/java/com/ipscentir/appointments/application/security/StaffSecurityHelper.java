@@ -6,13 +6,17 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.util.Optional;
 import java.util.UUID;
 
 @Component
+@RequiredArgsConstructor
 public class StaffSecurityHelper {
+
+    private final MedicoProfileResolver medicoProfileResolver;
 
     public StaffPrincipal requireStaffPrincipal() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
@@ -77,7 +81,9 @@ public class StaffSecurityHelper {
         if (!hasRole(RoleName.MEDICO)) {
             throw new AccessDeniedException("Solo médicos usan el identificador de agenda propia");
         }
-        return requireProfileId().toString();
+        return currentStaffPrincipal()
+                .flatMap(StaffPrincipal::medicoId)
+                .orElseGet(() -> medicoProfileResolver.requireMedicoIdForProfile(requireProfileId()));
     }
 
     private boolean hasAuthority(String authority) {

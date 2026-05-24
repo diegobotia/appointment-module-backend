@@ -35,6 +35,7 @@ CREATE TABLE IF NOT EXISTS core.direccion (
 CREATE TABLE IF NOT EXISTS core.profiles (
     id UUID PRIMARY KEY,
     role_id UUID NOT NULL REFERENCES core.roles(id),
+    medico_id VARCHAR,
     name VARCHAR(120),
     email VARCHAR(120) UNIQUE,
     password_change_required BOOLEAN NOT NULL DEFAULT false,

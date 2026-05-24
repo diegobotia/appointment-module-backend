@@ -12,8 +12,8 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -67,7 +67,8 @@ public class AdminSchedulePlanController {
     @GetMapping
     @Operation(summary = "Search schedule plans with pagination and filters")
     public ResponseEntity<SchedulePlanPageResponse> search(
-            @RequestParam String specialistId,
+            @RequestParam(required = false) String medicoId,
+            @RequestParam(required = false, name = "specialistId") String legacySpecialistId,
             @RequestParam(required = false) Integer year,
             @RequestParam(required = false) Integer quarter,
             @RequestParam(required = false) Boolean published,
@@ -75,18 +76,19 @@ public class AdminSchedulePlanController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size
     ) {
+        String resolvedMedicoId = medicoId != null && !medicoId.isBlank() ? medicoId : legacySpecialistId;
         return ResponseEntity.ok(schedulePlanAdminService.search(
-                new SchedulePlanSearchCriteria(specialistId, year, quarter, published, activeVersion, page, size)
+                new SchedulePlanSearchCriteria(resolvedMedicoId, year, quarter, published, activeVersion, page, size)
         ));
     }
 
-    @GetMapping("/specialists/{specialistId}")
-    @Operation(summary = "List schedule plan versions by specialist")
-    public ResponseEntity<List<SchedulePlanDTO>> listBySpecialist(
-            @PathVariable String specialistId,
+    @GetMapping({"/medicos/{medicoId}", "/specialists/{medicoId}"})
+    @Operation(summary = "List schedule plan versions by medico")
+    public ResponseEntity<List<SchedulePlanDTO>> listByMedico(
+            @PathVariable String medicoId,
             @RequestParam(required = false) Integer year,
             @RequestParam(required = false) Integer quarter
     ) {
-        return ResponseEntity.ok(schedulePlanAdminService.listBySpecialist(specialistId, year, quarter));
+        return ResponseEntity.ok(schedulePlanAdminService.listByMedico(medicoId, year, quarter));
     }
 }

@@ -51,7 +51,7 @@ public interface AppointmentRepository {
 
     record AppointmentSearchFilter(
             Integer sedeId,
-            String doctorId,
+            String medicoId,
             UUID patientId,
             AppointmentStatus status,
             BookingChannel bookingChannel,

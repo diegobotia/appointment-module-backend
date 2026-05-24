@@ -5,7 +5,6 @@ import com.ipscentir.appointments.domain.model.facility.FacilityMasterData;
 import com.ipscentir.appointments.application.dto.AppointmentDTO;
 import com.ipscentir.appointments.application.dto.AppointmentSearchCriteria;
 import com.ipscentir.appointments.application.dto.CreateAppointmentCommand;
-import com.ipscentir.appointments.application.mapper.AppointmentMapper;
 import com.ipscentir.appointments.application.security.SedeAuthorizationService;
 import com.ipscentir.appointments.application.security.StaffSecurityHelper;
 import com.ipscentir.appointments.domain.model.appointment.Appointment;
@@ -47,7 +46,7 @@ class AppointmentOperationsServiceTest {
     @Mock
     private AppointmentBookingService appointmentBookingService;
     @Mock
-    private AppointmentMapper appointmentMapper;
+    private AppointmentEnrichmentService appointmentEnrichmentService;
     @Mock
     private HumanResourceAvailabilityService humanResourceAvailabilityService;
     @Mock
@@ -76,7 +75,7 @@ class AppointmentOperationsServiceTest {
                 .thenReturn(false);
         when(staffSecurityHelper.hasRole(RoleName.MEDICO)).thenReturn(true);
         when(sedeAuthorizationService.canAccessSede(sedeId)).thenReturn(true);
-        when(appointmentMapper.toDto(appointment)).thenReturn(sampleDto(appointment));
+        when(appointmentEnrichmentService.toDtos(List.of(appointment))).thenReturn(List.of(sampleDto(appointment)));
 
         List<AppointmentDTO> result = appointmentOperationsService.searchAppointments(
                 new AppointmentSearchCriteria(sedeId, "other-doctor", null, null, null, from, from)
@@ -107,7 +106,7 @@ class AppointmentOperationsServiceTest {
                 .thenReturn(true);
         when(sedeAuthorizationService.canAccessSede(sedeId)).thenReturn(true);
         when(appointmentRepository.save(appointment)).thenReturn(appointment);
-        when(appointmentMapper.toDto(appointment)).thenAnswer(invocation -> sampleDto((Appointment) invocation.getArgument(0)));
+        when(appointmentEnrichmentService.toDto(appointment)).thenAnswer(invocation -> sampleDto(appointment));
 
         AppointmentDTO dto = appointmentOperationsService.confirmAppointment(appointmentId);
 
@@ -126,7 +125,7 @@ class AppointmentOperationsServiceTest {
         when(staffSecurityHelper.hasAnyRole(RoleName.APPOINTMENT_READERS))
                 .thenReturn(true);
         when(sedeAuthorizationService.canAccessSede(sedeId)).thenReturn(true);
-        when(appointmentMapper.toDto(appointment)).thenReturn(sampleDto(appointment));
+        when(appointmentEnrichmentService.toDto(appointment)).thenReturn(sampleDto(appointment));
 
         AppointmentDTO dto = appointmentOperationsService.getAppointment(appointmentId);
 
@@ -149,7 +148,7 @@ class AppointmentOperationsServiceTest {
                 null,
                 null
         );
-        AppointmentDTO created = sampleDto(sampleAppointment(command.doctorId(), sedeId));
+        AppointmentDTO created = sampleDto(sampleAppointment(command.medicoId(), sedeId));
 
         when(staffSecurityHelper.hasAnyRole(RoleName.APPOINTMENT_OPERATORS)).thenReturn(true);
         when(appointmentApplicationService.createAppointment(any())).thenReturn(created);
@@ -196,7 +195,10 @@ class AppointmentOperationsServiceTest {
                 appointment.getReason(),
                 null,
                 null,
-                null
+                null,
+                null,
+                null,
+                false
         );
     }
 }

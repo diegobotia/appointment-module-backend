@@ -59,6 +59,7 @@ public class AuthApplicationService {
                 && jwtAuth.getDetails() instanceof StaffPrincipal principal) {
             profile.put("id", principal.profileId());
             profile.put("role", principal.roleName().map(RoleName::getSupabaseNombre).orElse(null));
+            principal.medicoId().ifPresent(medicoId -> profile.put("medicoId", medicoId));
         }
 
         try {
@@ -67,6 +68,9 @@ public class AuthApplicationService {
                 profile.put("email", p.getEmail());
                 profile.put("name", p.getName());
                 profile.put("roleId", p.getRoleId());
+                if (p.getMedicoId() != null && !p.getMedicoId().isBlank()) {
+                    profile.putIfAbsent("medicoId", p.getMedicoId().trim());
+                }
                 roleRepository.findById(p.getRoleId())
                         .ifPresent(role -> profile.put("roleNombre", role.getNombre()));
             });
