@@ -22,12 +22,16 @@ import com.ipscentir.appointments.application.dto.integration.n8n.N8nPatientIden
 import com.ipscentir.appointments.application.dto.integration.n8n.N8nPatientIdentifyResponse;
 import com.ipscentir.appointments.application.dto.integration.n8n.N8nPatientRegistrationStatusResponse;
 import com.ipscentir.appointments.application.dto.integration.n8n.N8nRescheduleAppointmentRequest;
+import com.ipscentir.appointments.application.dto.integration.n8n.N8nConfirmAppointmentRequest;
+import com.ipscentir.appointments.application.dto.integration.n8n.N8nConfirmAppointmentResponse;
+import com.ipscentir.appointments.application.dto.integration.n8n.N8nPendingRemindersResponse;
 import com.ipscentir.appointments.application.dto.integration.n8n.N8nWebhookEventRequest;
 import com.ipscentir.appointments.application.dto.integration.n8n.N8nWebhookEventResponse;
 import com.ipscentir.appointments.application.exception.SedeNotFoundException;
 import com.ipscentir.appointments.application.exception.PatientNotFoundException;
 import com.ipscentir.appointments.application.mapper.AppointmentMapper;
 import com.ipscentir.appointments.domain.model.appointment.Appointment;
+import com.ipscentir.appointments.domain.model.appointment.AppointmentStatus;
 import com.ipscentir.appointments.domain.model.appointment.AppointmentType;
 import com.ipscentir.appointments.domain.model.appointment.BookingChannel;
 import com.ipscentir.appointments.domain.model.catalog.AppointmentServiceType;
@@ -46,6 +50,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
@@ -317,6 +322,38 @@ public class N8nPatientIntegrationService {
         return new N8nCancelAppointmentResponse(
                 dto,
                 "Cita cancelada correctamente desde el flujo n8n."
+        );
+    }
+
+    @Transactional(readOnly = true)
+    public N8nPendingRemindersResponse getPendingReminders(LocalDate date) {
+        LocalDate targetDate = date != null ? date : LocalDate.now().plusDays(1);
+        
+        List<N8nPatientAppointmentSummaryDTO> appointments = appointmentRepository
+                .findByDateAndStatusIn(targetDate, List.of(AppointmentStatus.SCHEDULED))
+                .stream()
+                .map(this::toAppointmentSummary)
+                .toList();
+
+        String summary = appointments.isEmpty()
+                ? "No hay recordatorios pendientes."
+                : "Se encontraron " + appointments.size() + " recordatorios pendientes para la fecha " + targetDate + ".";
+
+        return new N8nPendingRemindersResponse(
+                targetDate,
+                appointments.size(),
+                appointments,
+                summary
+        );
+    }
+
+    @Transactional
+    public N8nConfirmAppointmentResponse confirmAppointment(UUID appointmentId, N8nConfirmAppointmentRequest request) {
+        AppointmentDTO dto = appointmentOperationsService.confirmAppointment(appointmentId);
+
+        return new N8nConfirmAppointmentResponse(
+                dto,
+                "Cita confirmada correctamente desde el flujo n8n. " + (request.reason() != null ? request.reason() : "")
         );
     }
 

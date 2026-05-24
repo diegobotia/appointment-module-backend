@@ -17,6 +17,9 @@ import java.util.Optional;
 @Repository
 public interface SpecialistJpaRepository extends JpaRepository<Specialist, String> {
 
+    @Query(value = "SELECT * FROM hc.medicos WHERE CAST(id AS text) = :id", nativeQuery = true)
+    Optional<Specialist> findById(@Param("id") String id);
+
     Optional<Specialist> findByNumeroMedico(String numeroMedico);
 
     List<Specialist> findAllByActiveTrue();

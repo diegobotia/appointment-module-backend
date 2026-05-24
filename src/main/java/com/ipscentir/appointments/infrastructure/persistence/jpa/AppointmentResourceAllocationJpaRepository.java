@@ -15,27 +15,43 @@ import java.util.UUID;
 @Repository
 public interface AppointmentResourceAllocationJpaRepository extends JpaRepository<AppointmentResourceAllocation, UUID> {
 
-    Optional<AppointmentResourceAllocation> findByAppointmentIdAndReleasedAtIsNull(UUID appointmentId);
+        Optional<AppointmentResourceAllocation> findByAppointmentIdAndReleasedAtIsNull(UUID appointmentId);
 
-    boolean existsByCapacitySessionKeyAndReleasedAtIsNull(String capacitySessionKey);
+        boolean existsByCapacitySessionKeyAndReleasedAtIsNull(String capacitySessionKey);
 
-    @Query("""
-            SELECT COUNT(DISTINCT a.capacitySessionKey)
-            FROM AppointmentResourceAllocation a
-            WHERE a.sedeId = :sedeId
-              AND a.resourceType = :resourceType
-              AND a.appointmentDate = :appointmentDate
-              AND a.releasedAt IS NULL
-              AND a.startTime < :endTime
-              AND a.endTime > :startTime
-              AND (:excludeAppointmentId IS NULL OR a.appointmentId <> :excludeAppointmentId)
-            """)
-    long countOccupiedCapacityUnits(
-            @Param("sedeId") Integer sedeId,
-            @Param("resourceType") FacilityResourceType resourceType,
-            @Param("appointmentDate") LocalDate appointmentDate,
-            @Param("startTime") LocalTime startTime,
-            @Param("endTime") LocalTime endTime,
-            @Param("excludeAppointmentId") UUID excludeAppointmentId
-    );
+        @Query("""
+                        SELECT COUNT(DISTINCT a.capacitySessionKey)
+                        FROM AppointmentResourceAllocation a
+                        WHERE a.sedeId = :sedeId
+                          AND a.resourceType = :resourceType
+                          AND a.appointmentDate = :appointmentDate
+                          AND a.releasedAt IS NULL
+                          AND a.startTime < :endTime
+                          AND a.endTime > :startTime
+                        """)
+        long countOccupiedCapacityUnits(
+                        @Param("sedeId") Integer sedeId,
+                        @Param("resourceType") FacilityResourceType resourceType,
+                        @Param("appointmentDate") LocalDate appointmentDate,
+                        @Param("startTime") LocalTime startTime,
+                        @Param("endTime") LocalTime endTime);
+
+        @Query("""
+                        SELECT COUNT(DISTINCT a.capacitySessionKey)
+                        FROM AppointmentResourceAllocation a
+                        WHERE a.sedeId = :sedeId
+                          AND a.resourceType = :resourceType
+                          AND a.appointmentDate = :appointmentDate
+                          AND a.releasedAt IS NULL
+                          AND a.startTime < :endTime
+                          AND a.endTime > :startTime
+                          AND a.appointmentId <> :excludeAppointmentId
+                        """)
+        long countOccupiedCapacityUnitsExcludingAppointment(
+                        @Param("sedeId") Integer sedeId,
+                        @Param("resourceType") FacilityResourceType resourceType,
+                        @Param("appointmentDate") LocalDate appointmentDate,
+                        @Param("startTime") LocalTime startTime,
+                        @Param("endTime") LocalTime endTime,
+                        @Param("excludeAppointmentId") UUID excludeAppointmentId);
 }

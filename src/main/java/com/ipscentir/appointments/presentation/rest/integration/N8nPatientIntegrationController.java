@@ -13,6 +13,9 @@ import com.ipscentir.appointments.application.dto.integration.n8n.N8nPatientIden
 import com.ipscentir.appointments.application.dto.integration.n8n.N8nPatientIdentifyResponse;
 import com.ipscentir.appointments.application.dto.integration.n8n.N8nPatientRegistrationStatusResponse;
 import com.ipscentir.appointments.application.dto.integration.n8n.N8nRescheduleAppointmentRequest;
+import com.ipscentir.appointments.application.dto.integration.n8n.N8nConfirmAppointmentRequest;
+import com.ipscentir.appointments.application.dto.integration.n8n.N8nConfirmAppointmentResponse;
+import com.ipscentir.appointments.application.dto.integration.n8n.N8nPendingRemindersResponse;
 import com.ipscentir.appointments.application.service.N8nPatientIntegrationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -31,6 +34,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.LocalDate;
 import java.util.UUID;
 
 @RestController
@@ -119,5 +123,25 @@ public class N8nPatientIntegrationController {
             @Valid @RequestBody N8nCancelAppointmentRequest request
     ) {
         return ResponseEntity.ok(n8nPatientIntegrationService.cancelAppointment(appointmentId, request));
+    }
+
+    @GetMapping("/reminders/pending")
+    @Operation(summary = "Obtener recordatorios pendientes de confirmación")
+    public ResponseEntity<N8nPendingRemindersResponse> getPendingReminders(
+            @RequestParam(required = false) LocalDate date
+    ) {
+        return ResponseEntity.ok(n8nPatientIntegrationService.getPendingReminders(date));
+    }
+
+    @PostMapping("/appointments/{appointmentId}/confirm")
+    @Operation(summary = "Confirm appointment from n8n chat flow")
+    public ResponseEntity<N8nConfirmAppointmentResponse> confirmAppointment(
+            @PathVariable UUID appointmentId,
+            @Valid @RequestBody(required = false) N8nConfirmAppointmentRequest request
+    ) {
+        if (request == null) {
+            request = new N8nConfirmAppointmentRequest("Confirmado por n8n", null);
+        }
+        return ResponseEntity.ok(n8nPatientIntegrationService.confirmAppointment(appointmentId, request));
     }
 }

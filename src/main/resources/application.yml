@@ -66,7 +66,7 @@ notifications:
   enabled: ${NOTIFICATIONS_ENABLED:true}
   created-alert-enabled: ${NOTIFICATIONS_CREATED_ALERT_ENABLED:false}
   cancelled-alert-enabled: ${NOTIFICATIONS_CANCELLED_ALERT_ENABLED:false}
-  reminder-24h-enabled: ${NOTIFICATIONS_REMINDER_24H_ENABLED:true}
+  reminder-24h-enabled: ${NOTIFICATIONS_REMINDER_24H_ENABLED:false}
   reminder-2h-enabled: ${NOTIFICATIONS_REMINDER_2H_ENABLED:false}
   max-retry-attempts: ${NOTIFICATIONS_MAX_RETRY_ATTEMPTS:3}
   retry-cron: ${NOTIFICATIONS_RETRY_CRON:0 */15 * * * *}
