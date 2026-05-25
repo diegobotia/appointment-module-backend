@@ -128,19 +128,19 @@ class ResourceCapacityIntegrationTest {
 
     @Test
     void rejectsThirdSimultaneousPhysiotherapySessionAtConquistadores() {
-        Schedule scheduleA = saveTherapySchedule(conquistadoresId, "fisio-a");
-        Schedule scheduleB = saveTherapySchedule(conquistadoresId, "fisio-b");
+        Schedule scheduleA = saveTherapySchedule(conquistadoresId, UUID.randomUUID().toString());
+        Schedule scheduleB = saveTherapySchedule(conquistadoresId, UUID.randomUUID().toString());
 
         bookTherapy(scheduleA);
         bookTherapy(scheduleB);
 
-        Schedule scheduleC = saveTherapySchedule(conquistadoresId, "fisio-c");
+        Schedule scheduleC = saveTherapySchedule(conquistadoresId, UUID.randomUUID().toString());
         assertThrows(ResourceCapacityExceededException.class, () -> bookTherapy(scheduleC));
     }
 
     @Test
     void allowsTherapyGroupInSingleRoomAtConquistadores() {
-        Schedule groupSchedule = saveTherapySchedule(conquistadoresId, "fisio-grupo");
+        Schedule groupSchedule = saveTherapySchedule(conquistadoresId, UUID.randomUUID().toString());
         for (int i = 0; i < 4; i++) {
             bookTherapy(groupSchedule);
         }

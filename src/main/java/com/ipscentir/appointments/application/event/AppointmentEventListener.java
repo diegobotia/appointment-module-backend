@@ -39,10 +39,10 @@ public class AppointmentEventListener {
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleAppointmentCreated(AppointmentCreatedEvent event) {
         log.info("AppointmentCreatedEvent appointmentId={}", event.appointmentId());
+        n8nEventJournalService.recordAppointmentCreated(event);
 
         if (event.patientId() == null || event.appointmentType() == AppointmentType.STAFF) {
             log.info("Skipping patient notification for administrative appointment {}", event.appointmentId());
-            n8nEventJournalService.recordAppointmentCreated(event);
             return;
         }
 
@@ -67,18 +67,16 @@ public class AppointmentEventListener {
         } else {
             log.info("Creation alert disabled; skipping SMS for appointment {}", event.appointmentId());
         }
-
-        n8nEventJournalService.recordAppointmentCreated(event);
     }
 
     @Async
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleAppointmentCancelled(AppointmentCancelledEvent event) {
         log.info("AppointmentCancelledEvent appointmentId={}", event.appointmentId());
+        n8nEventJournalService.recordAppointmentCancelled(event);
 
         if (event.patientId() == null) {
             log.info("Skipping patient notification for administrative cancellation {}", event.appointmentId());
-            n8nEventJournalService.recordAppointmentCancelled(event);
             return;
         }
 
@@ -102,8 +100,6 @@ public class AppointmentEventListener {
         } else {
             log.info("Cancellation alert disabled; skipping WhatsApp for appointment {}", event.appointmentId());
         }
-
-        n8nEventJournalService.recordAppointmentCancelled(event);
     }
 
     @Async

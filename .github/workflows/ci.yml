@@ -15,10 +15,15 @@ permissions:
   pull-requests: write
   checks: write
 
+defaults:
+  run:
+    working-directory: .
+
 jobs:
   quality:
     name: Build, tests y calidad
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
 
@@ -30,7 +35,9 @@ jobs:
           cache: maven
 
       - name: Build, test y verify (JaCoCo + SpotBugs)
-        run: mvn -B verify -Dspring.profiles.active=test
+        env:
+          SPRING_PROFILES_ACTIVE: test
+        run: mvn -B verify
 
       - name: Publicar resultado de tests
         uses: dorny/test-reporter@v1
@@ -42,7 +49,7 @@ jobs:
           fail-on-error: true
 
       - name: Comentario de cobertura en PR
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' && success()
         uses: madrapps/jacoco-report@v1.6.1
         with:
           paths: ${{ github.workspace }}/target/site/jacoco/jacoco.xml

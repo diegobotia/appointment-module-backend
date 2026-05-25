@@ -37,6 +37,12 @@ class PatientRegistrationPhase0IntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.formBaseUrl").exists())
                 .andExpect(jsonPath("$.urlTemplate").exists())
+                .andExpect(jsonPath("$.genders").exists())
+                .andExpect(jsonPath("$.civilStatus").exists())
+                .andExpect(jsonPath("$.occupations").exists())
+                .andExpect(jsonPath("$.bloodGroups").exists())
+                .andExpect(jsonPath("$.schoolingLevels").exists())
+                .andExpect(jsonPath("$.countries").exists())
                 .andExpect(jsonPath("$.supportedDocumentTypes[?(@.codigo=='13')].descripcion")
                         .value("Cédula de ciudadanía"))
                 .andExpect(jsonPath("$.supportedDocumentTypes.length()").value(13));

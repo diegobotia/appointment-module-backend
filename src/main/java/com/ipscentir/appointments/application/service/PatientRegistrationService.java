@@ -1,5 +1,6 @@
 package com.ipscentir.appointments.application.service;
 
+import com.ipscentir.appointments.application.dto.form.CatalogOptionDTO;
 import com.ipscentir.appointments.application.dto.form.CreatePatientRegistrationRequest;
 import com.ipscentir.appointments.application.dto.form.DocumentTypeOptionDTO;
 import com.ipscentir.appointments.application.dto.form.PatientRegistrationFormConfigResponse;
@@ -13,6 +14,7 @@ import com.ipscentir.appointments.infrastructure.persistence.jpa.PacienteReposit
 import com.ipscentir.appointments.infrastructure.persistence.jpa.entity.Contacto;
 import com.ipscentir.appointments.infrastructure.persistence.jpa.entity.Direccion;
 import com.ipscentir.appointments.infrastructure.persistence.jpa.entity.Paciente;
+import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -22,6 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -33,6 +36,7 @@ public class PatientRegistrationService {
     private final DireccionRepository direccionRepository;
     private final PacienteRepository pacienteRepository;
     private final TipoIdentificacionResolver tipoIdentificacionResolver;
+    private final EntityManager entityManager;
 
     @Value("${patient-registration.form-base-url:https://citas.ipscentir.com/registro}")
     private String formBaseUrl;
@@ -41,13 +45,62 @@ public class PatientRegistrationService {
         List<DocumentTypeOptionDTO> documentTypes = Arrays.stream(ColombianIdentificationType.values())
                 .map(type -> new DocumentTypeOptionDTO(type.getCodigo(), type.getDescripcion()))
                 .toList();
+
         return new PatientRegistrationFormConfigResponse(
                 formBaseUrl,
                 "/api/v1/forms/patients",
                 "/api/v1/forms/patients/status",
                 documentTypes,
-                formBaseUrl + "?codTipoIdentificacion={codTipoIdentificacion}&numIdentificacion={numIdentificacion}"
+                formBaseUrl + "?codTipoIdentificacion={codTipoIdentificacion}&numIdentificacion={numIdentificacion}",
+                loadCatalog("core.generos"),
+                loadCatalog("core.estado_civil"),
+                loadCatalog("core.ocupaciones"),
+                loadCatalog("core.grupos_sanguineos"),
+                loadCatalog("core.escolaridades"),
+                loadCatalog("core.paises")
         );
+    }
+
+    private List<CatalogOptionDTO> loadCatalog(String tableName) {
+        try {
+            String schema = "public";
+            String table = tableName;
+            if (tableName.contains(".")) {
+                String[] parts = tableName.split("\\.", 2);
+                schema = parts[0];
+                table = parts[1];
+            }
+
+            Optional<String> labelColumn = resolveLabelColumn(schema, table);
+            String column = labelColumn.orElse("id");
+            String query = "SELECT id::text, " + column + " FROM " + tableName + " ORDER BY 2";
+            @SuppressWarnings("unchecked")
+            List<Object[]> rows = entityManager.createNativeQuery(query).getResultList();
+            return rows.stream()
+                    .map(row -> new CatalogOptionDTO(
+                            String.valueOf(row[0]),
+                            row[1] != null ? String.valueOf(row[1]) : String.valueOf(row[0])
+                    ))
+                    .toList();
+        } catch (Exception ex) {
+            log.warn("No se pudo cargar el catálogo {}: {}", tableName, ex.getMessage());
+            return List.of();
+        }
+    }
+
+    private Optional<String> resolveLabelColumn(String schema, String table) {
+        List<String> candidates = List.of("nombre", "descripcion", "descripcion_corta", "name", "label");
+        @SuppressWarnings("unchecked")
+        List<String> existing = entityManager.createNativeQuery(
+                        "SELECT column_name FROM information_schema.columns " +
+                                "WHERE table_schema = :schema AND table_name = :table " +
+                                "AND column_name IN ('nombre','descripcion','descripcion_corta','name','label')")
+                .setParameter("schema", schema)
+                .setParameter("table", table)
+                .getResultList();
+        return candidates.stream()
+                .filter(existing::contains)
+                .findFirst();
     }
 
     public PatientRegistrationStatusResponse getRegistrationStatus(String codTipoIdentificacion, String numIdentificacion) {

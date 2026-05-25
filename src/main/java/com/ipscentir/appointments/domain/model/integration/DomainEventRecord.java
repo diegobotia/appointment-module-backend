@@ -36,7 +36,7 @@ public class DomainEventRecord {
     @Column(name = "aggregate_id", nullable = false)
     private UUID aggregateId;
 
-    @Column(name = "event_data", nullable = false)
+    @Column(name = "event_data", nullable = false, length = 16_384)
     @JdbcTypeCode(SqlTypes.JSON)
     private String eventData;
 

@@ -24,6 +24,7 @@ import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
@@ -88,7 +89,7 @@ class AppointmentListEnrichmentIntegrationTest {
         direccionRepository.deleteAll();
 
         sedeId = FacilityMasterData.SEDE_ID_BELEN;
-        appointmentDate = LocalDate.now().plusDays(6);
+        appointmentDate = nextWeekday(LocalDate.now().plusDays(6));
         appointmentTime = LocalTime.of(10, 30);
 
         doctorId = specialistJpaRepository.save(Specialist.builder()
@@ -244,5 +245,13 @@ class AppointmentListEnrichmentIntegrationTest {
                 .maxPatientsPerSlot(1)
                 .isActive(true)
                 .build());
+    }
+
+    /** Evita sábado (cierre 12:00) y domingo (cerrado) del seed operativo de sedes. */
+    private static LocalDate nextWeekday(LocalDate date) {
+        while (date.getDayOfWeek() == DayOfWeek.SATURDAY || date.getDayOfWeek() == DayOfWeek.SUNDAY) {
+            date = date.plusDays(1);
+        }
+        return date;
     }
 }

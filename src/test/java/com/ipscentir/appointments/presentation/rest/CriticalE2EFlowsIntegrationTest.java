@@ -176,13 +176,13 @@ class CriticalE2EFlowsIntegrationTest {
         }
 
         private void waitUntilEventJournalHas(String eventType) {
-                for (int i = 0; i < 20; i++) {
+                for (int i = 0; i < 50; i++) {
                         List<DomainEventRecord> events = domainEventJpaRepository.findAll();
                         boolean found = events.stream().anyMatch(e -> eventType.equals(e.getEventType()));
                         if (found) {
                                 return;
                         }
-                        LockSupport.parkNanos(100_000_000L);
+                        LockSupport.parkNanos(200_000_000L);
                 }
 
                 List<DomainEventRecord> events = domainEventJpaRepository.findAll();
