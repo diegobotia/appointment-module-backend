@@ -5,18 +5,20 @@ import com.ipscentir.appointments.application.dto.medico.MedicoSearchCriteria;
 import com.ipscentir.appointments.application.dto.medico.MedicoSummaryDTO;
 import com.ipscentir.appointments.application.exception.MedicoNotFoundException;
 import com.ipscentir.appointments.domain.model.specialist.Specialist;
+import com.ipscentir.appointments.infrastructure.persistence.jpa.MedicoEspecialidadRepository;
 import com.ipscentir.appointments.infrastructure.persistence.jpa.SpecialistJpaRepository;
+import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Objects;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
@@ -27,15 +29,15 @@ import java.util.stream.Collectors;
 public class MedicoLookupService {
 
     private final SpecialistJpaRepository specialistJpaRepository;
+    private final MedicoEspecialidadRepository medicoEspecialidadRepository;
 
-    @Transactional(readOnly = true)
-    public Specialist requireById(String medicoId) {
-        return specialistJpaRepository.findById(medicoId)
+    public Specialist requireById(@NonNull String medicoId) {
+        String medicoIdValue = Objects.requireNonNull(medicoId, "medicoId");
+        return specialistJpaRepository.findById(medicoIdValue)
                 .orElseThrow(() -> new MedicoNotFoundException(medicoId));
     }
 
-    @Transactional(readOnly = true)
-    public Specialist requireActiveById(String medicoId) {
+    public Specialist requireActiveById(@NonNull String medicoId) {
         Specialist specialist = requireById(medicoId);
         if (!specialist.isActive()) {
             throw new MedicoNotFoundException(medicoId);
@@ -43,20 +45,19 @@ public class MedicoLookupService {
         return specialist;
     }
 
-    @Transactional(readOnly = true)
+    @SuppressWarnings("null")
     public Optional<Specialist> findById(String medicoId) {
         if (medicoId == null || medicoId.isBlank()) {
             return Optional.empty();
         }
-        return specialistJpaRepository.findById(medicoId.trim());
+        String medicoIdValue = medicoId.trim();
+        return specialistJpaRepository.findById(medicoIdValue);
     }
 
-    @Transactional(readOnly = true)
     public List<Specialist> findAllActive() {
         return specialistJpaRepository.findAllByActiveTrue();
     }
 
-    @Transactional(readOnly = true)
     public MedicoPageResponse search(MedicoSearchCriteria criteria) {
         int page = Math.max(criteria.page(), 0);
         int size = criteria.size() <= 0 ? 20 : Math.min(criteria.size(), 100);
@@ -68,7 +69,7 @@ public class MedicoLookupService {
                 normalize(criteria.registro()),
                 normalize(criteria.specialty()),
                 activeFilter,
-                PageRequest.of(page, size, Sort.by("lastName", "firstName"))
+            PageRequest.of(page, size)
         );
 
         return new MedicoPageResponse(
@@ -80,12 +81,22 @@ public class MedicoLookupService {
         );
     }
 
-    @Transactional(readOnly = true)
-    public MedicoSummaryDTO getSummaryById(String medicoId) {
+    public MedicoSummaryDTO getSummaryById(@NonNull String medicoId) {
         return toSummary(requireById(medicoId));
     }
 
-    @Transactional(readOnly = true)
+    public List<String> findActiveSpecialties(String medicoId) {
+        UUID medicoUuid = parseUuid(medicoId);
+        if (medicoUuid == null) {
+            return List.of();
+        }
+        return medicoEspecialidadRepository.findActiveSpecialties(medicoUuid);
+    }
+
+    public Optional<String> findPrimarySpecialty(String medicoId) {
+        return findActiveSpecialties(medicoId).stream().findFirst();
+    }
+
     public Map<String, String> resolveDisplayNames(Collection<String> medicoIds) {
         if (medicoIds == null || medicoIds.isEmpty()) {
             return Map.of();
@@ -106,7 +117,7 @@ public class MedicoLookupService {
                 formatFullName(specialist),
                 specialist.getNumDoc(),
                 specialist.getNumeroMedico(),
-                specialist.getSpecialty(),
+                findPrimarySpecialty(specialist.getId()).orElse(null),
                 specialist.isActive()
         );
     }
@@ -121,5 +132,16 @@ public class MedicoLookupService {
         }
         String trimmed = value.trim();
         return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    private UUID parseUuid(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        try {
+            return UUID.fromString(value.trim());
+        } catch (IllegalArgumentException ex) {
+            return null;
+        }
     }
 }

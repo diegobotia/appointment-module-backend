@@ -14,5 +14,6 @@ else
   echo "Warning: .env not found in project root. Relying on environment variables."
 fi
 
-echo "Active Spring profile: ${SPRING_PROFILES_ACTIVE:-default}"
-exec mvn -f "$ROOT_DIR/pom.xml" spring-boot:run
+SPRING_PROFILES="${SPRING_PROFILES_ACTIVE:-default}"
+echo "Active Spring profile: $SPRING_PROFILES"
+exec mvn -f "$ROOT_DIR/pom.xml" spring-boot:run -Dspring-boot.run.arguments="--spring.profiles.active=$SPRING_PROFILES"

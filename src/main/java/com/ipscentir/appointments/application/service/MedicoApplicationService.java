@@ -39,33 +39,29 @@ public class MedicoApplicationService {
 
         List<MedicoAvailableDTO> result = new ArrayList<>();
         for (Specialist specialist : medicoLookupService.findAllActive()) {
-            if (specialty != null && !specialty.trim().isEmpty()) {
-                String spec = specialist.getSpecialty();
-                if (spec == null || !spec.equalsIgnoreCase(specialty.trim())) {
-                    continue;
-                }
-            }
+            List<String> specialties = medicoLookupService.findActiveSpecialties(specialist.getId());
+            boolean matchesRequestedSpecialty = specialty == null || specialty.trim().isEmpty()
+                    || specialties.stream().anyMatch(spec -> spec != null && spec.equalsIgnoreCase(specialty.trim()));
 
-            if (sedeId != null && availabilityDate != null) {
+            boolean hasAvailability = true;
+            if (matchesRequestedSpecialty && sedeId != null && availabilityDate != null) {
                 List<AvailableSlotDetail> slots = availabilityService.getAvailableSlotsInRange(
                         specialist.getId(),
                         sedeId,
                         availabilityDate,
                         availabilityDate
                 );
-                if (slots.isEmpty()) {
-                    continue;
-                }
+                hasAvailability = !slots.isEmpty();
             }
 
-            List<String> specs = specialist.getSpecialty() != null
-                    ? List.of(specialist.getSpecialty())
-                    : List.of();
+            if (!matchesRequestedSpecialty || !hasAvailability) {
+                continue;
+            }
 
             result.add(MedicoAvailableDTO.builder()
                     .medicoId(specialist.getId())
                     .name(MedicoLookupService.formatFullName(specialist))
-                    .specialties(specs)
+                    .specialties(specialties)
                     .build());
         }
 

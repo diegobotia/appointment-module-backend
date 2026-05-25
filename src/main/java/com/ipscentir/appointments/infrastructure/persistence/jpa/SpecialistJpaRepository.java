@@ -17,26 +17,52 @@ import java.util.Optional;
 @Repository
 public interface SpecialistJpaRepository extends JpaRepository<Specialist, String> {
 
-    @Query(value = "SELECT * FROM hc.medicos WHERE CAST(id AS text) = :id", nativeQuery = true)
-    Optional<Specialist> findById(@Param("id") String id);
-
     Optional<Specialist> findByNumeroMedico(String numeroMedico);
 
     List<Specialist> findAllByActiveTrue();
 
-    @Query("""
-            SELECT s FROM Specialist s
-            WHERE (:active IS NULL OR s.active = :active)
-              AND (:numDoc IS NULL OR s.numDoc = :numDoc)
-              AND (:registro IS NULL OR s.numeroMedico = :registro)
-              AND (:specialty IS NULL OR LOWER(s.specialty) = LOWER(:specialty))
-              AND (
-                    :q IS NULL
-                    OR LOWER(CONCAT(s.firstName, ' ', s.lastName)) LIKE LOWER(CONCAT('%', :q, '%'))
-                    OR LOWER(s.firstName) LIKE LOWER(CONCAT('%', :q, '%'))
-                    OR LOWER(s.lastName) LIKE LOWER(CONCAT('%', :q, '%'))
-              )
-            """)
+    @Query(value = """
+                SELECT DISTINCT m.*
+                FROM hc.medicos m
+                LEFT JOIN hc.medico_especialidades me
+                                                                         ON CAST(me.medico_id AS text) = CAST(m.id AS text)
+                        AND me.activo = true
+                WHERE (:active IS NULL OR m.activo = :active)
+                  AND (:numDoc IS NULL OR m.num_doc = :numDoc)
+                  AND (:registro IS NULL OR m.registro = :registro)
+                  AND (
+                          :specialty IS NULL
+                          OR LOWER(me.especialidad) = LOWER(:specialty)
+                  )
+                  AND (
+                          :q IS NULL
+                          OR LOWER(CONCAT(m.nombre, ' ', m.apellido)) LIKE LOWER(CONCAT('%', :q, '%'))
+                          OR LOWER(m.nombre) LIKE LOWER(CONCAT('%', :q, '%'))
+                          OR LOWER(m.apellido) LIKE LOWER(CONCAT('%', :q, '%'))
+                  )
+                ORDER BY m.apellido, m.nombre
+                """,
+                countQuery = """
+                SELECT COUNT(DISTINCT m.id)
+                FROM hc.medicos m
+                LEFT JOIN hc.medico_especialidades me
+                             ON CAST(me.medico_id AS text) = CAST(m.id AS text)
+                        AND me.activo = true
+                WHERE (:active IS NULL OR m.activo = :active)
+                  AND (:numDoc IS NULL OR m.num_doc = :numDoc)
+                  AND (:registro IS NULL OR m.registro = :registro)
+                  AND (
+                          :specialty IS NULL
+                          OR LOWER(me.especialidad) = LOWER(:specialty)
+                  )
+                  AND (
+                          :q IS NULL
+                          OR LOWER(CONCAT(m.nombre, ' ', m.apellido)) LIKE LOWER(CONCAT('%', :q, '%'))
+                          OR LOWER(m.nombre) LIKE LOWER(CONCAT('%', :q, '%'))
+                          OR LOWER(m.apellido) LIKE LOWER(CONCAT('%', :q, '%'))
+                  )
+                """,
+                nativeQuery = true)
     Page<Specialist> search(
             @Param("q") String q,
             @Param("numDoc") String numDoc,

@@ -27,7 +27,6 @@ import com.ipscentir.appointments.application.dto.integration.n8n.N8nConfirmAppo
 import com.ipscentir.appointments.application.dto.integration.n8n.N8nPendingRemindersResponse;
 import com.ipscentir.appointments.application.dto.integration.n8n.N8nWebhookEventRequest;
 import com.ipscentir.appointments.application.dto.integration.n8n.N8nWebhookEventResponse;
-import com.ipscentir.appointments.application.exception.SedeNotFoundException;
 import com.ipscentir.appointments.application.exception.PatientNotFoundException;
 import com.ipscentir.appointments.application.mapper.AppointmentMapper;
 import com.ipscentir.appointments.domain.model.appointment.Appointment;
@@ -35,8 +34,6 @@ import com.ipscentir.appointments.domain.model.appointment.AppointmentStatus;
 import com.ipscentir.appointments.domain.model.appointment.AppointmentType;
 import com.ipscentir.appointments.domain.model.appointment.BookingChannel;
 import com.ipscentir.appointments.domain.model.catalog.AppointmentServiceType;
-import com.ipscentir.appointments.domain.model.sede.Sede;
-import com.ipscentir.appointments.domain.model.specialist.Specialist;
 import com.ipscentir.appointments.domain.model.schedule.AvailableSlotDetail;
 import com.ipscentir.appointments.domain.model.schedule.Schedule;
 import com.ipscentir.appointments.domain.repository.AppointmentRepository;
@@ -44,7 +41,6 @@ import com.ipscentir.appointments.domain.repository.ScheduleRepository;
 import com.ipscentir.appointments.domain.service.AppointmentBookingService;
 import com.ipscentir.appointments.domain.service.AvailabilityService;
 import com.ipscentir.appointments.infrastructure.persistence.jpa.PacienteRepository;
-import com.ipscentir.appointments.infrastructure.persistence.jpa.SpecialistJpaRepository;
 import com.ipscentir.appointments.infrastructure.persistence.jpa.entity.Paciente;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -68,9 +64,8 @@ public class N8nPatientIntegrationService {
     private final N8nEventJournalService n8nEventJournalService;
     private final PatientRegistrationService patientRegistrationService;
     private final PacienteRepository pacienteRepository;
-    private final SedeLookupService sedeLookupService;
     private final ScheduleRepository scheduleRepository;
-    private final SpecialistJpaRepository specialistJpaRepository;
+        private final MedicoLookupService medicoLookupService;
     private final N8nIdempotencyService n8nIdempotencyService;
     private final AppointmentOperationsService appointmentOperationsService;
     private final TipoIdentificacionResolver tipoIdentificacionResolver;
@@ -439,7 +434,7 @@ public class N8nPatientIntegrationService {
      * Catálogo cerrado: serviceType (código) y specialty (nombre para UI) salen del mismo
      * {@link AppointmentServiceType}. Si no hay match, ambos quedan null.
      *
-     * Fuentes, en orden: agenda → hc.medicos.especialidad → tipo de cita (terapia/junta).
+        * Fuentes, en orden: agenda → hc.medico_especialidades.especialidad → tipo de cita (terapia/junta).
      */
     private Optional<AppointmentServiceType> resolveCatalogService(
             Schedule schedule,
@@ -454,8 +449,7 @@ public class N8nPatientIntegrationService {
         }
 
         if (doctorId != null) {
-            Optional<AppointmentServiceType> fromDoctor = specialistJpaRepository.findById(doctorId)
-                    .map(Specialist::getSpecialty)
+                        Optional<AppointmentServiceType> fromDoctor = medicoLookupService.findPrimarySpecialty(doctorId)
                     .flatMap(AppointmentServiceType::tryResolve);
             if (fromDoctor.isPresent()) {
                 return fromDoctor;

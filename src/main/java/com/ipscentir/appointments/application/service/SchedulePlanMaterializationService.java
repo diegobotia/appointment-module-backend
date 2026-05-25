@@ -5,7 +5,6 @@ import com.ipscentir.appointments.domain.model.schedule.SchedulePlan;
 import com.ipscentir.appointments.domain.model.schedule.SchedulePlanSlot;
 import com.ipscentir.appointments.domain.repository.ScheduleRepository;
 import com.ipscentir.appointments.domain.service.FacilityOperatingHoursService;
-import com.ipscentir.appointments.infrastructure.persistence.jpa.SpecialistJpaRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -15,15 +14,12 @@ import org.springframework.transaction.annotation.Transactional;
 public class SchedulePlanMaterializationService {
 
     private final ScheduleRepository scheduleRepository;
-    private final SpecialistJpaRepository specialistJpaRepository;
+    private final MedicoLookupService medicoLookupService;
     private final FacilityOperatingHoursService facilityOperatingHoursService;
 
     @Transactional
     public void materializePublishedPlan(SchedulePlan plan) {
-        var specialist = specialistJpaRepository.findById(plan.getSpecialistId())
-                .orElseThrow(() -> new IllegalArgumentException("Specialist not found"));
-
-        String specialty = specialist.getSpecialty();
+        String specialty = medicoLookupService.findPrimarySpecialty(plan.getSpecialistId()).orElse(null);
         Integer sedeId = plan.getSedeId();
 
         for (SchedulePlanSlot slot : plan.getSlots()) {

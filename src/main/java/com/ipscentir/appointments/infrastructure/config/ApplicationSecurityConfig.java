@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.oauth2.jose.jws.SignatureAlgorithm;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 @Configuration
@@ -16,7 +17,9 @@ public class ApplicationSecurityConfig {
     @Bean
     public JwtDecoder jwtDecoder() {
         String baseUrl = supabaseUrl.startsWith("http") ? supabaseUrl : "https://" + supabaseUrl;
-        String jwkSetUri = baseUrl + "/auth/v1/keys";
-        return NimbusJwtDecoder.withJwkSetUri(jwkSetUri).build();
+        String jwkSetUri = baseUrl + "/auth/v1/.well-known/jwks.json";
+        return NimbusJwtDecoder.withJwkSetUri(jwkSetUri)
+                .jwsAlgorithm(SignatureAlgorithm.ES256)
+                .build();
     }
 }
