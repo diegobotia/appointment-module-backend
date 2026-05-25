@@ -38,7 +38,7 @@ class MedicoProfileResolverTest {
         Specialist specialist = Specialist.builder().id(medicoId).active(true).build();
 
         when(profileRepository.findById(profileId)).thenReturn(Optional.of(profile));
-        when(specialistJpaRepository.findById(medicoId)).thenReturn(Optional.of(specialist));
+        when(specialistJpaRepository.findByIdText(medicoId)).thenReturn(Optional.of(specialist));
 
         assertEquals(medicoId, resolver.requireMedicoIdForProfile(profileId));
     }
@@ -60,7 +60,7 @@ class MedicoProfileResolverTest {
         Profile profile = Profile.builder().id(profileId).medicoId(medicoId).build();
 
         when(profileRepository.findById(profileId)).thenReturn(Optional.of(profile));
-        when(specialistJpaRepository.findById(medicoId))
+        when(specialistJpaRepository.findByIdText(medicoId))
                 .thenReturn(Optional.of(Specialist.builder().id(medicoId).active(false).build()));
 
         assertThrows(AccessDeniedException.class, () -> resolver.requireMedicoIdForProfile(profileId));

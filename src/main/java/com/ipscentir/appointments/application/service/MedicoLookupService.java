@@ -31,9 +31,19 @@ public class MedicoLookupService {
     private final SpecialistJpaRepository specialistJpaRepository;
     private final MedicoEspecialidadRepository medicoEspecialidadRepository;
 
+    public String resolveMedicoId(@NonNull String medicoId) {
+        Objects.requireNonNull(medicoId, "medicoId");
+        if (parseUuid(medicoId) != null) {
+            return medicoId;
+        }
+        return specialistJpaRepository.findByFullName(medicoId.trim())
+                .map(Specialist::getId)
+                .orElseThrow(() -> new MedicoNotFoundException(medicoId));
+    }
+
     public Specialist requireById(@NonNull String medicoId) {
-        String medicoIdValue = Objects.requireNonNull(medicoId, "medicoId");
-        return specialistJpaRepository.findById(medicoIdValue)
+        String resolvedId = resolveMedicoId(medicoId);
+        return specialistJpaRepository.findByIdText(resolvedId)
                 .orElseThrow(() -> new MedicoNotFoundException(medicoId));
     }
 
@@ -51,7 +61,7 @@ public class MedicoLookupService {
             return Optional.empty();
         }
         String medicoIdValue = medicoId.trim();
-        return specialistJpaRepository.findById(medicoIdValue);
+        return specialistJpaRepository.findByIdText(medicoIdValue);
     }
 
     public List<Specialist> findAllActive() {
@@ -101,7 +111,7 @@ public class MedicoLookupService {
         if (medicoIds == null || medicoIds.isEmpty()) {
             return Map.of();
         }
-        return specialistJpaRepository.findAllById(medicoIds).stream()
+        return specialistJpaRepository.findAllByIdTextIn(medicoIds).stream()
                 .collect(Collectors.toMap(
                         Specialist::getId,
                         MedicoLookupService::formatFullName,

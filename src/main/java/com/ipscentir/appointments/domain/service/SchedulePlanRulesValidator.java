@@ -27,7 +27,8 @@ public class SchedulePlanRulesValidator {
 
     public static final int MIN_DURATION_MONTHS = 2;
     public static final int MAX_DURATION_MONTHS = 3;
-    public static final int MIN_DAILY_WORKLOAD_MINUTES = 480;
+    public static final int WEEKDAY_MIN_DAILY_WORKLOAD_MINUTES = 480;
+    public static final int SATURDAY_MIN_DAILY_WORKLOAD_MINUTES = 240;
 
     private final SchedulePlanJpaRepository schedulePlanJpaRepository;
     private final FacilityResourceJpaRepository facilityResourceJpaRepository;
@@ -218,12 +219,21 @@ public class SchedulePlanRulesValidator {
 
     private void validateMinimumDailyWorkload(Map<DayOfWeek, Integer> dailyMinutes) {
         for (var entry : dailyMinutes.entrySet()) {
-            if (entry.getValue() < MIN_DAILY_WORKLOAD_MINUTES) {
+            int expectedMinutes = minimumDailyWorkloadMinutes(entry.getKey());
+            if (entry.getValue() < expectedMinutes) {
                 throw new IllegalArgumentException(
-                        "Each scheduled day of the week must have a minimum workload of 8 hours (480 minutes) total. "
+                        "Each scheduled day of the week must have a minimum workload of "
+                                + (expectedMinutes / 60)
+                                + " hours (" + expectedMinutes + " minutes) total. "
                                 + entry.getKey() + " has only " + (entry.getValue() / 60.0) + " hours.");
             }
         }
+    }
+
+    private int minimumDailyWorkloadMinutes(DayOfWeek dayOfWeek) {
+        return dayOfWeek == DayOfWeek.SATURDAY
+                ? SATURDAY_MIN_DAILY_WORKLOAD_MINUTES
+                : WEEKDAY_MIN_DAILY_WORKLOAD_MINUTES;
     }
 
     private void validateSameConsultorioPerDayFromRequests(List<CreateSchedulePlanSlotRequest> slots) {

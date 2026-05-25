@@ -86,6 +86,46 @@ public class StaffSecurityHelper {
                 .orElseGet(() -> medicoProfileResolver.requireMedicoIdForProfile(requireProfileId()));
     }
 
+    public boolean isOwnMedicoIdOrProfileId(String requestedId) {
+        if (requestedId == null || requestedId.isBlank() || !hasRole(RoleName.MEDICO)) {
+            return false;
+        }
+
+        String trimmedRequestedId = requestedId.trim();
+        StaffPrincipal principal = currentStaffPrincipal().orElse(null);
+        if (principal == null) {
+            return false;
+        }
+
+        if (principal.medicoId().map(trimmedRequestedId::equals).orElse(false)) {
+            return true;
+        }
+
+        return principal.profileId().toString().equals(trimmedRequestedId);
+    }
+
+    public String resolveOwnMedicoIdOrRequestedId(String requestedId) {
+        if (requestedId == null || requestedId.isBlank() || !hasRole(RoleName.MEDICO)) {
+            return requestedId;
+        }
+
+        String trimmedRequestedId = requestedId.trim();
+        StaffPrincipal principal = currentStaffPrincipal().orElse(null);
+        if (principal == null) {
+            return trimmedRequestedId;
+        }
+
+        if (principal.medicoId().map(trimmedRequestedId::equals).orElse(false)) {
+            return trimmedRequestedId;
+        }
+
+        if (principal.profileId().toString().equals(trimmedRequestedId)) {
+            return medicoProfileResolver.requireMedicoIdForProfile(principal.profileId());
+        }
+
+        return trimmedRequestedId;
+    }
+
     private boolean hasAuthority(String authority) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null) {

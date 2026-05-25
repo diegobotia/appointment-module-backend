@@ -82,6 +82,22 @@ class SchedulePlanRulesValidatorTest {
     }
 
     @Test
+    void acceptsSaturdayHalfDayWorkload() {
+        List<CreateSchedulePlanSlotRequest> slots = List.of(
+                new CreateSchedulePlanSlotRequest(
+                        DayOfWeek.SATURDAY,
+                        LocalTime.of(8, 0),
+                        LocalTime.of(12, 0),
+                        30,
+                        1,
+                        UUID.randomUUID()
+                )
+        );
+
+        assertDoesNotThrow(() -> validator.validateSlotsForCreation(slots));
+    }
+
+    @Test
     void allowsPublishReplacementForSamePeriod() {
         UUID publishingPlanId = UUID.randomUUID();
         SchedulePlan activePrevious = SchedulePlan.builder()

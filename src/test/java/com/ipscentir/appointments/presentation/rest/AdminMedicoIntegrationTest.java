@@ -1,7 +1,9 @@
 package com.ipscentir.appointments.presentation.rest;
 
 import com.ipscentir.appointments.domain.model.specialist.Specialist;
+import com.ipscentir.appointments.infrastructure.persistence.jpa.MedicoEspecialidadRepository;
 import com.ipscentir.appointments.infrastructure.persistence.jpa.SpecialistJpaRepository;
+import com.ipscentir.appointments.infrastructure.persistence.jpa.entity.MedicoEspecialidad;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,23 +32,35 @@ class AdminMedicoIntegrationTest {
     @Autowired
     private SpecialistJpaRepository specialistJpaRepository;
 
+    @Autowired
+    private MedicoEspecialidadRepository medicoEspecialidadRepository;
+
     private String targetMedicoId;
     private String inactiveMedicoId;
 
     @BeforeEach
     void setUp() {
         specialistJpaRepository.deleteAll();
+        medicoEspecialidadRepository.deleteAll();
 
         for (int i = 1; i <= 25; i++) {
+            String docId = UUID.randomUUID().toString();
+            String specialty = i % 2 == 0 ? "Dolor" : "Psicologia";
             specialistJpaRepository.save(Specialist.builder()
-                    .id(UUID.randomUUID().toString())
+                    .id(docId)
                     .numeroMedico("MED-" + String.format("%03d", i))
                     .tipoDoc("CC")
                     .numDoc(String.valueOf(10_000 + i))
                     .firstName(i == 3 ? "Ana" : "Medico" + i)
                     .lastName(i == 3 ? "Martinez" : "Apellido" + i)
-                    .specialty(i % 2 == 0 ? "Dolor" : "Psicologia")
+                    .specialty(specialty)
                     .active(true)
+                    .build());
+            medicoEspecialidadRepository.save(MedicoEspecialidad.builder()
+                    .id(UUID.randomUUID())
+                    .medicoId(UUID.fromString(docId))
+                    .especialidad(specialty)
+                    .activo(true)
                     .build());
         }
 

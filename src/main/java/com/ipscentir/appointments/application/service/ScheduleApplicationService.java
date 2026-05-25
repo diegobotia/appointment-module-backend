@@ -32,14 +32,16 @@ public class ScheduleApplicationService {
     private final SedeAuthorizationService sedeAuthorizationService;
     private final AvailabilityService availabilityService;
     private final MedicoApplicationService medicoApplicationService;
+    private final MedicoLookupService medicoLookupService;
     private final AppointmentOperationsService appointmentOperationsService;
     private final StaffSecurityHelper staffSecurityHelper;
 
     @Transactional(readOnly = true)
     public ScheduleDTO getScheduleForMedicoAndFacility(String medicoId, Integer sedeId, DayOfWeek dayOfWeek) {
+        String resolvedMedicoId = resolveRequestedMedicoId(medicoId);
         assertCanViewMedicoSchedule(medicoId);
         sedeAuthorizationService.assertCurrentUserCanAccessSede(sedeId);
-        Schedule schedule = scheduleRepository.findByDoctorIdAndSedeIdAndDayOfWeek(medicoId, sedeId, dayOfWeek)
+        Schedule schedule = scheduleRepository.findByDoctorIdAndSedeIdAndDayOfWeek(resolvedMedicoId, sedeId, dayOfWeek)
                 .orElseThrow(() -> new IllegalArgumentException("No schedule found for this medico, facility, and specified day"));
 
         return scheduleMapper.toDto(schedule);
@@ -47,18 +49,20 @@ public class ScheduleApplicationService {
 
     @Transactional(readOnly = true)
     public List<ScheduleDTO> listScheduleTemplatesForMedico(String medicoId, Integer sedeId) {
+        String resolvedMedicoId = resolveRequestedMedicoId(medicoId);
         assertCanViewMedicoSchedule(medicoId);
         sedeAuthorizationService.assertCurrentUserCanAccessSede(sedeId);
-        return scheduleRepository.findByDoctorIdAndSedeId(medicoId, sedeId).stream()
+        return scheduleRepository.findByDoctorIdAndSedeId(resolvedMedicoId, sedeId).stream()
                 .map(scheduleMapper::toDto)
                 .toList();
     }
 
     @Transactional(readOnly = true)
     public List<AvailableSlotDTO> getAvailabilityForDate(String medicoId, Integer sedeId, LocalDate date) {
+        String resolvedMedicoId = resolveRequestedMedicoId(medicoId);
         assertCanViewMedicoSchedule(medicoId);
         sedeAuthorizationService.assertCurrentUserCanAccessSede(sedeId);
-        List<AvailableSlot> slots = availabilityService.getAvailableSlots(medicoId, sedeId, date);
+        List<AvailableSlot> slots = availabilityService.getAvailableSlots(resolvedMedicoId, sedeId, date);
         return slots.stream().map(scheduleMapper::toDto).toList();
     }
 
@@ -83,7 +87,9 @@ public class ScheduleApplicationService {
         LocalDate from = fromDate != null ? fromDate : LocalDate.now();
         LocalDate to = toDate != null ? toDate : from.plusDays(6);
 
-        List<ScheduleDTO> templates = listScheduleTemplatesForMedico(medicoId, sedeId);
+        List<ScheduleDTO> templates = scheduleRepository.findByDoctorIdAndSedeId(medicoId, sedeId).stream()
+            .map(scheduleMapper::toDto)
+            .toList();
         List<AppointmentDTO> appointments = appointmentOperationsService.searchAppointments(
                 new AppointmentSearchCriteria(sedeId, medicoId, null, null, null, from, to)
         );
@@ -92,11 +98,23 @@ public class ScheduleApplicationService {
     }
 
     private void assertCanViewMedicoSchedule(String medicoId) {
+        if (staffSecurityHelper.hasRole(RoleName.MEDICO)
+                && !staffSecurityHelper.isOwnMedicoIdOrProfileId(medicoId)) {
+            throw new AccessDeniedException("El médico solo puede consultar su propia agenda");
+        }
+    }
+
+    private String resolveRequestedMedicoId(String medicoId) {
+        String resolved = medicoLookupService.resolveMedicoId(medicoId);
         if (staffSecurityHelper.hasRole(RoleName.MEDICO)) {
             String ownMedicoId = staffSecurityHelper.requireDoctorIdForMedico();
-            if (!ownMedicoId.equals(medicoId)) {
-                throw new AccessDeniedException("El médico solo puede consultar su propia agenda");
+            if (ownMedicoId.equals(resolved)) {
+                return ownMedicoId;
+            }
+            if (staffSecurityHelper.requireProfileId().toString().equals(resolved)) {
+                return ownMedicoId;
             }
         }
+        return resolved;
     }
 }

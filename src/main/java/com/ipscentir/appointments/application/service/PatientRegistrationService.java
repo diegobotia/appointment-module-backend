@@ -14,16 +14,18 @@ import com.ipscentir.appointments.infrastructure.persistence.jpa.PacienteReposit
 import com.ipscentir.appointments.infrastructure.persistence.jpa.entity.Contacto;
 import com.ipscentir.appointments.infrastructure.persistence.jpa.entity.Direccion;
 import com.ipscentir.appointments.infrastructure.persistence.jpa.entity.Paciente;
-import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -36,15 +38,31 @@ public class PatientRegistrationService {
     private final DireccionRepository direccionRepository;
     private final PacienteRepository pacienteRepository;
     private final TipoIdentificacionResolver tipoIdentificacionResolver;
-    private final EntityManager entityManager;
+    private final JdbcTemplate jdbcTemplate;
 
     @Value("${patient-registration.form-base-url:https://citas.ipscentir.com/registro}")
     private String formBaseUrl;
 
     public PatientRegistrationFormConfigResponse getFormConfig() {
-        List<DocumentTypeOptionDTO> documentTypes = Arrays.stream(ColombianIdentificationType.values())
-                .map(type -> new DocumentTypeOptionDTO(type.getCodigo(), type.getDescripcion()))
-                .toList();
+        List<DocumentTypeOptionDTO> documentTypes = loadDocumentTypes();
+        List<CatalogOptionDTO> genders = loadCatalog("core.generos");
+        List<CatalogOptionDTO> civilStatus = loadCatalog("core.estados_civil");
+        List<CatalogOptionDTO> occupations = loadCatalog("core.ocupaciones");
+        List<CatalogOptionDTO> bloodGroups = loadCatalog("core.grupos_sanguineos");
+        List<CatalogOptionDTO> schoolingLevels = loadCatalog("core.escolaridades");
+        List<CatalogOptionDTO> countries = loadCatalog("core.paises");
+        List<CatalogOptionDTO> municipalities = loadCatalog("core.municipio", "cod", "nombre");
+        List<CatalogOptionDTO> territorialZones = loadCatalog("core.zonas_territoriales", "cod", "descripcion");
+
+        Map<String, List<CatalogOptionDTO>> catalogs = new LinkedHashMap<>();
+        catalogs.put("genders", genders);
+        catalogs.put("civilStatus", civilStatus);
+        catalogs.put("occupations", occupations);
+        catalogs.put("bloodGroups", bloodGroups);
+        catalogs.put("schoolingLevels", schoolingLevels);
+        catalogs.put("countries", countries);
+        catalogs.put("municipalities", municipalities);
+        catalogs.put("territorialZones", territorialZones);
 
         return new PatientRegistrationFormConfigResponse(
                 formBaseUrl,
@@ -52,16 +70,23 @@ public class PatientRegistrationService {
                 "/api/v1/forms/patients/status",
                 documentTypes,
                 formBaseUrl + "?codTipoIdentificacion={codTipoIdentificacion}&numIdentificacion={numIdentificacion}",
-                loadCatalog("core.generos"),
-                loadCatalog("core.estado_civil"),
-                loadCatalog("core.ocupaciones"),
-                loadCatalog("core.grupos_sanguineos"),
-                loadCatalog("core.escolaridades"),
-                loadCatalog("core.paises")
+                genders,
+                civilStatus,
+                occupations,
+                bloodGroups,
+                schoolingLevels,
+                countries,
+                municipalities,
+                territorialZones,
+                catalogs
         );
     }
 
     private List<CatalogOptionDTO> loadCatalog(String tableName) {
+        return loadCatalog(tableName, "id", null);
+    }
+
+    private List<CatalogOptionDTO> loadCatalog(String tableName, String idColumn, String labelColumn) {
         try {
             String schema = "public";
             String table = tableName;
@@ -71,36 +96,51 @@ public class PatientRegistrationService {
                 table = parts[1];
             }
 
-            Optional<String> labelColumn = resolveLabelColumn(schema, table);
-            String column = labelColumn.orElse("id");
-            String query = "SELECT id::text, " + column + " FROM " + tableName + " ORDER BY 2";
-            @SuppressWarnings("unchecked")
-            List<Object[]> rows = entityManager.createNativeQuery(query).getResultList();
-            return rows.stream()
-                    .map(row -> new CatalogOptionDTO(
-                            String.valueOf(row[0]),
-                            row[1] != null ? String.valueOf(row[1]) : String.valueOf(row[0])
-                    ))
-                    .toList();
+            String resolvedLabelColumn = labelColumn != null
+                    ? labelColumn
+                    : resolveLabelColumn(schema, table).orElse("id");
+            String query = "SELECT CAST(" + idColumn + " AS text), " + resolvedLabelColumn + " FROM " + tableName + " ORDER BY 2";
+            return jdbcTemplate.query(query, (rs, rowNum) -> new CatalogOptionDTO(
+                    rs.getString(1),
+                    rs.getString(2) != null ? rs.getString(2) : rs.getString(1)
+            ));
         } catch (Exception ex) {
             log.warn("No se pudo cargar el catálogo {}: {}", tableName, ex.getMessage());
             return List.of();
         }
     }
 
+    private List<DocumentTypeOptionDTO> loadDocumentTypes() {
+        try {
+            return jdbcTemplate.query(
+                    "SELECT codigo, descripcion FROM core.tipo_identificacion ORDER BY descripcion",
+                    (rs, rowNum) -> new DocumentTypeOptionDTO(
+                            rs.getString(1),
+                            rs.getString(2) != null ? rs.getString(2) : rs.getString(1)
+                    )
+            );
+        } catch (Exception ex) {
+            log.warn("No se pudo cargar core.tipo_identificacion: {}", ex.getMessage());
+        }
+
+        return Arrays.stream(ColombianIdentificationType.values())
+                .map(type -> new DocumentTypeOptionDTO(type.getCodigo(), type.getDescripcion()))
+                .toList();
+    }
+
     private Optional<String> resolveLabelColumn(String schema, String table) {
         List<String> candidates = List.of("nombre", "descripcion", "descripcion_corta", "name", "label");
-        @SuppressWarnings("unchecked")
-        List<String> existing = entityManager.createNativeQuery(
-                        "SELECT column_name FROM information_schema.columns " +
-                                "WHERE table_schema = :schema AND table_name = :table " +
-                                "AND column_name IN ('nombre','descripcion','descripcion_corta','name','label')")
-                .setParameter("schema", schema)
-                .setParameter("table", table)
-                .getResultList();
-        return candidates.stream()
-                .filter(existing::contains)
-                .findFirst();
+        try {
+            List<String> existing = jdbcTemplate.queryForList(
+                    "SELECT column_name FROM information_schema.columns WHERE table_schema = ? AND table_name = ?",
+                    String.class, schema, table);
+            return candidates.stream()
+                    .filter(existing::contains)
+                    .findFirst();
+        } catch (Exception ex) {
+            log.warn("No se pudo resolver columna para {}.{}: {}", schema, table, ex.getMessage());
+            return Optional.empty();
+        }
     }
 
     public PatientRegistrationStatusResponse getRegistrationStatus(String codTipoIdentificacion, String numIdentificacion) {

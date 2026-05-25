@@ -94,6 +94,9 @@ class N8nPatientIntegrationServiceTest {
     @Mock
     private TipoIdentificacionResolver tipoIdentificacionResolver;
 
+    @Mock
+    private MedicoLookupService medicoLookupService;
+
     @InjectMocks
     private N8nPatientIntegrationService service;
 
@@ -199,9 +202,7 @@ class N8nPatientIntegrationServiceTest {
         when(tipoIdentificacionResolver.findPaciente("CC", "456")).thenReturn(Optional.of(paciente));
         when(appointmentRepository.findByPatientIdOrderByAppointmentDateDescAppointmentTimeDesc(patientId))
                 .thenReturn(List.of(appointment));
-        when(specialistJpaRepository.findById(doctorId)).thenReturn(Optional.of(
-                Specialist.builder().id(doctorId).numeroMedico("M-1").firstName("Ana").lastName("Lopez").specialty("Psicologia").build()
-        ));
+        when(medicoLookupService.findPrimarySpecialty(doctorId)).thenReturn(Optional.of("Psicologia"));
 
         var response = service.listAppointmentsByDocument("CC", "456");
 
@@ -232,9 +233,7 @@ class N8nPatientIntegrationServiceTest {
         when(tipoIdentificacionResolver.findPaciente("CC", "789")).thenReturn(Optional.of(paciente));
         when(appointmentRepository.findByPatientIdOrderByAppointmentDateDescAppointmentTimeDesc(patientId))
                 .thenReturn(List.of(appointment));
-        when(specialistJpaRepository.findById(doctorId)).thenReturn(Optional.of(
-                Specialist.builder().id(doctorId).numeroMedico("M-2").firstName("Luis").lastName("Perez").specialty("Ortopedia general").build()
-        ));
+        when(medicoLookupService.findPrimarySpecialty(doctorId)).thenReturn(Optional.of("Ortopedia general"));
 
         var summary = service.listAppointmentsByDocument("CC", "789").appointments().getFirst();
 

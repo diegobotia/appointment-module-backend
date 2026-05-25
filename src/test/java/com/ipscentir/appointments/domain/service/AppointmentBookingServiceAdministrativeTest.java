@@ -45,7 +45,11 @@ class AppointmentBookingServiceAdministrativeTest {
         scheduleJpaRepository.deleteAll();
 
         sedeId = FacilityMasterData.SEDE_ID_BELEN;
-        date = LocalDate.now().plusDays(6);
+        date = LocalDate.now().plusDays(1);
+        while (date.getDayOfWeek() == java.time.DayOfWeek.SATURDAY
+                || date.getDayOfWeek() == java.time.DayOfWeek.SUNDAY) {
+            date = date.plusDays(1);
+        }
         time = LocalTime.of(9, 30);
     }
 

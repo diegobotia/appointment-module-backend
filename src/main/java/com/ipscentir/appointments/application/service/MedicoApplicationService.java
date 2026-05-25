@@ -75,12 +75,13 @@ public class MedicoApplicationService {
             LocalDate fromDate,
             LocalDate toDate
     ) {
-        medicoLookupService.requireById(medicoId);
+        String resolvedMedicoId = medicoLookupService.resolveMedicoId(medicoId);
+        medicoLookupService.requireById(resolvedMedicoId);
         sedeAuthorizationService.assertCurrentUserCanAccessSede(sedeId);
 
         if (staffSecurityHelper.hasRole(RoleName.MEDICO)) {
             String ownMedicoId = staffSecurityHelper.requireDoctorIdForMedico();
-            if (!ownMedicoId.equals(medicoId)) {
+            if (!ownMedicoId.equals(resolvedMedicoId)) {
                 throw new AccessDeniedException("El médico solo puede consultar su propia disponibilidad");
             }
         }
@@ -88,7 +89,7 @@ public class MedicoApplicationService {
         LocalDate from = fromDate != null ? fromDate : LocalDate.now();
         LocalDate to = toDate != null ? toDate : from.plusDays(6);
 
-        List<AvailableSlotDetail> slots = availabilityService.getAvailableSlotsInRange(medicoId, sedeId, from, to);
+        List<AvailableSlotDetail> slots = availabilityService.getAvailableSlotsInRange(resolvedMedicoId, sedeId, from, to);
 
         Map<LocalDate, List<MedicoAvailabilitySlotDTO>> byDay = slots.stream()
                 .collect(Collectors.groupingBy(

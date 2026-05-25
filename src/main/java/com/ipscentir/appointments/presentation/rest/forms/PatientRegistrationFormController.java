@@ -29,7 +29,7 @@ public class PatientRegistrationFormController {
 
     private final PatientRegistrationService patientRegistrationService;
 
-    @GetMapping("/config")
+    @GetMapping({"", "/config"})
     @Operation(summary = "Obtener configuración del formulario de registro")
     public ResponseEntity<PatientRegistrationFormConfigResponse> getFormConfig() {
         return ResponseEntity.ok(patientRegistrationService.getFormConfig());

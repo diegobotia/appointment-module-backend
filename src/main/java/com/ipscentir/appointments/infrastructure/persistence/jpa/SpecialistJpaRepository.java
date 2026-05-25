@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -16,6 +17,28 @@ import java.util.Optional;
  */
 @Repository
 public interface SpecialistJpaRepository extends JpaRepository<Specialist, String> {
+
+    @Query(value = """
+            SELECT m.*
+            FROM hc.medicos m
+            WHERE CAST(m.id AS text) = :id
+            """, nativeQuery = true)
+    Optional<Specialist> findByIdText(@Param("id") String id);
+
+    @Query(value = """
+            SELECT m.*
+            FROM hc.medicos m
+            WHERE CAST(m.id AS text) IN (:ids)
+            """, nativeQuery = true)
+    List<Specialist> findAllByIdTextIn(@Param("ids") Collection<String> ids);
+
+    @Query(value = """
+            SELECT m.*
+            FROM hc.medicos m
+            WHERE LOWER(CONCAT(m.nombre, ' ', m.apellido)) = LOWER(:fullName)
+            LIMIT 1
+            """, nativeQuery = true)
+    Optional<Specialist> findByFullName(@Param("fullName") String fullName);
 
     Optional<Specialist> findByNumeroMedico(String numeroMedico);
 

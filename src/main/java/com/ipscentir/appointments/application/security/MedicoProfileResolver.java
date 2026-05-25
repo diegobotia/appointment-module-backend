@@ -30,7 +30,7 @@ public class MedicoProfileResolver {
             throw new AccessDeniedException("El perfil no tiene médico vinculado (medico_id)");
         }
 
-        Specialist specialist = specialistJpaRepository.findById(medicoId)
+        Specialist specialist = specialistJpaRepository.findByIdText(medicoId)
                 .orElseThrow(() -> new AccessDeniedException("Médico no encontrado en hc.medicos: " + medicoId));
         if (!specialist.isActive()) {
             throw new AccessDeniedException("El médico vinculado no está activo");

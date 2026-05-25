@@ -33,7 +33,7 @@ class PatientRegistrationPhase0IntegrationTest {
 
     @Test
     void shouldExposePublicFormConfigWithoutAuth() throws Exception {
-        mockMvc.perform(get("/api/v1/forms/patients/config"))
+        mockMvc.perform(get("/api/v1/forms/patients"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.formBaseUrl").exists())
                 .andExpect(jsonPath("$.urlTemplate").exists())
@@ -43,9 +43,21 @@ class PatientRegistrationPhase0IntegrationTest {
                 .andExpect(jsonPath("$.bloodGroups").exists())
                 .andExpect(jsonPath("$.schoolingLevels").exists())
                 .andExpect(jsonPath("$.countries").exists())
+                .andExpect(jsonPath("$.municipalities").exists())
+                .andExpect(jsonPath("$.territorialZones").exists())
+                .andExpect(jsonPath("$.catalogs.genders").exists())
                 .andExpect(jsonPath("$.supportedDocumentTypes[?(@.codigo=='13')].descripcion")
                         .value("Cédula de ciudadanía"))
                 .andExpect(jsonPath("$.supportedDocumentTypes.length()").value(13));
+    }
+
+    @Test
+    void shouldExposePublicFormConfigAliasWithoutAuth() throws Exception {
+        mockMvc.perform(get("/api/v1/forms/patients/config"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.municipalities").exists())
+                .andExpect(jsonPath("$.territorialZones").exists())
+                .andExpect(jsonPath("$.catalogs.countries").exists());
     }
 
     @Test
