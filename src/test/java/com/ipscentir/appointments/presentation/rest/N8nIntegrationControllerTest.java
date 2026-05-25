@@ -4,6 +4,7 @@ import com.ipscentir.appointments.domain.model.facility.FacilityMasterData;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ipscentir.appointments.application.dto.integration.n8n.N8nCancelAppointmentResponse;
+import com.ipscentir.appointments.application.dto.integration.n8n.N8nConfirmAppointmentResponse;
 import com.ipscentir.appointments.application.dto.integration.n8n.N8nAvailabilityBookingPayloadDTO;
 import com.ipscentir.appointments.application.dto.integration.n8n.N8nFacilityId;
 import com.ipscentir.appointments.application.dto.integration.n8n.N8nAvailabilitySlotDTO;
@@ -182,6 +183,40 @@ class N8nIntegrationControllerTest {
                         .content(body))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.appointment.status").value("CANCELLED"));
+    }
+
+    @Test
+    void shouldConfirmAppointmentForN8n() throws Exception {
+        UUID appointmentId = UUID.randomUUID();
+        AppointmentDTO dto = new AppointmentDTO(
+                appointmentId, UUID.randomUUID(), UUID.randomUUID().toString(), FacilityMasterData.SEDE_ID_BELEN, null, UUID.randomUUID(),
+                LocalDate.now().plusDays(2), LocalTime.of(10, 0), 30,
+                AppointmentType.PRESENCIAL, AppointmentStatus.CONFIRMED, BookingChannel.N8N, null, "Confirmado por chat", null, LocalDateTime.now(), null,
+                null, null, false
+        );
+
+        when(n8nPatientIntegrationService.confirmAppointment(any(), any()))
+                .thenReturn(new N8nConfirmAppointmentResponse(dto, "Cita confirmada correctamente desde el flujo n8n. Confirmado por chat"));
+
+        String body = asJson(Map.of("reason", "Confirmado por chat"));
+
+        mockMvc.perform(post("/api/v1/integrations/n8n/patient/appointments/{appointmentId}/confirm", appointmentId)
+                        .header(N8N_API_KEY_HEADER, N8N_API_KEY)
+                        .contentType(JSON)
+                        .content(body))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.appointment.status").value("CONFIRMED"))
+                .andExpect(jsonPath("$.summary").value("Cita confirmada correctamente desde el flujo n8n. Confirmado por chat"));
+    }
+
+    @Test
+    void shouldRejectConfirmAppointmentWithoutApiKey() throws Exception {
+        UUID appointmentId = UUID.randomUUID();
+
+        mockMvc.perform(post("/api/v1/integrations/n8n/patient/appointments/{appointmentId}/confirm", appointmentId)
+                        .contentType(JSON)
+                        .content(asJson(Map.of("reason", "Confirmado"))))
+                .andExpect(status().isUnauthorized());
     }
 
     @Test

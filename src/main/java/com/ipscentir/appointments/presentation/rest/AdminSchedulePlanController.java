@@ -11,6 +11,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -22,6 +23,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
@@ -29,7 +31,7 @@ import java.util.UUID;
 @RequestMapping("/api/v1/admin/schedule-plans")
 @PreAuthorize("hasRole('ADMINISTRACION')")
 @RequiredArgsConstructor
-@Tag(name = "Admin Schedule Plans API", description = "Planificación trimestral y publicación de agendas")
+@Tag(name = "Admin Schedule Plans API", description = "Planificación por rango de fechas y publicación de agendas")
 public class AdminSchedulePlanController {
 
     private final SchedulePlanAdminService schedulePlanAdminService;
@@ -69,8 +71,8 @@ public class AdminSchedulePlanController {
     public ResponseEntity<SchedulePlanPageResponse> search(
             @RequestParam(required = false) String medicoId,
             @RequestParam(required = false, name = "specialistId") String legacySpecialistId,
-            @RequestParam(required = false) Integer year,
-            @RequestParam(required = false) Integer quarter,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
             @RequestParam(required = false) Boolean published,
             @RequestParam(required = false) Boolean activeVersion,
             @RequestParam(defaultValue = "0") int page,
@@ -78,7 +80,7 @@ public class AdminSchedulePlanController {
     ) {
         String resolvedMedicoId = medicoId != null && !medicoId.isBlank() ? medicoId : legacySpecialistId;
         return ResponseEntity.ok(schedulePlanAdminService.search(
-                new SchedulePlanSearchCriteria(resolvedMedicoId, year, quarter, published, activeVersion, page, size)
+                new SchedulePlanSearchCriteria(resolvedMedicoId, startDate, endDate, published, activeVersion, page, size)
         ));
     }
 
@@ -86,9 +88,9 @@ public class AdminSchedulePlanController {
     @Operation(summary = "List schedule plan versions by medico")
     public ResponseEntity<List<SchedulePlanDTO>> listByMedico(
             @PathVariable String medicoId,
-            @RequestParam(required = false) Integer year,
-            @RequestParam(required = false) Integer quarter
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate
     ) {
-        return ResponseEntity.ok(schedulePlanAdminService.listByMedico(medicoId, year, quarter));
+        return ResponseEntity.ok(schedulePlanAdminService.listByMedico(medicoId, startDate, endDate));
     }
 }

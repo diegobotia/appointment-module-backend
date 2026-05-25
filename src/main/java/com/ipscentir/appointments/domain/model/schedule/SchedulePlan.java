@@ -1,6 +1,5 @@
 package com.ipscentir.appointments.domain.model.schedule;
 
-import com.ipscentir.appointments.domain.model.specialist.Specialist;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -8,8 +7,6 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
@@ -18,6 +15,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -38,11 +36,14 @@ public class SchedulePlan {
     @Column(name = "specialist_id", nullable = false)
     private String specialistId;
 
-    @Column(name = "plan_year", nullable = false)
-    private int planYear;
+    @Column(name = "sede_id", nullable = false)
+    private Integer sedeId;
 
-    @Column(name = "plan_quarter", nullable = false)
-    private int planQuarter;
+    @Column(name = "start_date", nullable = false)
+    private LocalDate startDate;
+
+    @Column(name = "end_date", nullable = false)
+    private LocalDate endDate;
 
     @Column(name = "version_number", nullable = false)
     private int versionNumber;

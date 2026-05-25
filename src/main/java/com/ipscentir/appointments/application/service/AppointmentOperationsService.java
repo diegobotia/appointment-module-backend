@@ -88,6 +88,17 @@ public class AppointmentOperationsService {
         return appointmentEnrichmentService.toDto(appointmentRepository.save(appointment));
     }
 
+    /**
+     * Confirmación sin validación de rol JWT (flujo n8n con API key).
+     */
+    @Transactional
+    public AppointmentDTO confirmAppointmentFromN8n(UUID appointmentId) {
+        Appointment appointment = appointmentRepository.findById(appointmentId)
+                .orElseThrow(() -> new IllegalArgumentException("Appointment not found"));
+        appointment.confirm();
+        return appointmentEnrichmentService.toDto(appointmentRepository.save(appointment));
+    }
+
     @Transactional
     public AppointmentDTO cancelAppointment(UUID appointmentId, CancelAppointmentCommand command) {
         Appointment appointment = requireWritableAppointment(appointmentId);

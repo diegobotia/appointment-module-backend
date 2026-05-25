@@ -6,12 +6,14 @@ import jakarta.validation.constraints.NotNull;
 
 import java.time.DayOfWeek;
 import java.time.LocalTime;
+import java.util.UUID;
 
 public record CreateSchedulePlanSlotRequest(
         @NotNull DayOfWeek dayOfWeek,
         @NotNull LocalTime startTime,
         @NotNull LocalTime endTime,
         @Min(5) @Max(480) int slotDurationMinutes,
-        @Min(1) @Max(100) int maxPatientsPerSlot
+        @Min(1) @Max(100) int maxPatientsPerSlot,
+        @NotNull UUID consultorioId
 ) {
 }

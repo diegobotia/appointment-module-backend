@@ -37,8 +37,8 @@ public class HumanResourceAvailabilityService {
         assertScheduleOwnership(schedule, context.primaryDoctorId(), context.sedeId());
         assertSlotWithinSedeHours(context);
         ServiceResourceMatrix.assertScheduleAlignsWithAppointmentType(schedule, context.appointmentType());
-        assertPrimaryDoctorAvailable(context);
-        assertJuntaMedicaRules(context);
+        assertPrimaryDoctorAvailable(context, excludeAppointmentId);
+        assertJuntaMedicaRules(context, excludeAppointmentId);
         assertPatientNoDuplicate(context.patientId(), context.date(), excludeAppointmentId);
     }
 
@@ -50,8 +50,7 @@ public class HumanResourceAvailabilityService {
             UUID scheduleId,
             LocalDate date,
             LocalTime time,
-            AppointmentType type
-    ) {
+            AppointmentType type) {
         if (!isTherapy(type)) {
             return;
         }
@@ -60,16 +59,14 @@ public class HumanResourceAvailabilityService {
                 scheduleId,
                 date,
                 time,
-                type
-        );
+                type);
         long activeGroupSize = slotAppointments.stream()
                 .filter(a -> a.getStatus() != AppointmentStatus.CANCELLED && a.getStatus() != AppointmentStatus.NO_SHOW)
                 .count();
 
         if (activeGroupSize >= THERAPY_GROUP_MAX) {
             throw new IllegalStateException(
-                    "Therapy slot has reached maximum capacity (" + THERAPY_GROUP_MAX + ")"
-            );
+                    "Therapy slot has reached maximum capacity (" + THERAPY_GROUP_MAX + ")");
         }
     }
 
@@ -95,8 +92,7 @@ public class HumanResourceAvailabilityService {
             Integer sedeId,
             LocalDate date,
             LocalTime startTime,
-            int durationMinutes
-    ) {
+            int durationMinutes) {
         if (participantDoctorIds == null || participantDoctorIds.isEmpty()) {
             throw new IllegalStateException("Junta staff requiere al menos un participante");
         }
@@ -104,15 +100,13 @@ public class HumanResourceAvailabilityService {
         for (String doctorId : participantDoctorIds) {
             if (!availabilityService.isDoctorSlotAvailable(doctorId, sedeId, date, startTime)) {
                 throw new IllegalStateException(
-                        "El participante " + doctorId + " no está disponible en la franja solicitada"
-                );
+                        "El participante " + doctorId + " no está disponible en la franja solicitada");
             }
             facilityOperatingHoursService.assertSlotWithinSedeHours(
                     sedeId,
                     date.getDayOfWeek(),
                     startTime,
-                    endTime
-            );
+                    endTime);
         }
     }
 
@@ -131,22 +125,21 @@ public class HumanResourceAvailabilityService {
                 context.sedeId(),
                 context.date().getDayOfWeek(),
                 context.time(),
-                endTime
-        );
+                endTime);
     }
 
-    private void assertPrimaryDoctorAvailable(HumanResourceBookingContext context) {
+    private void assertPrimaryDoctorAvailable(HumanResourceBookingContext context, UUID excludeAppointmentId) {
         if (!availabilityService.isDoctorSlotAvailable(
                 context.primaryDoctorId(),
                 context.sedeId(),
                 context.date(),
-                context.time()
-        )) {
+                context.time(),
+                excludeAppointmentId)) {
             throw new IllegalStateException("The requested slot is not available for this doctor.");
         }
     }
 
-    private void assertJuntaMedicaRules(HumanResourceBookingContext context) {
+    private void assertJuntaMedicaRules(HumanResourceBookingContext context, UUID excludeAppointmentId) {
         if (context.appointmentType() != AppointmentType.JUNTA_MEDICA) {
             return;
         }
@@ -162,8 +155,8 @@ public class HumanResourceAvailabilityService {
                 secondary,
                 context.sedeId(),
                 context.date(),
-                context.time()
-        )) {
+                context.time(),
+                excludeAppointmentId)) {
             throw new IllegalStateException("The requested slot is not available for the second specialist.");
         }
     }

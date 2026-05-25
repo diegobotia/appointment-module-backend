@@ -1,15 +1,45 @@
 # Módulo de Citas - IPS Centir
 
-Backend del **módulo de gestión de citas médicas** de IPS Centir (Java 21, Spring Boot 3.2, PostgreSQL, DDD).
+Backend del **módulo de gestión de citas médicas** de IPS Centir (Java 21, Spring Boot 3.2, PostgreSQL, DDD). Comparte esquemas con Supabase (`core`, `hc`, `appointments`).
 
 ## Funcionalidades
 
-- Disponibilidad, creación, confirmación, cancelación y reprogramación de citas
-- Check-in, no-show y completado
-- Flujos paciente vía **n8n** (`X-API-Key`) y formulario público
-- Staff con JWT Supabase: `Medico`, `Admisiones`, **`Asesor`** (call center), `Administracion`, `Facturacion`
-- Capacidad operativa por sede (horarios, inventario físico, cupos)
-- Notificaciones (SMS/email), panel admin, auditoría n8n
+### Citas y operación diaria
+
+- Ciclo de vida: crear, confirmar, cancelar, reprogramar, check-in, no-show y completar
+- Canal de reserva `STAFF` (panel/mostrador) y `N8N` (chat automatizado)
+- Terapia grupal: estado `PENDIENTE_CONFIRMACION_GRUPO` y corte de cupo mínimo
+- Citas **administrativas** (`STAFF`): reuniones/bloqueos internos sin paciente, recurso `REUNION_STAFF`
+- Listados enriquecidos: `medicoDisplayName`, `patientDisplayName`, flag `administrative`
+- Capacidad por sede: horarios de operación, inventario físico (consultorios, salas) y cupos concurrentes
+
+### Panel interno (JWT Supabase)
+
+- Auth: configuración Supabase, perfil `/auth/me` (incluye `medicoId` para rol `Medico`)
+- Roles: `Medico`, `Admisiones`, **`Asesor`** (call center, mismos permisos de citas que Admisiones), `Administracion`, `Facturacion`
+- Búsqueda de pacientes: `/staff/patients` (documento → `core.pacientes`)
+- Agendas y disponibilidad: `/schedules`, `/medicos`, vista consolidada `/me/schedule` (médico)
+- Catálogos públicos: especialidades y tipos de servicio (`/catalogs`)
+- Admin: dashboard KPIs, sedes, planificación trimestral de agendas, directorio de médicos, bandeja PQRS, notificaciones (reintento), auditoría n8n
+
+### Paciente (sin login en este módulo)
+
+- **Formulario público:** registro en `core.pacientes` (`/forms/patients`)
+- **PQRS:** alta pública (`/forms/pqrs`) y gestión en panel (`/admin/pqrs`)
+- **n8n** (`X-API-Key`): identificación, registro, disponibilidad, citas, recordatorios pendientes, webhooks de eventos
+- Tipo de documento: n8n puede enviar **descripción** (ej. `Cédula de ciudadanía`); el backend resuelve al código DIAN (`13`)
+
+### Notificaciones y observabilidad
+
+- SMS (Twilio), email (Resend) y recordatorios configurables
+- Métricas Micrometer: `appointments.created`, `security.unauthorized` / `security.forbidden`, `notifications.failed`
+- Prometheus en producción (`/actuator/prometheus`, rol `Administracion`)
+
+### Identidad médico
+
+- `core.profiles.id` = JWT `sub` (usuario del panel)
+- `hc.medicos.id` = **`medicoId`** en API de citas y agendas (`core.profiles.medico_id` enlaza ambos)
+- El módulo **lee** médicos desde `hc.medicos`; no los crea ni edita
 
 ## Arquitectura
 
@@ -28,6 +58,8 @@ Monolito modular: `domain` → `application` → `infrastructure` → `presentat
 docker-compose up -d
 SPRING_FLYWAY_ENABLED=true mvn spring-boot:run
 ```
+
+Incluye PostgreSQL, pgAdmin y **MailHog** (SMTP `1025`, UI `8025`) para probar notificaciones por email.
 
 API: `http://localhost:8080/api/v1/...`  
 Swagger (solo dev): `http://localhost:8080/swagger-ui.html`
@@ -66,9 +98,16 @@ SPRING_PROFILES_ACTIVE=prod,supabase SPRING_FLYWAY_ENABLED=true mvn spring-boot:
 | OpenAPI JSON | `/v3/api-docs` |
 | Swagger UI | `/swagger-ui.html` (no prod) |
 | Health | `/actuator/health` |
-| **Flujos API (referencia)** | [`docs/flujos-api.md`](docs/flujos-api.md) |
-| Plan de fases | [`plan_ejecucion.md`](plan_ejecucion.md) |
-| Capacidad por sede | [`plan_capacidad_operativa_sedes.md`](plan_capacidad_operativa_sedes.md) |
+| **Referencia completa de flujos y endpoints** | [`docs/flujos-api.md`](docs/flujos-api.md) |
+
+### Grupos de rutas (resumen)
+
+| Consumidor | Auth | Prefijos principales |
+|------------|------|----------------------|
+| Panel interno | JWT Bearer | `/auth`, `/appointments`, `/schedules`, `/medicos`, `/staff/patients`, `/me/schedule`, `/admin/**` |
+| Formularios web | Ninguna | `/forms/patients`, `/forms/pqrs` |
+| Combos del panel | Ninguna | `/catalogs` |
+| n8n / chat paciente | `X-API-Key` | `/integrations/n8n/patient`, `/integrations/n8n/webhooks` |
 
 ## Calidad y CI
 
@@ -92,12 +131,6 @@ En cada **pull request hacia `main`** (y en push a `main`/`dev`):
 
 Artefactos descargables 14 días: `quality-reports` (JaCoCo HTML + SpotBugs).
 
-Métricas Micrometer:
-
-- `appointments.created` (tag `channel`: N8N / STAFF)
-- `security.unauthorized` / `security.forbidden`
-- `notifications.failed`
-
 ## Roles y seguridad
 
 | Rol | Auth | Citas (`/appointments`) | Panel (`/admin/**`) |
@@ -109,16 +142,20 @@ Métricas Micrometer:
 | Facturacion | JWT | Solo lectura | No |
 | Paciente | n8n / formulario | Integración y registro | — |
 
+Rutas compartidas mostrador/call center: `/admin/appointments/**`, `/staff/patients/**` (`Admisiones`, `Asesor`, `Administracion`).
+
 En Supabase, el rol debe existir en `core.roles` con nombre **`Asesor`** (migración `V28`).
 
 ## Integraciones paciente
 
 - **n8n:** tipo de documento por **descripción** (ej. `Cédula de ciudadanía`); el backend resuelve al código DIAN (`13`).
 - **Formulario:** `GET /forms/patients/config` expone catálogo `{ codigo, descripcion }` desde `ColombianIdentificationType`.
+- **Recordatorios:** `GET /integrations/n8n/patient/reminders/pending` para flujos automatizados.
 
-## Sedes
+## Sedes y planificación
 
-API admin: `/api/v1/admin/sedes` (no `/admin/facilities`). Códigos n8n: `BELEN`, `CONQUISTADORES`.
+- API admin de sedes: `/api/v1/admin/sedes` (no `/admin/facilities`). Códigos n8n: `BELEN`, `CONQUISTADORES`.
+- Planes de agenda trimestrales: `/api/v1/admin/schedule-plans` (bloques por día, **consultorio** obligatorio por sede, publicación con validación de solapes).
 
 ## Estructura
 
@@ -128,6 +165,7 @@ src/main/java/com/ipscentir/appointments/
 ├── application/
 ├── infrastructure/
 └── presentation/
-docs/flujos-api.md              # Referencia API actualizada
-src/main/resources/db/migration/   # Flyway V0…V28
+docs/flujos-api.md                    # Referencia API (panel, formularios, n8n)
+src/main/resources/db/migration/      # Flyway V0…V33
+scripts/                              # run-with-env, seeds SQL
 ```

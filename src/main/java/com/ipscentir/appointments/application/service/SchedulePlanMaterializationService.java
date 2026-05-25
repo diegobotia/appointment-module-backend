@@ -10,8 +10,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.UUID;
-
 @Service
 @RequiredArgsConstructor
 public class SchedulePlanMaterializationService {
@@ -21,11 +19,12 @@ public class SchedulePlanMaterializationService {
     private final FacilityOperatingHoursService facilityOperatingHoursService;
 
     @Transactional
-    public void materializePublishedPlan(SchedulePlan plan, Integer sedeId) {
+    public void materializePublishedPlan(SchedulePlan plan) {
         var specialist = specialistJpaRepository.findById(plan.getSpecialistId())
                 .orElseThrow(() -> new IllegalArgumentException("Specialist not found"));
 
         String specialty = specialist.getSpecialty();
+        Integer sedeId = plan.getSedeId();
 
         for (SchedulePlanSlot slot : plan.getSlots()) {
             if (!slot.isActive()) {
@@ -50,6 +49,7 @@ public class SchedulePlanMaterializationService {
                             .endTime(slot.getEndTime())
                             .slotDurationMinutes(slot.getSlotDurationMinutes())
                             .maxPatientsPerSlot(slot.getMaxPatientsPerSlot())
+                            .consultorioId(slot.getConsultorioId())
                             .isActive(true)
                             .build());
 
@@ -58,7 +58,8 @@ public class SchedulePlanMaterializationService {
                     slot.getStartTime(),
                     slot.getEndTime(),
                     slot.getSlotDurationMinutes(),
-                    slot.getMaxPatientsPerSlot()
+                    slot.getMaxPatientsPerSlot(),
+                    slot.getConsultorioId()
             );
             scheduleRepository.save(schedule);
         }

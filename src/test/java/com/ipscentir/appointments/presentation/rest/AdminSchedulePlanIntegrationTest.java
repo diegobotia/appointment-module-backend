@@ -1,15 +1,16 @@
 package com.ipscentir.appointments.presentation.rest;
 
-import com.ipscentir.appointments.domain.model.facility.FacilityMasterData;
-
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ipscentir.appointments.application.dto.schedule.CreateSchedulePlanBlockRequest;
 import com.ipscentir.appointments.application.dto.schedule.CreateSchedulePlanRequest;
 import com.ipscentir.appointments.application.dto.schedule.CreateSchedulePlanSlotRequest;
 import com.ipscentir.appointments.application.dto.schedule.PublishSchedulePlanRequest;
+import com.ipscentir.appointments.domain.model.facility.FacilityMasterData;
+import com.ipscentir.appointments.domain.model.facility.FacilityResource;
+import com.ipscentir.appointments.domain.model.facility.FacilityResourceType;
 import com.ipscentir.appointments.domain.model.specialist.Specialist;
-import com.ipscentir.appointments.infrastructure.persistence.jpa.SedeJpaRepository;
+import com.ipscentir.appointments.infrastructure.persistence.jpa.FacilityResourceJpaRepository;
 import com.ipscentir.appointments.infrastructure.persistence.jpa.SchedulePlanJpaRepository;
 import com.ipscentir.appointments.infrastructure.persistence.jpa.SpecialistJpaRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -40,6 +41,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @ActiveProfiles("test")
 class AdminSchedulePlanIntegrationTest {
 
+    private static final LocalDate PERIOD_START = LocalDate.of(2026, 4, 1);
+    private static final LocalDate PERIOD_END = LocalDate.of(2026, 6, 30);
+
     @Autowired
     private MockMvc mockMvc;
 
@@ -53,10 +57,11 @@ class AdminSchedulePlanIntegrationTest {
     private SchedulePlanJpaRepository schedulePlanJpaRepository;
 
     @Autowired
-    private SedeJpaRepository sedeJpaRepository;
+    private FacilityResourceJpaRepository facilityResourceJpaRepository;
 
     private String specialistId;
     private Integer sedeId;
+    private UUID consultorioId;
 
     @BeforeEach
     void setUp() {
@@ -68,16 +73,21 @@ class AdminSchedulePlanIntegrationTest {
                 .numeroMedico("12345")
                 .firstName("Laura")
                 .lastName("Quintero")
-                
                 .build());
 
         specialistId = specialist.getId();
         sedeId = FacilityMasterData.SEDE_ID_BELEN;
+        consultorioId = facilityResourceJpaRepository.findBySedeIdAndActiveTrueOrderByResourceTypeAscCodeAsc(sedeId)
+                .stream()
+                .filter(resource -> resource.getResourceType() == FacilityResourceType.CONSULTORIO)
+                .map(FacilityResource::getId)
+                .findFirst()
+                .orElseThrow(() -> new IllegalStateException("No consultorio seeded for sede " + sedeId));
     }
 
     @Test
     void shouldRejectWithoutAuthentication() throws Exception {
-        CreateSchedulePlanRequest request = buildPlanRequest(2026, 2);
+        CreateSchedulePlanRequest request = buildPlanRequest(PERIOD_START, PERIOD_END);
 
         mockMvc.perform(post("/api/v1/admin/schedule-plans")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -88,7 +98,7 @@ class AdminSchedulePlanIntegrationTest {
     @Test
     @WithMockUser(roles = "MEDICO")
     void shouldRejectMedicoRole() throws Exception {
-        CreateSchedulePlanRequest request = buildPlanRequest(2026, 2);
+        CreateSchedulePlanRequest request = buildPlanRequest(PERIOD_START, PERIOD_END);
 
         mockMvc.perform(post("/api/v1/admin/schedule-plans")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -98,8 +108,8 @@ class AdminSchedulePlanIntegrationTest {
 
     @Test
     @WithMockUser(roles = "ADMINISTRACION")
-    void shouldHandleQuarterlyVersioningAndPublication() throws Exception {
-        UUID planV1Id = createPlanAndExtractId(buildPlanRequest(2026, 2));
+    void shouldHandleSamePeriodVersioningAndPublication() throws Exception {
+        UUID planV1Id = createPlanAndExtractId(buildPlanRequest(PERIOD_START, PERIOD_END));
 
         mockMvc.perform(post("/api/v1/admin/schedule-plans/{planId}/publish", planV1Id)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -109,7 +119,7 @@ class AdminSchedulePlanIntegrationTest {
                 .andExpect(jsonPath("$.published").value(true))
                 .andExpect(jsonPath("$.activeVersion").value(true));
 
-        UUID planV2Id = createPlanAndExtractId(buildPlanRequest(2026, 2));
+        UUID planV2Id = createPlanAndExtractId(buildPlanRequest(PERIOD_START, PERIOD_END));
 
         mockMvc.perform(post("/api/v1/admin/schedule-plans/{planId}/publish", planV2Id)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -124,8 +134,8 @@ class AdminSchedulePlanIntegrationTest {
                 .andExpect(jsonPath("$.activeVersion").value(false));
 
         mockMvc.perform(get("/api/v1/admin/schedule-plans/specialists/{specialistId}", specialistId)
-                        .param("year", "2026")
-                        .param("quarter", "2"))
+                        .param("startDate", PERIOD_START.toString())
+                        .param("endDate", PERIOD_END.toString()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(2))
                 .andExpect(jsonPath("$[0].versionNumber").value(2))
@@ -138,15 +148,10 @@ class AdminSchedulePlanIntegrationTest {
     void shouldRejectSlotBeforeFacilityOpening() throws Exception {
         CreateSchedulePlanRequest request = new CreateSchedulePlanRequest(
                 specialistId,
-                2026,
-                2,
-                List.of(new CreateSchedulePlanSlotRequest(
-                        DayOfWeek.MONDAY,
-                        LocalTime.of(6, 0),
-                        LocalTime.of(10, 0),
-                        30,
-                        1
-                ))
+                sedeId,
+                PERIOD_START,
+                PERIOD_END,
+                List.of(slot(DayOfWeek.MONDAY, LocalTime.of(6, 0), LocalTime.of(14, 0)))
         );
 
         mockMvc.perform(post("/api/v1/admin/schedule-plans")
@@ -159,26 +164,21 @@ class AdminSchedulePlanIntegrationTest {
 
     @Test
     @WithMockUser(roles = "ADMINISTRACION")
-    void shouldRejectSaturdayAfternoonSlot() throws Exception {
+    void shouldRejectSlotOutsideFacilityClosingTime() throws Exception {
         CreateSchedulePlanRequest request = new CreateSchedulePlanRequest(
                 specialistId,
-                2026,
-                2,
-                List.of(new CreateSchedulePlanSlotRequest(
-                        DayOfWeek.SATURDAY,
-                        LocalTime.of(13, 0),
-                        LocalTime.of(17, 0),
-                        30,
-                        1
-                ))
+                sedeId,
+                PERIOD_START,
+                PERIOD_END,
+                List.of(slot(DayOfWeek.MONDAY, LocalTime.of(9, 0), LocalTime.of(19, 0)))
         );
 
         mockMvc.perform(post("/api/v1/admin/schedule-plans")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isUnprocessableEntity())
-                .andExpect(jsonPath("$.allowedWindow.closeTime").value("12:00:00"))
-                .andExpect(jsonPath("$.message", containsString("sábado")));
+                .andExpect(jsonPath("$.allowedWindow.closeTime").value("18:00:00"))
+                .andExpect(jsonPath("$.message", containsString("lunes")));
     }
 
     @Test
@@ -186,15 +186,10 @@ class AdminSchedulePlanIntegrationTest {
     void shouldAcceptValidSlotAndPublish() throws Exception {
         CreateSchedulePlanRequest request = new CreateSchedulePlanRequest(
                 specialistId,
-                2026,
-                2,
-                List.of(new CreateSchedulePlanSlotRequest(
-                        DayOfWeek.TUESDAY,
-                        LocalTime.of(9, 0),
-                        LocalTime.of(17, 0),
-                        30,
-                        1
-                ))
+                sedeId,
+                PERIOD_START,
+                PERIOD_END,
+                List.of(slot(DayOfWeek.TUESDAY, LocalTime.of(9, 0), LocalTime.of(17, 0)))
         );
 
         UUID planId = createPlanAndExtractId(request);
@@ -208,18 +203,8 @@ class AdminSchedulePlanIntegrationTest {
 
     @Test
     @WithMockUser(roles = "ADMINISTRACION")
-    void shouldRejectPublishWhenSlotViolatesFacilityHours() throws Exception {
-        CreateSchedulePlanRequest request = new CreateSchedulePlanRequest(
-                specialistId,
-                2026,
-                3,
-                List.of(
-                        new CreateSchedulePlanSlotRequest(DayOfWeek.MONDAY, LocalTime.of(8, 0), LocalTime.of(12, 0), 30, 1),
-                        new CreateSchedulePlanSlotRequest(DayOfWeek.SATURDAY, LocalTime.of(8, 0), LocalTime.of(12, 0), 30, 1)
-                )
-        );
-
-        UUID planId = createPlanAndExtractId(request);
+    void shouldRejectPublishWhenBlockViolatesFacilityHours() throws Exception {
+        UUID planId = createPlanAndExtractId(buildPlanRequest(PERIOD_START, PERIOD_END));
 
         mockMvc.perform(post("/api/v1/admin/schedule-plans/{planId}/blocks", planId)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -244,7 +229,10 @@ class AdminSchedulePlanIntegrationTest {
     @Test
     @WithMockUser(roles = "ADMINISTRACION")
     void shouldAddBlockRangeToPlan() throws Exception {
-        UUID planId = createPlanAndExtractId(buildPlanRequest(2026, 3));
+        UUID planId = createPlanAndExtractId(buildPlanRequest(
+                LocalDate.of(2026, 7, 1),
+                LocalDate.of(2026, 9, 30)
+        ));
 
         CreateSchedulePlanBlockRequest blockRequest = new CreateSchedulePlanBlockRequest(
                 LocalDate.of(2026, 7, 10),
@@ -263,16 +251,23 @@ class AdminSchedulePlanIntegrationTest {
                 .andExpect(jsonPath("$.blocks[0].reason").value("Capacitacion institucional"));
     }
 
-    private CreateSchedulePlanRequest buildPlanRequest(int year, int quarter) {
+    private CreateSchedulePlanRequest buildPlanRequest(LocalDate startDate, LocalDate endDate) {
         return new CreateSchedulePlanRequest(
                 specialistId,
-                year,
-                quarter,
+                sedeId,
+                startDate,
+                endDate,
                 List.of(
-                        new CreateSchedulePlanSlotRequest(DayOfWeek.MONDAY, LocalTime.of(8, 0), LocalTime.of(12, 0), 30, 1),
-                        new CreateSchedulePlanSlotRequest(DayOfWeek.WEDNESDAY, LocalTime.of(13, 0), LocalTime.of(17, 0), 30, 1)
+                        slot(DayOfWeek.MONDAY, LocalTime.of(8, 0), LocalTime.of(12, 0)),
+                        slot(DayOfWeek.MONDAY, LocalTime.of(13, 0), LocalTime.of(17, 0)),
+                        slot(DayOfWeek.WEDNESDAY, LocalTime.of(8, 0), LocalTime.of(12, 0)),
+                        slot(DayOfWeek.WEDNESDAY, LocalTime.of(13, 0), LocalTime.of(17, 0))
                 )
         );
+    }
+
+    private CreateSchedulePlanSlotRequest slot(DayOfWeek day, LocalTime start, LocalTime end) {
+        return new CreateSchedulePlanSlotRequest(day, start, end, 30, 1, consultorioId);
     }
 
     private UUID createPlanAndExtractId(CreateSchedulePlanRequest request) throws Exception {

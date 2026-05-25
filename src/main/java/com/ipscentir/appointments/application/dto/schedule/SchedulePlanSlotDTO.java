@@ -11,6 +11,7 @@ public record SchedulePlanSlotDTO(
         LocalTime endTime,
         int slotDurationMinutes,
         int maxPatientsPerSlot,
+        UUID consultorioId,
         boolean active
 ) {
 }

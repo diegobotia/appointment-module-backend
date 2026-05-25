@@ -61,14 +61,17 @@ public class Schedule {
     @Column(nullable = false)
     private Boolean isActive;
 
+    @Column(name = "consultorio_id")
+    private UUID consultorioId;
+
     @Builder.Default
     @OneToMany(mappedBy = "schedule", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     private List<ScheduleBlock> blocks = new ArrayList<>();
 
     // Comportamientos de Dominio
-    
+
     public List<LocalTime> getAvailableSlots(LocalDate date) {
-        if (!this.isActive) {
+        if (!Boolean.TRUE.equals(this.isActive)) {
             return Collections.emptyList();
         }
 
@@ -90,16 +93,17 @@ public class Schedule {
     }
 
     public boolean isAvailable(LocalDate date, LocalTime time) {
-        if (!this.isActive) return false;
-        if (date.getDayOfWeek() != this.dayOfWeek) return false;
-        if (time.isBefore(this.startTime) || time.isAfter(this.endTime) || time.equals(this.endTime)) return false;
-        if (isSlotBlocked(date, time)) return false;
-
-        return true;
+        return Boolean.TRUE.equals(this.isActive)
+                && date.getDayOfWeek() == this.dayOfWeek
+                && !time.isBefore(this.startTime)
+                && !time.isAfter(this.endTime)
+                && !time.equals(this.endTime)
+                && !isSlotBlocked(date, time);
     }
 
     private boolean isSlotBlocked(LocalDate date, LocalTime time) {
-        if (blocks == null || blocks.isEmpty()) return false;
+        if (blocks == null || blocks.isEmpty())
+            return false;
         return blocks.stream().anyMatch(block -> block.isDateTimeBlocked(date, time));
     }
 
@@ -108,13 +112,14 @@ public class Schedule {
             LocalTime startTime,
             LocalTime endTime,
             int slotDurationMinutes,
-            int maxPatientsPerSlot
-    ) {
+            int maxPatientsPerSlot,
+            UUID consultorioId) {
         this.specialty = specialty;
         this.startTime = startTime;
         this.endTime = endTime;
         this.slotDurationMinutes = slotDurationMinutes;
         this.maxPatientsPerSlot = maxPatientsPerSlot;
+        this.consultorioId = consultorioId;
         this.isActive = true;
     }
 

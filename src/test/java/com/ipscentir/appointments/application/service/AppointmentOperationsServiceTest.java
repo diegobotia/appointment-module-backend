@@ -33,6 +33,7 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -91,6 +92,24 @@ class AppointmentOperationsServiceTest {
         when(staffSecurityHelper.hasAnyRole(RoleName.APPOINTMENT_OPERATORS)).thenReturn(false);
 
         assertThrows(AccessDeniedException.class, () -> appointmentOperationsService.confirmAppointment(appointmentId));
+    }
+
+    @Test
+    void confirmAppointmentFromN8nDoesNotRequireWriteRole() {
+        UUID appointmentId = UUID.randomUUID();
+        Integer sedeId = FacilityMasterData.SEDE_ID_BELEN;
+        String doctorId = UUID.randomUUID().toString();
+        Appointment appointment = sampleAppointment(doctorId, sedeId);
+
+        when(appointmentRepository.findById(appointmentId)).thenReturn(Optional.of(appointment));
+        when(appointmentRepository.save(appointment)).thenReturn(appointment);
+        when(appointmentEnrichmentService.toDto(appointment)).thenAnswer(invocation -> sampleDto(appointment));
+
+        AppointmentDTO dto = appointmentOperationsService.confirmAppointmentFromN8n(appointmentId);
+
+        assertEquals(AppointmentStatus.CONFIRMED, dto.status());
+        assertEquals(AppointmentStatus.CONFIRMED, appointment.getStatus());
+        verify(staffSecurityHelper, never()).hasAnyRole(RoleName.APPOINTMENT_OPERATORS);
     }
 
     @Test

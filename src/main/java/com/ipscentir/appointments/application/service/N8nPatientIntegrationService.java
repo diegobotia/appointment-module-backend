@@ -349,7 +349,7 @@ public class N8nPatientIntegrationService {
 
     @Transactional
     public N8nConfirmAppointmentResponse confirmAppointment(UUID appointmentId, N8nConfirmAppointmentRequest request) {
-        AppointmentDTO dto = appointmentOperationsService.confirmAppointment(appointmentId);
+        AppointmentDTO dto = appointmentOperationsService.confirmAppointmentFromN8n(appointmentId);
 
         return new N8nConfirmAppointmentResponse(
                 dto,

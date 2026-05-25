@@ -51,6 +51,9 @@ public class SchedulePlanSlot {
     @Column(name = "max_patients_per_slot", nullable = false)
     private int maxPatientsPerSlot;
 
+    @Column(name = "consultorio_id", nullable = false)
+    private UUID consultorioId;
+
     @Column(name = "is_active", nullable = false)
     @Builder.Default
     private boolean active = true;
