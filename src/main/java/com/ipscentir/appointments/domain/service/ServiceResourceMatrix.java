@@ -5,6 +5,12 @@ import com.ipscentir.appointments.domain.model.catalog.AppointmentServiceType;
 import com.ipscentir.appointments.domain.model.facility.FacilityResourceType;
 import com.ipscentir.appointments.domain.model.schedule.Schedule;
 
+import static com.ipscentir.appointments.domain.model.appointment.AppointmentType.JUNTA_MEDICA;
+import static com.ipscentir.appointments.domain.model.appointment.AppointmentType.PRESENCIAL;
+import static com.ipscentir.appointments.domain.model.appointment.AppointmentType.STAFF;
+import static com.ipscentir.appointments.domain.model.appointment.AppointmentType.TERAPIA_FISICA;
+import static com.ipscentir.appointments.domain.model.appointment.AppointmentType.TERAPIA_OCUPACIONAL;
+
 import java.util.EnumMap;
 import java.util.Map;
 import java.util.Optional;
@@ -33,6 +39,16 @@ public final class ServiceResourceMatrix {
 
     public static FacilityResourceType resourceForServiceType(AppointmentServiceType serviceType) {
         return SERVICE_TO_RESOURCE.getOrDefault(serviceType, FacilityResourceType.CONSULTORIO);
+    }
+
+    public static AppointmentType appointmentTypeForService(AppointmentServiceType serviceType) {
+        return switch (serviceType) {
+            case TERAPIA_FISICA -> TERAPIA_FISICA;
+            case TERAPIA_OCUPACIONAL -> TERAPIA_OCUPACIONAL;
+            case JUNTA_MEDICA -> JUNTA_MEDICA;
+            case STAFF -> STAFF;
+            default -> PRESENCIAL;
+        };
     }
 
     public static FacilityResourceType resourceForAppointmentType(AppointmentType appointmentType) {

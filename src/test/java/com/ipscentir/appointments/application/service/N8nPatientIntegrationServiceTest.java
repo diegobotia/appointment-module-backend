@@ -309,6 +309,9 @@ class N8nPatientIntegrationServiceTest {
 
         when(pacienteRepository.existsById(patientId)).thenReturn(true);
         when(n8nIdempotencyService.findAppointmentId(any(), any())).thenReturn(Optional.empty());
+        when(scheduleRepository.findById(scheduleId)).thenReturn(Optional.of(
+                Schedule.builder().id(scheduleId).specialty("Medico laboral").build()
+        ));
         when(appointmentApplicationService.createAppointment(any())).thenReturn(dto);
 
         var response = service.createAppointment(new N8nPatientAppointmentRequest(

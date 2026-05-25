@@ -40,6 +40,7 @@ import com.ipscentir.appointments.domain.repository.AppointmentRepository;
 import com.ipscentir.appointments.domain.repository.ScheduleRepository;
 import com.ipscentir.appointments.domain.service.AppointmentBookingService;
 import com.ipscentir.appointments.domain.service.AvailabilityService;
+import com.ipscentir.appointments.domain.service.ServiceResourceMatrix;
 import com.ipscentir.appointments.infrastructure.persistence.jpa.PacienteRepository;
 import com.ipscentir.appointments.infrastructure.persistence.jpa.entity.Paciente;
 import lombok.RequiredArgsConstructor;
@@ -84,33 +85,36 @@ public class N8nPatientIntegrationService {
         );
 
         List<N8nAvailabilitySlotDTO> responseSlots = slots.stream()
-                .map(slot -> new N8nAvailabilitySlotDTO(
-                        slot.scheduleId(),
-                        slot.doctorId(),
-                        request.facilityId(),
-                        slot.serviceType().name(),
-                        slot.specialty(),
-                        slot.appointmentDate(),
-                        slot.appointmentTime(),
-                        slot.durationMinutes(),
-                        "PRESENCIAL",
-                        slot.availableSeats(),
-                        new N8nAvailabilityBookingPayloadDTO(
-                                null,
-                                slot.doctorId(),
-                                request.facilityId(),
-                                null,
-                                slot.scheduleId(),
-                                slot.appointmentDate(),
-                                slot.appointmentTime(),
-                                "PRESENCIAL",
-                                slot.serviceType().name(),
-                                slot.specialty(),
-                                slot.durationMinutes(),
-                                slot.availableSeats(),
-                                null
-                        )
-                ))
+                .map(slot -> {
+                    String aptType = ServiceResourceMatrix.appointmentTypeForService(slot.serviceType()).name();
+                    return new N8nAvailabilitySlotDTO(
+                            slot.scheduleId(),
+                            slot.doctorId(),
+                            request.facilityId(),
+                            slot.serviceType().name(),
+                            slot.specialty(),
+                            slot.appointmentDate(),
+                            slot.appointmentTime(),
+                            slot.durationMinutes(),
+                            aptType,
+                            slot.availableSeats(),
+                            new N8nAvailabilityBookingPayloadDTO(
+                                    null,
+                                    slot.doctorId(),
+                                    request.facilityId(),
+                                    null,
+                                    slot.scheduleId(),
+                                    slot.appointmentDate(),
+                                    slot.appointmentTime(),
+                                    aptType,
+                                    slot.serviceType().name(),
+                                    slot.specialty(),
+                                    slot.durationMinutes(),
+                                    slot.availableSeats(),
+                                    null
+                            )
+                    );
+                })
                 .toList();
 
         String summary = responseSlots.isEmpty()
@@ -151,6 +155,8 @@ public class N8nPatientIntegrationService {
 
         Integer resolvedSedeId = resolveSedeId(request.facilityId());
 
+        AppointmentType appointmentType = resolveAppointmentType(request.scheduleId());
+
         AppointmentDTO appointment = appointmentApplicationService.createAppointment(
                 new CreateAppointmentCommand(
                         request.patientId(),
@@ -160,7 +166,7 @@ public class N8nPatientIntegrationService {
                         request.scheduleId(),
                         request.appointmentDate(),
                         request.appointmentTime(),
-                        AppointmentType.PRESENCIAL.name(),
+                        appointmentType.name(),
                         request.reason(),
                         BookingChannel.N8N,
                         request.conversationId()
@@ -355,6 +361,14 @@ public class N8nPatientIntegrationService {
     @Transactional
     public N8nWebhookEventResponse handleWebhookEvent(N8nWebhookEventRequest request) {
         return n8nEventJournalService.handleWebhookEvent(request);
+    }
+
+    private AppointmentType resolveAppointmentType(UUID scheduleId) {
+        return scheduleRepository.findById(scheduleId)
+                .map(Schedule::getSpecialty)
+                .flatMap(AppointmentServiceType::tryResolve)
+                .map(ServiceResourceMatrix::appointmentTypeForService)
+                .orElse(AppointmentType.PRESENCIAL);
     }
 
     private void requirePatientExists(UUID patientId) {
