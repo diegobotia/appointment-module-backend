@@ -55,6 +55,17 @@ public class AppointmentResourceAllocationRepositoryImpl implements AppointmentR
     }
 
     @Override
+    public long countOccupiedForResource(
+            UUID facilityResourceId,
+            LocalDate appointmentDate,
+            LocalTime startTime,
+            LocalTime endTime,
+            UUID excludeAppointmentId) {
+        return jpaRepository.countOccupiedForResource(
+                facilityResourceId, appointmentDate, startTime, endTime, excludeAppointmentId);
+    }
+
+    @Override
     public AppointmentResourceAllocation save(AppointmentResourceAllocation allocation) {
         return jpaRepository.save(allocation);
     }

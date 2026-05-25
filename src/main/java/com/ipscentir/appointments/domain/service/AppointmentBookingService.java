@@ -5,7 +5,9 @@ import com.ipscentir.appointments.domain.model.appointment.AppointmentStatus;
 import com.ipscentir.appointments.domain.model.appointment.AppointmentType;
 import com.ipscentir.appointments.domain.model.appointment.AppointmentScheduleData;
 import com.ipscentir.appointments.domain.model.appointment.BookingChannel;
+import com.ipscentir.appointments.domain.model.schedule.Schedule;
 import com.ipscentir.appointments.domain.repository.AppointmentRepository;
+import com.ipscentir.appointments.domain.repository.ScheduleRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,6 +27,7 @@ public class AppointmentBookingService {
     private final HumanResourceAvailabilityService humanResourceAvailabilityService;
     private final AppointmentRepository appointmentRepository;
     private final ResourceCapacityService resourceCapacityService;
+    private final ScheduleRepository scheduleRepository;
     private final TransactionTemplate transactionTemplate;
 
     public Appointment bookAppointment(AppointmentBookingRequest request) {
@@ -124,7 +127,11 @@ public class AppointmentBookingService {
     }
 
     private Appointment bookAppointmentTransactional(AppointmentBookingRequest request) {
-        int blockDuration = 30;
+        Schedule schedule = scheduleRepository.findById(request.scheduleId())
+                .orElseThrow(() -> new IllegalArgumentException("Schedule not found"));
+        int blockDuration = schedule.getSlotDurationMinutes();
+        UUID consultorioId = schedule.getConsultorioId();
+
         HumanResourceBookingContext context = HumanResourceBookingContext.forBooking(
                 request.patientId(),
                 request.doctorId(),
@@ -146,8 +153,8 @@ public class AppointmentBookingService {
                     request.time(),
                     request.type()
             );
-            Appointment saved = bookTherapyAppointment(request, blockDuration);
-            resourceCapacityService.allocate(saved);
+            Appointment saved = bookTherapyAppointment(request, blockDuration, consultorioId);
+            resourceCapacityService.allocate(saved, consultorioId);
             return saved;
         }
 
@@ -158,7 +165,8 @@ public class AppointmentBookingService {
                 request.date(),
                 request.time(),
                 blockDuration,
-                null
+                null,
+                consultorioId
         );
 
         Appointment appointment = Appointment.scheduleNew(
@@ -179,11 +187,11 @@ public class AppointmentBookingService {
                 request.n8nConversationId()
         );
         Appointment saved = appointmentRepository.save(appointment);
-        resourceCapacityService.allocate(saved);
+        resourceCapacityService.allocate(saved, consultorioId);
         return saved;
     }
 
-    private Appointment bookTherapyAppointment(AppointmentBookingRequest request, Integer duration) {
+    private Appointment bookTherapyAppointment(AppointmentBookingRequest request, Integer duration, UUID consultorioId) {
         List<Appointment> slotAppointments = appointmentRepository.findByScheduleAndDateAndTimeAndTypeForUpdate(
                 request.scheduleId(),
                 request.date(),
@@ -201,7 +209,8 @@ public class AppointmentBookingService {
                 request.date(),
                 request.time(),
                 duration,
-                null
+                null,
+                consultorioId
         );
 
         AppointmentStatus initialStatus = activeGroupSize + 1 < HumanResourceAvailabilityService.THERAPY_GROUP_MIN

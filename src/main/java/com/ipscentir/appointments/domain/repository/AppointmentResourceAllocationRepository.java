@@ -23,5 +23,13 @@ public interface AppointmentResourceAllocationRepository {
             UUID excludeAppointmentId
     );
 
+    long countOccupiedForResource(
+            UUID facilityResourceId,
+            LocalDate appointmentDate,
+            LocalTime startTime,
+            LocalTime endTime,
+            UUID excludeAppointmentId
+    );
+
     AppointmentResourceAllocation save(AppointmentResourceAllocation allocation);
 }

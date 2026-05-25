@@ -137,6 +137,9 @@ public class HumanResourceAvailabilityService {
                 excludeAppointmentId)) {
             throw new IllegalStateException("The requested slot is not available for this doctor.");
         }
+        if (!isTherapy(context.appointmentType())) {
+            assertNoRangeOverlap(context.primaryDoctorId(), context, excludeAppointmentId);
+        }
     }
 
     private void assertJuntaMedicaRules(HumanResourceBookingContext context, UUID excludeAppointmentId) {
@@ -158,6 +161,24 @@ public class HumanResourceAvailabilityService {
                 context.time(),
                 excludeAppointmentId)) {
             throw new IllegalStateException("The requested slot is not available for the second specialist.");
+        }
+        if (!isTherapy(context.appointmentType())) {
+            assertNoRangeOverlap(secondary, context, excludeAppointmentId);
+        }
+    }
+
+    private void assertNoRangeOverlap(String doctorId, HumanResourceBookingContext context, UUID excludeAppointmentId) {
+        LocalTime endTime = context.time().plusMinutes(context.durationMinutes());
+        List<Appointment> existing = appointmentRepository.findByDoctorIdAndDate(doctorId, context.date());
+        for (Appointment a : existing) {
+            if (excludeAppointmentId != null && excludeAppointmentId.equals(a.getId())) continue;
+            if (a.getStatus() == AppointmentStatus.CANCELLED || a.getStatus() == AppointmentStatus.NO_SHOW) continue;
+            LocalTime existingEnd = a.getAppointmentTime().plusMinutes(a.getDurationMinutes());
+            if (context.time().isBefore(existingEnd) && a.getAppointmentTime().isBefore(endTime)) {
+                throw new IllegalStateException(
+                        "El doctor " + doctorId + " ya tiene una cita en la franja "
+                        + a.getAppointmentTime() + "-" + existingEnd);
+            }
         }
     }
 

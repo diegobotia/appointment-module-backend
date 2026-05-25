@@ -5,6 +5,7 @@ import com.ipscentir.appointments.domain.model.appointment.Appointment;
 import com.ipscentir.appointments.domain.model.appointment.AppointmentType;
 import com.ipscentir.appointments.domain.model.catalog.AppointmentServiceType;
 import com.ipscentir.appointments.domain.model.facility.AppointmentResourceAllocation;
+import com.ipscentir.appointments.domain.model.facility.FacilityResource;
 import com.ipscentir.appointments.domain.model.facility.FacilityResourceType;
 import com.ipscentir.appointments.domain.repository.AppointmentResourceAllocationRepository;
 import com.ipscentir.appointments.domain.model.sede.Sede;
@@ -16,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -64,18 +66,44 @@ public class ResourceCapacityService {
             int durationMinutes,
             UUID excludeAppointmentId
     ) {
+        assertCanAllocate(sedeId, appointmentType, scheduleId, date, startTime, durationMinutes, excludeAppointmentId, null);
+    }
+
+    @Transactional(readOnly = true)
+    public void assertCanAllocate(
+            Integer sedeId,
+            AppointmentType appointmentType,
+            UUID scheduleId,
+            LocalDate date,
+            LocalTime startTime,
+            int durationMinutes,
+            UUID excludeAppointmentId,
+            UUID facilityResourceId
+    ) {
         FacilityResourceType resourceType = AppointmentResourceTypeResolver.forAppointmentType(appointmentType);
-        if (!canAllocate(sedeId, resourceType, appointmentType, scheduleId, date, startTime, durationMinutes, excludeAppointmentId)) {
+        if (!canAllocate(sedeId, resourceType, appointmentType, scheduleId, date, startTime, durationMinutes, excludeAppointmentId, facilityResourceId)) {
             throw buildCapacityException(sedeId, resourceType, appointmentType, date, startTime, durationMinutes, excludeAppointmentId);
         }
     }
 
     @Transactional
     public void allocate(Appointment appointment) {
+        allocate(appointment, null);
+    }
+
+    @Transactional
+    public void allocate(Appointment appointment, UUID facilityResourceId) {
         FacilityResourceType resourceType = AppointmentResourceTypeResolver.forAppointmentType(appointment.getAppointmentType());
         int totalUnits = totalUnits(sedeId(appointment), resourceType);
         if (totalUnits == 0) {
             return;
+        }
+
+        if (facilityResourceId != null) {
+            Optional<FacilityResource> resource = facilityResourceRepository.findById(facilityResourceId);
+            if (resource.isPresent() && !resource.get().isActive()) {
+                return;
+            }
         }
 
         String sessionKey = capacitySessionKey(
@@ -93,6 +121,7 @@ public class ResourceCapacityService {
                 .appointmentId(appointment.getId())
                 .sedeId(appointment.getSedeId())
                 .resourceType(resourceType)
+                .facilityResourceId(facilityResourceId)
                 .appointmentDate(appointment.getAppointmentDate())
                 .startTime(appointment.getAppointmentTime())
                 .endTime(endTime)
@@ -123,6 +152,22 @@ public class ResourceCapacityService {
         allocate(appointment);
     }
 
+    @Transactional
+    public void reallocate(Appointment appointment, UUID facilityResourceId) {
+        release(appointment.getId());
+        assertCanAllocate(
+                appointment.getSedeId(),
+                appointment.getAppointmentType(),
+                appointment.getScheduleId(),
+                appointment.getAppointmentDate(),
+                appointment.getAppointmentTime(),
+                appointment.getDurationMinutes(),
+                appointment.getId(),
+                facilityResourceId
+        );
+        allocate(appointment, facilityResourceId);
+    }
+
     private boolean canAllocate(
             Integer sedeId,
             FacilityResourceType resourceType,
@@ -133,25 +178,46 @@ public class ResourceCapacityService {
             int durationMinutes,
             UUID excludeAppointmentId
     ) {
-        int totalUnits = totalUnits(sedeId, resourceType);
-        if (totalUnits == 0) {
-            return true;
-        }
+        return canAllocate(sedeId, resourceType, appointmentType, scheduleId, date, startTime,
+                durationMinutes, excludeAppointmentId, null);
+    }
 
+    private boolean canAllocate(
+            Integer sedeId,
+            FacilityResourceType resourceType,
+            AppointmentType appointmentType,
+            UUID scheduleId,
+            LocalDate date,
+            LocalTime startTime,
+            int durationMinutes,
+            UUID excludeAppointmentId,
+            UUID facilityResourceId
+    ) {
         LocalTime endTime = endTime(startTime, durationMinutes);
         String sessionKey = capacitySessionKey(sedeId, appointmentType, scheduleId, date, startTime, null);
+
+        int totalUnits = totalUnits(sedeId, resourceType);
 
         if (isTherapy(appointmentType) && allocationRepository.existsActiveSessionKey(sessionKey)) {
             return true;
         }
+        if (totalUnits == 0) {
+            return true;
+        }
+
+        if (facilityResourceId != null) {
+            Optional<FacilityResource> resource = facilityResourceRepository.findById(facilityResourceId);
+            if (resource.isEmpty() || !resource.get().isActive()) {
+                return false;
+            }
+            long occupied = allocationRepository.countOccupiedForResource(
+                    facilityResourceId, date, startTime, endTime, excludeAppointmentId
+            );
+            return occupied < resource.get().getCapacityUnits();
+        }
 
         long occupied = allocationRepository.countOccupiedCapacityUnits(
-                sedeId,
-                resourceType,
-                date,
-                startTime,
-                endTime,
-                excludeAppointmentId
+                sedeId, resourceType, date, startTime, endTime, excludeAppointmentId
         );
         return occupied < totalUnits;
     }

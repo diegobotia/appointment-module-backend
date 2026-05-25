@@ -54,4 +54,21 @@ public interface AppointmentResourceAllocationJpaRepository extends JpaRepositor
                         @Param("startTime") LocalTime startTime,
                         @Param("endTime") LocalTime endTime,
                         @Param("excludeAppointmentId") UUID excludeAppointmentId);
+
+        @Query("""
+                        SELECT COUNT(DISTINCT a.id)
+                        FROM AppointmentResourceAllocation a
+                        WHERE a.facilityResourceId = :facilityResourceId
+                          AND a.appointmentDate = :appointmentDate
+                          AND a.releasedAt IS NULL
+                          AND a.startTime < :endTime
+                          AND a.endTime > :startTime
+                          AND (:excludeAppointmentId IS NULL OR a.appointmentId <> :excludeAppointmentId)
+                        """)
+        long countOccupiedForResource(
+                        @Param("facilityResourceId") UUID facilityResourceId,
+                        @Param("appointmentDate") LocalDate appointmentDate,
+                        @Param("startTime") LocalTime startTime,
+                        @Param("endTime") LocalTime endTime,
+                        @Param("excludeAppointmentId") UUID excludeAppointmentId);
 }

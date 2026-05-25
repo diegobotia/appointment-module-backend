@@ -5,7 +5,9 @@ import com.ipscentir.appointments.domain.model.facility.FacilityMasterData;
 import com.ipscentir.appointments.domain.model.appointment.Appointment;
 import com.ipscentir.appointments.domain.model.appointment.AppointmentStatus;
 import com.ipscentir.appointments.domain.model.appointment.AppointmentType;
+import com.ipscentir.appointments.domain.model.schedule.Schedule;
 import com.ipscentir.appointments.domain.repository.AppointmentRepository;
+import com.ipscentir.appointments.domain.repository.ScheduleRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -16,6 +18,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -26,6 +29,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -39,6 +43,9 @@ class AppointmentBookingServiceTest {
 
     @Mock
     private ResourceCapacityService resourceCapacityService;
+
+    @Mock
+    private ScheduleRepository scheduleRepository;
 
     @InjectMocks
     private AppointmentBookingService bookingService;
@@ -58,6 +65,15 @@ class AppointmentBookingServiceTest {
         scheduleId = UUID.randomUUID();
         date = LocalDate.now().plusDays(2);
         time = LocalTime.of(10, 0);
+        lenient().when(scheduleRepository.findById(any())).thenReturn(Optional.of(
+                Schedule.builder()
+                        .id(scheduleId)
+                        .doctorId(doctorId)
+                        .sedeId(sedeId)
+                        .slotDurationMinutes(30)
+                        .consultorioId(null)
+                        .build()
+        ));
     }
 
     @Test
@@ -81,7 +97,7 @@ class AppointmentBookingServiceTest {
 
         assertNotNull(saved);
         verify(appointmentRepository).save(any(Appointment.class));
-        verify(resourceCapacityService).allocate(saved);
+        verify(resourceCapacityService).allocate(saved, null);
     }
 
     @Test

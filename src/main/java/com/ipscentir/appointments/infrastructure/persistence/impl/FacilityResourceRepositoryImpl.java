@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Component
@@ -15,6 +16,11 @@ import java.util.UUID;
 public class FacilityResourceRepositoryImpl implements FacilityResourceRepository {
 
     private final FacilityResourceJpaRepository jpaRepository;
+
+    @Override
+    public Optional<FacilityResource> findById(UUID id) {
+        return jpaRepository.findById(id);
+    }
 
     @Override
     public List<FacilityResource> findActiveBySedeIdOrderByTypeAndCode(Integer sedeId) {
