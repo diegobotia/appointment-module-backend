@@ -69,6 +69,25 @@ public class AppointmentResourceAllocation {
         this.releasedAt = LocalDateTime.now();
     }
 
+    public void updateAllocation(
+            Integer sedeId,
+            FacilityResourceType resourceType,
+            UUID facilityResourceId,
+            LocalDate appointmentDate,
+            LocalTime startTime,
+            LocalTime endTime,
+            String capacitySessionKey
+    ) {
+        this.sedeId = sedeId;
+        this.resourceType = resourceType;
+        this.facilityResourceId = facilityResourceId;
+        this.appointmentDate = appointmentDate;
+        this.startTime = startTime;
+        this.endTime = endTime;
+        this.capacitySessionKey = capacitySessionKey;
+        this.releasedAt = null;
+    }
+
     public boolean isActive() {
         return releasedAt == null;
     }

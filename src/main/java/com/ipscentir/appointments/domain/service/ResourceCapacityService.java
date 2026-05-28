@@ -117,16 +117,29 @@ public class ResourceCapacityService {
 
         LocalTime endTime = endTime(appointment.getAppointmentTime(), appointment.getDurationMinutes());
 
-        allocationRepository.save(AppointmentResourceAllocation.builder()
-                .appointmentId(appointment.getId())
-                .sedeId(appointment.getSedeId())
-                .resourceType(resourceType)
-                .facilityResourceId(facilityResourceId)
-                .appointmentDate(appointment.getAppointmentDate())
-                .startTime(appointment.getAppointmentTime())
-                .endTime(endTime)
-                .capacitySessionKey(sessionKey)
-                .build());
+        allocationRepository.findByAppointmentId(appointment.getId()).ifPresentOrElse(
+                existing -> {
+                    existing.updateAllocation(
+                            appointment.getSedeId(),
+                            resourceType,
+                            facilityResourceId,
+                            appointment.getAppointmentDate(),
+                            appointment.getAppointmentTime(),
+                            endTime,
+                            sessionKey
+                    );
+                    allocationRepository.save(existing);
+                },
+                () -> allocationRepository.save(AppointmentResourceAllocation.builder()
+                        .appointmentId(appointment.getId())
+                        .sedeId(appointment.getSedeId())
+                        .resourceType(resourceType)
+                        .facilityResourceId(facilityResourceId)
+                        .appointmentDate(appointment.getAppointmentDate())
+                        .startTime(appointment.getAppointmentTime())
+                        .endTime(endTime)
+                        .capacitySessionKey(sessionKey)
+                        .build()));
     }
 
     @Transactional

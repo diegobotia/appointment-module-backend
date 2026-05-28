@@ -67,6 +67,10 @@ public class AvailabilityService {
                         .collect(Collectors.groupingBy(Appointment::getAppointmentTime, Collectors.counting()));
 
                 for (LocalTime time : possibleSlots) {
+                    if (currentDate.equals(LocalDate.now()) && time.isBefore(LocalTime.now().plusHours(1))) {
+                        continue;
+                    }
+
                     long occupiedSeats = appointmentsPerSlot.getOrDefault(time, 0L);
                     int availableSeats = Math.max(0, schedule.getMaxPatientsPerSlot() - (int) occupiedSeats);
 
@@ -145,6 +149,7 @@ public class AvailabilityService {
 
         // 5. Construir lista de slots disponibles que no excedan el cupo por slot.
         return possibleSlots.stream()
+                .filter(time -> !(date.equals(LocalDate.now()) && time.isBefore(LocalTime.now().plusHours(1))))
                 .filter(time -> {
                     long appointmentsInSlot = appointmentsPerSlot.getOrDefault(time, 0L);
                     return appointmentsInSlot < schedule.getMaxPatientsPerSlot();
@@ -188,6 +193,7 @@ public class AvailabilityService {
 
         // 5. Construir lista de slots disponibles que no excedan el cupo por slot
         return possibleSlots.stream()
+                .filter(time -> !(date.equals(LocalDate.now()) && time.isBefore(LocalTime.now().plusHours(1))))
                 .filter(time -> {
                     long appointmentsInSlot = appointmentsPerSlot.getOrDefault(time, 0L);
                     return appointmentsInSlot < schedule.getMaxPatientsPerSlot();
@@ -328,6 +334,9 @@ public class AvailabilityService {
                         .collect(Collectors.groupingBy(Appointment::getAppointmentTime, Collectors.counting()));
 
                 for (LocalTime time : possibleSlots) {
+                    if (date.equals(LocalDate.now()) && time.isBefore(LocalTime.now().plusHours(1))) {
+                        continue;
+                    }
                     long occupiedSeats = appointmentsPerSlot.getOrDefault(time, 0L);
                     int availableSeats = Math.max(0, schedule.getMaxPatientsPerSlot() - (int) occupiedSeats);
                     if (availableSeats <= 0) {

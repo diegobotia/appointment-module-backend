@@ -15,8 +15,7 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
+
 
 @Entity
 @Table(name = "domain_events", schema = "appointments")
@@ -36,8 +35,7 @@ public class DomainEventRecord {
     @Column(name = "aggregate_id", nullable = false)
     private UUID aggregateId;
 
-    @Column(name = "event_data", nullable = false, length = 16_384)
-    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "event_data", nullable = false, columnDefinition = "jsonb")
     private String eventData;
 
     @Column(name = "occurred_on", updatable = false, insertable = false)

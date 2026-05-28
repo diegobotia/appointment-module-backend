@@ -24,6 +24,11 @@ public class AppointmentResourceAllocationRepositoryImpl implements AppointmentR
     }
 
     @Override
+    public Optional<AppointmentResourceAllocation> findByAppointmentId(UUID appointmentId) {
+        return jpaRepository.findByAppointmentId(appointmentId);
+    }
+
+    @Override
     public boolean existsActiveSessionKey(String capacitySessionKey) {
         return jpaRepository.existsByCapacitySessionKeyAndReleasedAtIsNull(capacitySessionKey);
     }
@@ -61,7 +66,12 @@ public class AppointmentResourceAllocationRepositoryImpl implements AppointmentR
             LocalTime startTime,
             LocalTime endTime,
             UUID excludeAppointmentId) {
-        return jpaRepository.countOccupiedForResource(
+        if (excludeAppointmentId == null) {
+            return jpaRepository.countOccupiedForResource(
+                    facilityResourceId, appointmentDate, startTime, endTime);
+        }
+
+        return jpaRepository.countOccupiedForResourceExcluding(
                 facilityResourceId, appointmentDate, startTime, endTime, excludeAppointmentId);
     }
 

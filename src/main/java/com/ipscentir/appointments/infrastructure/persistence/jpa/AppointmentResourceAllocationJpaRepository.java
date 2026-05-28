@@ -17,6 +17,8 @@ public interface AppointmentResourceAllocationJpaRepository extends JpaRepositor
 
         Optional<AppointmentResourceAllocation> findByAppointmentIdAndReleasedAtIsNull(UUID appointmentId);
 
+        Optional<AppointmentResourceAllocation> findByAppointmentId(UUID appointmentId);
+
         boolean existsByCapacitySessionKeyAndReleasedAtIsNull(String capacitySessionKey);
 
         @Query("""
@@ -63,9 +65,24 @@ public interface AppointmentResourceAllocationJpaRepository extends JpaRepositor
                           AND a.releasedAt IS NULL
                           AND a.startTime < :endTime
                           AND a.endTime > :startTime
-                          AND (:excludeAppointmentId IS NULL OR a.appointmentId <> :excludeAppointmentId)
                         """)
         long countOccupiedForResource(
+                        @Param("facilityResourceId") UUID facilityResourceId,
+                        @Param("appointmentDate") LocalDate appointmentDate,
+                        @Param("startTime") LocalTime startTime,
+                        @Param("endTime") LocalTime endTime);
+
+        @Query("""
+                        SELECT COUNT(DISTINCT a.id)
+                        FROM AppointmentResourceAllocation a
+                        WHERE a.facilityResourceId = :facilityResourceId
+                          AND a.appointmentDate = :appointmentDate
+                          AND a.releasedAt IS NULL
+                          AND a.startTime < :endTime
+                          AND a.endTime > :startTime
+                          AND a.appointmentId <> :excludeAppointmentId
+                        """)
+        long countOccupiedForResourceExcluding(
                         @Param("facilityResourceId") UUID facilityResourceId,
                         @Param("appointmentDate") LocalDate appointmentDate,
                         @Param("startTime") LocalTime startTime,

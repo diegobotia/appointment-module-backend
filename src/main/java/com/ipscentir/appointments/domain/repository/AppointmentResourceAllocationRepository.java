@@ -12,6 +12,8 @@ public interface AppointmentResourceAllocationRepository {
 
     Optional<AppointmentResourceAllocation> findActiveByAppointmentId(UUID appointmentId);
 
+    Optional<AppointmentResourceAllocation> findByAppointmentId(UUID appointmentId);
+
     boolean existsActiveSessionKey(String capacitySessionKey);
 
     long countOccupiedCapacityUnits(
