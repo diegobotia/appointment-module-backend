@@ -11,7 +11,6 @@ public class AppointmentsMetrics {
     private final MeterRegistry meterRegistry;
     private final Counter securityUnauthorized;
     private final Counter securityForbidden;
-    private final Counter notificationsFailed;
 
     public AppointmentsMetrics(MeterRegistry meterRegistry) {
         this.meterRegistry = meterRegistry;
@@ -20,9 +19,6 @@ public class AppointmentsMetrics {
                 .register(meterRegistry);
         this.securityForbidden = Counter.builder("security.forbidden")
                 .description("Respuestas HTTP 403")
-                .register(meterRegistry);
-        this.notificationsFailed = Counter.builder("notifications.failed")
-                .description("Intentos de notificación fallidos")
                 .register(meterRegistry);
     }
 
@@ -37,9 +33,5 @@ public class AppointmentsMetrics {
 
     public void recordForbidden() {
         securityForbidden.increment();
-    }
-
-    public void recordNotificationFailed() {
-        notificationsFailed.increment();
     }
 }

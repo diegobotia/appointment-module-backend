@@ -38,9 +38,13 @@ public class MedicoApplicationService {
     public List<MedicoAvailableDTO> findAvailableMedicos(String specialty, Integer sedeId, LocalDate availabilityDate) {
         log.debug("findAvailableMedicos specialty={}, sedeId={}, date={}", specialty, sedeId, availabilityDate);
 
+        List<Specialist> allActive = medicoLookupService.findAllActive();
+        Map<String, List<String>> specialtiesByMedicoId = medicoLookupService
+                .findAllActiveSpecialtiesByMedicoIds(allActive.stream().map(Specialist::getId).toList());
+
         List<MedicoAvailableDTO> result = new ArrayList<>();
-        for (Specialist specialist : medicoLookupService.findAllActive()) {
-            List<String> specialties = medicoLookupService.findActiveSpecialties(specialist.getId());
+        for (Specialist specialist : allActive) {
+            List<String> specialties = specialtiesByMedicoId.getOrDefault(specialist.getId(), List.of());
             boolean matchesRequestedSpecialty = specialty == null || specialty.trim().isEmpty()
                     || specialties.stream().anyMatch(spec -> spec != null
                             && normalize(spec).equalsIgnoreCase(normalize(specialty.trim())));

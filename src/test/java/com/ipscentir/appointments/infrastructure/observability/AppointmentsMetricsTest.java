@@ -28,13 +28,11 @@ class AppointmentsMetricsTest {
     }
 
     @Test
-    void recordsSecurityAndNotificationCounters() {
+    void recordsSecurityCounters() {
         metrics.recordUnauthorized();
         metrics.recordForbidden();
-        metrics.recordNotificationFailed();
 
         assertEquals(1.0, meterRegistry.get("security.unauthorized").counter().count());
         assertEquals(1.0, meterRegistry.get("security.forbidden").counter().count());
-        assertEquals(1.0, meterRegistry.get("notifications.failed").counter().count());
     }
 }

@@ -5,6 +5,7 @@ import com.ipscentir.appointments.domain.model.facility.FacilityResourceType;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -34,4 +35,11 @@ public interface AppointmentResourceAllocationRepository {
     );
 
     AppointmentResourceAllocation save(AppointmentResourceAllocation allocation);
+
+    List<AppointmentResourceAllocation> findOccupiedForUpdate(
+            Integer sedeId,
+            FacilityResourceType resourceType,
+            LocalDate appointmentDate,
+            LocalTime startTime,
+            LocalTime endTime);
 }

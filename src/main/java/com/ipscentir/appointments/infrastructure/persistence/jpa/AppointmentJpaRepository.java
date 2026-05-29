@@ -5,7 +5,9 @@ import com.ipscentir.appointments.domain.model.appointment.AppointmentStatus;
 import com.ipscentir.appointments.domain.model.appointment.AppointmentType;
 import com.ipscentir.appointments.domain.model.appointment.BookingChannel;
 import jakarta.persistence.LockModeType;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
@@ -16,7 +18,7 @@ import java.util.List;
 import java.util.UUID;
 
 @Repository
-public interface AppointmentJpaRepository extends JpaRepository<Appointment, UUID> {
+public interface AppointmentJpaRepository extends JpaRepository<Appointment, UUID>, JpaSpecificationExecutor<Appointment> {
 
     @Query("SELECT DISTINCT a FROM Appointment a JOIN a.participants p WHERE p.doctorId = :doctorId AND a.appointmentDate = :appointmentDate")
     List<Appointment> findByParticipantDoctorIdAndAppointmentDate(String doctorId, LocalDate appointmentDate);

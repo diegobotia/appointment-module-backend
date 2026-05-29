@@ -6,12 +6,15 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.lang.NonNull;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+import java.util.List;
 
 @Component
 public class N8nApiKeyFilter extends OncePerRequestFilter {
@@ -50,7 +53,15 @@ public class N8nApiKeyFilter extends OncePerRequestFilter {
             return;
         }
 
-        filterChain.doFilter(request, response);
+        UsernamePasswordAuthenticationToken auth =
+                UsernamePasswordAuthenticationToken.authenticated("n8n", null, List.of());
+        SecurityContextHolder.getContext().setAuthentication(auth);
+
+        try {
+            filterChain.doFilter(request, response);
+        } finally {
+            SecurityContextHolder.clearContext();
+        }
     }
 
     private boolean isApiKeyValid(byte[] providedApiKeyBytes) {

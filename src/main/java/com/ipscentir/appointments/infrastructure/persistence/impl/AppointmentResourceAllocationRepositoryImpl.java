@@ -9,6 +9,7 @@ import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -78,5 +79,11 @@ public class AppointmentResourceAllocationRepositoryImpl implements AppointmentR
     @Override
     public AppointmentResourceAllocation save(AppointmentResourceAllocation allocation) {
         return jpaRepository.save(allocation);
+    }
+
+    @Override
+    public List<AppointmentResourceAllocation> findOccupiedForUpdate(
+            Integer sedeId, FacilityResourceType resourceType, LocalDate appointmentDate, LocalTime startTime, LocalTime endTime) {
+        return jpaRepository.findOccupiedForUpdate(sedeId, resourceType, appointmentDate, startTime, endTime);
     }
 }

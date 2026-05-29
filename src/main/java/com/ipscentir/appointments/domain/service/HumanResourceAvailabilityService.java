@@ -107,6 +107,7 @@ public class HumanResourceAvailabilityService {
                     date.getDayOfWeek(),
                     startTime,
                     endTime);
+            assertDoctorNoRangeOverlap(doctorId, sedeId, date, startTime, endTime);
         }
     }
 
@@ -194,6 +195,19 @@ public class HumanResourceAvailabilityService {
         }
         if (appointmentRepository.existsByPatientIdAndDate(patientId, date)) {
             throw new IllegalStateException("The patient already has an active appointment for this date.");
+        }
+    }
+
+    private void assertDoctorNoRangeOverlap(String doctorId, Integer sedeId, LocalDate date, LocalTime startTime, LocalTime endTime) {
+        List<Appointment> existing = appointmentRepository.findByDoctorIdAndDate(doctorId, date);
+        for (Appointment a : existing) {
+            if (a.getStatus() == AppointmentStatus.CANCELLED || a.getStatus() == AppointmentStatus.NO_SHOW) continue;
+            LocalTime existingEnd = a.getAppointmentTime().plusMinutes(a.getDurationMinutes());
+            if (startTime.isBefore(existingEnd) && a.getAppointmentTime().isBefore(endTime)) {
+                throw new IllegalStateException(
+                        "El participante " + doctorId + " ya tiene una cita en la franja "
+                        + a.getAppointmentTime() + "-" + existingEnd);
+            }
         }
     }
 

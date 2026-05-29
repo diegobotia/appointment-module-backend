@@ -6,16 +6,19 @@ import com.ipscentir.appointments.domain.model.appointment.AppointmentType;
 import com.ipscentir.appointments.domain.model.appointment.BookingChannel;
 import com.ipscentir.appointments.domain.repository.AppointmentRepository;
 import com.ipscentir.appointments.infrastructure.persistence.jpa.AppointmentJpaRepository;
+import jakarta.persistence.criteria.Join;
+import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
-import java.util.Comparator;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.stream.Stream;
 
 @Component
 @RequiredArgsConstructor
@@ -79,64 +82,44 @@ public class AppointmentRepositoryImpl implements AppointmentRepository {
 
     @Override
     public List<Appointment> search(AppointmentSearchFilter filter) {
-        Stream<Appointment> stream = baseStream(filter);
-
-        if (filter.sedeId() != null) {
-            stream = stream.filter(a -> filter.sedeId().equals(a.getSedeId()));
-        }
-        if (filter.medicoId() != null && !filter.medicoId().isBlank()) {
-            stream = stream.filter(a -> a.isAssignedToDoctor(filter.medicoId()));
-        }
-        if (filter.patientId() != null) {
-            stream = stream.filter(a -> filter.patientId().equals(a.getPatientId()));
-        }
-        if (filter.status() != null) {
-            stream = stream.filter(a -> filter.status() == a.getStatus());
-        }
-        if (filter.bookingChannel() != null) {
-            stream = stream.filter(a -> filter.bookingChannel() == a.getBookingChannel());
-        }
-        if (filter.fromDate() != null) {
-            stream = stream.filter(a -> !a.getAppointmentDate().isBefore(filter.fromDate()));
-        }
-        if (filter.toDate() != null) {
-            stream = stream.filter(a -> !a.getAppointmentDate().isAfter(filter.toDate()));
-        }
-
-        return stream
-                .sorted(Comparator.comparing(Appointment::getAppointmentDate).reversed()
-                        .thenComparing(Appointment::getAppointmentTime).reversed())
-                .toList();
+        Specification<Appointment> spec = buildSpecification(filter);
+        Sort sort = Sort.by(Sort.Direction.DESC, "appointmentDate", "appointmentTime");
+        return jpaRepository.findAll(spec, sort);
     }
 
-    private Stream<Appointment> baseStream(AppointmentSearchFilter filter) {
-        if (filter.medicoId() != null && !filter.medicoId().isBlank()
-                && filter.fromDate() != null && filter.toDate() != null) {
-            return jpaRepository.findByDoctorIdAndAppointmentDateBetween(
-                    filter.medicoId(), filter.fromDate(), filter.toDate()
-            ).stream();
-        }
-        if (filter.sedeId() != null && filter.fromDate() != null && filter.toDate() != null) {
-            return jpaRepository.findBySedeIdAndAppointmentDateBetween(
-                    filter.sedeId(), filter.fromDate(), filter.toDate()
-            ).stream();
-        }
-        if (filter.fromDate() != null && filter.toDate() != null) {
-            return jpaRepository.findByAppointmentDateBetween(filter.fromDate(), filter.toDate()).stream();
-        }
-        if (filter.medicoId() != null && !filter.medicoId().isBlank()) {
-            return jpaRepository.findByDoctorId(filter.medicoId()).stream();
-        }
-        if (filter.sedeId() != null) {
-            return jpaRepository.findBySedeId(filter.sedeId()).stream();
-        }
-        if (filter.patientId() != null) {
-            return jpaRepository.findByPatientId(filter.patientId()).stream();
-        }
-        if (filter.status() != null) {
-            return jpaRepository.findByStatus(filter.status()).stream();
-        }
-        return jpaRepository.findAll().stream();
+    private Specification<Appointment> buildSpecification(AppointmentSearchFilter filter) {
+        return (root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+
+            if (filter.sedeId() != null) {
+                predicates.add(cb.equal(root.get("sedeId"), filter.sedeId()));
+            }
+            if (filter.medicoId() != null && !filter.medicoId().isBlank()) {
+                Join<Object, Object> participants = root.join("participants");
+                predicates.add(cb.or(
+                        cb.equal(root.get("doctorId"), filter.medicoId()),
+                        cb.equal(participants.get("doctorId"), filter.medicoId())
+                ));
+                query.distinct(true);
+            }
+            if (filter.patientId() != null) {
+                predicates.add(cb.equal(root.get("patientId"), filter.patientId()));
+            }
+            if (filter.status() != null) {
+                predicates.add(cb.equal(root.get("status"), filter.status()));
+            }
+            if (filter.bookingChannel() != null) {
+                predicates.add(cb.equal(root.get("bookingChannel"), filter.bookingChannel()));
+            }
+            if (filter.fromDate() != null) {
+                predicates.add(cb.greaterThanOrEqualTo(root.get("appointmentDate"), filter.fromDate()));
+            }
+            if (filter.toDate() != null) {
+                predicates.add(cb.lessThanOrEqualTo(root.get("appointmentDate"), filter.toDate()));
+            }
+
+            return cb.and(predicates.toArray(new Predicate[0]));
+        };
     }
 
     @Override

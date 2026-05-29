@@ -10,7 +10,9 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.ipscentir.appointments.domain.model.appointment.BookingChannel;
 import java.time.LocalDateTime;
+import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
 import java.util.Map;
@@ -20,8 +22,6 @@ import java.util.stream.Collectors;
 @Service
 @Slf4j
 public class TherapyPendingGroupCutoffService {
-
-    private static final int THERAPY_GROUP_MIN = 4;
 
     private final AppointmentRepository appointmentRepository;
     private final TherapyUnderMinPolicy underMinPolicy;
@@ -68,7 +68,7 @@ public class TherapyPendingGroupCutoffService {
                     .filter(appointment -> appointment.getStatus() != AppointmentStatus.NO_SHOW)
                     .count();
 
-            if (activeGroupSize >= THERAPY_GROUP_MIN) {
+            if (activeGroupSize >= com.ipscentir.appointments.domain.service.HumanResourceAvailabilityService.THERAPY_GROUP_MIN) {
                 continue;
             }
 
@@ -84,19 +84,30 @@ public class TherapyPendingGroupCutoffService {
             return !cutoffDateTime.isAfter(now);
         }
 
-        return true;
+        return false;
     }
 
     private void applyUnderMinPolicy(List<Appointment> pendingAppointments, long activeGroupSize) {
         for (Appointment appointment : pendingAppointments) {
             switch (underMinPolicy) {
                 case CANCEL -> {
-                    appointment.cancel("Terapia grupal cancelada: no se alcanzo el minimo de " + THERAPY_GROUP_MIN + " pacientes.");
+                    appointment.cancel("Terapia grupal cancelada: no se alcanzo el minimo de " + com.ipscentir.appointments.domain.service.HumanResourceAvailabilityService.THERAPY_GROUP_MIN + " pacientes.");
                     appointmentRepository.save(appointment);
                 }
                 case RESCHEDULE -> {
-                    appointment.cancel("Reagendar terapia: el grupo no alcanzo el minimo de " + THERAPY_GROUP_MIN + " pacientes al corte operativo.");
+                    LocalDate newDate = appointment.getAppointmentDate().plusDays(7);
+                    appointment.reschedule(
+                            newDate,
+                            appointment.getAppointmentTime(),
+                            appointment.getScheduleId(),
+                            appointment.getDoctorId(),
+                            appointment.getSedeId(),
+                            BookingChannel.STAFF,
+                            null
+                    );
                     appointmentRepository.save(appointment);
+                    log.info("Rescheduled pending therapy appointment={} from {} to {}",
+                            appointment.getId(), appointment.getAppointmentDate(), newDate);
                 }
                 case FORCE_CONFIRMATION -> {
                     appointment.confirm();

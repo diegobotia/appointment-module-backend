@@ -9,8 +9,6 @@ public record DashboardKpiResponse(
         long appointmentsTomorrow,
         long appointmentsThisWeek,
         Map<String, Long> appointmentsByStatus,
-        long pqrsOpen,
-        long notificationsFailed,
-        long notificationsPendingRetry
+        long pqrsOpen
 ) {
 }

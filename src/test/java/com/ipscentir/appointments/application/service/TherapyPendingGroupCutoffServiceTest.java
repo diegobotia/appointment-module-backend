@@ -18,6 +18,7 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
@@ -31,7 +32,7 @@ class TherapyPendingGroupCutoffServiceTest {
     private AppointmentRepository appointmentRepository;
 
     @Test
-    void shouldCancelPendingTherapyWhenPolicyIsRescheduleAndCutoffReached() {
+    void shouldReschedulePendingTherapyWhenPolicyIsRescheduleAndCutoffReached() {
         TherapyPendingGroupCutoffService service = new TherapyPendingGroupCutoffService(
                 appointmentRepository,
                 "RESCHEDULE",
@@ -40,6 +41,7 @@ class TherapyPendingGroupCutoffServiceTest {
 
         LocalDateTime now = LocalDateTime.now();
         Appointment pending = buildPendingTherapy(now.plusMinutes(45));
+        LocalDate originalDate = pending.getAppointmentDate();
 
         when(appointmentRepository.findByStatusAndAppointmentTypeIn(eq(AppointmentStatus.PENDIENTE_CONFIRMACION_GRUPO), any()))
                 .thenReturn(List.of(pending));
@@ -52,7 +54,8 @@ class TherapyPendingGroupCutoffServiceTest {
 
         service.processPendingTherapySlots(now);
 
-        assertEquals(AppointmentStatus.CANCELLED, pending.getStatus());
+        assertEquals(AppointmentStatus.PENDIENTE_CONFIRMACION_GRUPO, pending.getStatus());
+        assertEquals(originalDate.plusDays(7), pending.getAppointmentDate());
         verify(appointmentRepository).save(pending);
     }
 

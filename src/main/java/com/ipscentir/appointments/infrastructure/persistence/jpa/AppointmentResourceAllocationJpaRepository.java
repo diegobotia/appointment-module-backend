@@ -2,13 +2,16 @@ package com.ipscentir.appointments.infrastructure.persistence.jpa;
 
 import com.ipscentir.appointments.domain.model.facility.AppointmentResourceAllocation;
 import com.ipscentir.appointments.domain.model.facility.FacilityResourceType;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -88,4 +91,21 @@ public interface AppointmentResourceAllocationJpaRepository extends JpaRepositor
                         @Param("startTime") LocalTime startTime,
                         @Param("endTime") LocalTime endTime,
                         @Param("excludeAppointmentId") UUID excludeAppointmentId);
+
+        @Lock(LockModeType.PESSIMISTIC_WRITE)
+        @Query("""
+                        SELECT a FROM AppointmentResourceAllocation a
+                        WHERE a.sedeId = :sedeId
+                          AND a.resourceType = :resourceType
+                          AND a.appointmentDate = :appointmentDate
+                          AND a.releasedAt IS NULL
+                          AND a.startTime < :endTime
+                          AND a.endTime > :startTime
+                        """)
+        List<AppointmentResourceAllocation> findOccupiedForUpdate(
+                        @Param("sedeId") Integer sedeId,
+                        @Param("resourceType") FacilityResourceType resourceType,
+                        @Param("appointmentDate") LocalDate appointmentDate,
+                        @Param("startTime") LocalTime startTime,
+                        @Param("endTime") LocalTime endTime);
 }

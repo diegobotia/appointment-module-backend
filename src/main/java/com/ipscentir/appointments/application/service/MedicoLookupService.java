@@ -103,6 +103,21 @@ public class MedicoLookupService {
         return medicoEspecialidadRepository.findActiveSpecialties(medicoUuid);
     }
 
+    public Map<String, List<String>> findAllActiveSpecialtiesByMedicoIds(List<String> medicoIds) {
+        List<UUID> uuids = medicoIds.stream()
+                .map(this::parseUuid)
+                .filter(Objects::nonNull)
+                .toList();
+        if (uuids.isEmpty()) {
+            return Map.of();
+        }
+        return medicoEspecialidadRepository.findActiveSpecialtiesByMedicoIds(uuids).stream()
+                .collect(Collectors.groupingBy(
+                        row -> row[0].toString(),
+                        Collectors.mapping(row -> (String) row[1], Collectors.toList())
+                ));
+    }
+
     public Optional<String> findPrimarySpecialty(String medicoId) {
         return findActiveSpecialties(medicoId).stream().findFirst();
     }

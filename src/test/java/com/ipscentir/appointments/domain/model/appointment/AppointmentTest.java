@@ -185,6 +185,6 @@ class AppointmentTest {
                 .build();
 
         IllegalStateException ex = assertThrows(IllegalStateException.class, () -> pastAppointment.cancel("Too late"));
-        assertEquals("Cannot cancel an appointment in the past", ex.getMessage());
+        assertEquals("Cannot cancel an appointment that has already passed", ex.getMessage());
     }
 }

@@ -108,12 +108,15 @@ public class Appointment extends AbstractAggregateRoot<Appointment> {
     }
 
     public void cancel(String reason) {
-        if (this.status == AppointmentStatus.CANCELLED || this.status == AppointmentStatus.COMPLETED) {
+        if (this.status == AppointmentStatus.CANCELLED
+                || this.status == AppointmentStatus.COMPLETED
+                || this.status == AppointmentStatus.NO_SHOW) {
             throw new IllegalStateException("Appointment cannot be cancelled from its current state");
         }
 
-        if (this.appointmentDate.isBefore(LocalDate.now())) {
-            throw new IllegalStateException("Cannot cancel an appointment in the past");
+        LocalDateTime appointmentDateTime = LocalDateTime.of(this.appointmentDate, this.appointmentTime);
+        if (!appointmentDateTime.isAfter(LocalDateTime.now())) {
+            throw new IllegalStateException("Cannot cancel an appointment that has already passed");
         }
 
         this.status = AppointmentStatus.CANCELLED;
@@ -272,7 +275,10 @@ public class Appointment extends AbstractAggregateRoot<Appointment> {
             Integer newSedeId,
             BookingChannel channel,
             String conversationId) {
-        if (this.status == AppointmentStatus.CANCELLED || this.status == AppointmentStatus.COMPLETED) {
+        if (this.status == AppointmentStatus.CANCELLED
+                || this.status == AppointmentStatus.COMPLETED
+                || this.status == AppointmentStatus.NO_SHOW
+                || this.status == AppointmentStatus.CHECKED_IN) {
             throw new IllegalStateException("Cannot reschedule an appointment in its current state");
         }
         if (newDate.isBefore(LocalDate.now())) {
@@ -318,6 +324,12 @@ public class Appointment extends AbstractAggregateRoot<Appointment> {
     public void transitionGroupPendingToScheduled() {
         if (this.status == AppointmentStatus.PENDIENTE_CONFIRMACION_GRUPO) {
             this.status = AppointmentStatus.SCHEDULED;
+        }
+    }
+
+    public void regressScheduledToGroupPending() {
+        if (this.status == AppointmentStatus.SCHEDULED) {
+            this.status = AppointmentStatus.PENDIENTE_CONFIRMACION_GRUPO;
         }
     }
 

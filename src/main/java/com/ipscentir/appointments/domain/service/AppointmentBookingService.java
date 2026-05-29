@@ -15,14 +15,10 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.locks.ReentrantLock;
 
 @Service
 @RequiredArgsConstructor
 public class AppointmentBookingService {
-
-    private static final ConcurrentHashMap<String, ReentrantLock> THERAPY_SLOT_LOCKS = new ConcurrentHashMap<>();
 
     private final HumanResourceAvailabilityService humanResourceAvailabilityService;
     private final AppointmentRepository appointmentRepository;
@@ -31,11 +27,23 @@ public class AppointmentBookingService {
     private final TransactionTemplate transactionTemplate;
 
     public Appointment bookAppointment(AppointmentBookingRequest request) {
-        if (isTherapy(request.type())) {
-            return bookTherapyUnderLock(request);
+        if (transactionTemplate == null) {
+            if (isTherapy(request.type())) {
+                return bookTherapyAppointment(request);
+            }
+            return bookRegularAppointment(request);
         }
 
-        return runInTransaction(request);
+        Appointment appointment = transactionTemplate.execute(status -> {
+            if (isTherapy(request.type())) {
+                return bookTherapyAppointment(request);
+            }
+            return bookRegularAppointment(request);
+        });
+        if (appointment == null) {
+            throw new IllegalStateException("Transaction returned null appointment");
+        }
+        return appointment;
     }
 
     @Transactional
@@ -45,22 +53,47 @@ public class AppointmentBookingService {
 
         appointment.cancel(reason);
         resourceCapacityService.release(appointmentId);
-        return appointmentRepository.save(appointment);
+        Appointment saved = appointmentRepository.save(appointment);
+
+        if (isTherapy(appointment.getAppointmentType())) {
+            reEvaluateTherapyGroup(appointment);
+        }
+
+        return saved;
+    }
+
+    private void reEvaluateTherapyGroup(Appointment appointment) {
+        List<Appointment> remaining = appointmentRepository.findByScheduleAndDateAndTimeAndTypeForUpdate(
+                appointment.getScheduleId(),
+                appointment.getAppointmentDate(),
+                appointment.getAppointmentTime(),
+                appointment.getAppointmentType()
+        );
+        long activeGroupSize = remaining.stream()
+                .filter(a -> a.getStatus() != AppointmentStatus.CANCELLED && a.getStatus() != AppointmentStatus.NO_SHOW)
+                .count();
+
+        if (activeGroupSize < HumanResourceAvailabilityService.THERAPY_GROUP_MIN) {
+            remaining.stream()
+                    .filter(a -> a.getStatus() == AppointmentStatus.SCHEDULED)
+                    .forEach(Appointment::regressScheduledToGroupPending);
+            appointmentRepository.saveAll(remaining);
+        }
     }
 
     public Appointment bookAdministrativeAppointment(AdministrativeAppointmentBookingRequest request) {
         if (transactionTemplate == null) {
-            return bookAdministrativeAppointmentTransactional(request);
+            return bookAdministrativeInternal(request);
         }
 
-        Appointment appointment = transactionTemplate.execute(status -> bookAdministrativeAppointmentTransactional(request));
+        Appointment appointment = transactionTemplate.execute(status -> bookAdministrativeInternal(request));
         if (appointment == null) {
             throw new IllegalStateException("Transaction returned null appointment");
         }
         return appointment;
     }
 
-    private Appointment bookAdministrativeAppointmentTransactional(AdministrativeAppointmentBookingRequest request) {
+    private Appointment bookAdministrativeInternal(AdministrativeAppointmentBookingRequest request) {
         int duration = request.resolvedDurationMinutes();
 
         humanResourceAvailabilityService.assertAdministrativeBookingAllowed(
@@ -81,7 +114,7 @@ public class AppointmentBookingService {
                 null
         );
 
-        Appointment appointment = Appointment.scheduleStaffMeeting(
+        Appointment created = Appointment.scheduleStaffMeeting(
                 request.participantDoctorIds(),
                 new AppointmentScheduleData(
                         null,
@@ -96,37 +129,12 @@ public class AppointmentBookingService {
                 BookingChannel.STAFF
         );
 
-        Appointment saved = appointmentRepository.save(appointment);
+        Appointment saved = appointmentRepository.save(created);
         resourceCapacityService.allocate(saved);
         return saved;
     }
 
-    private Appointment bookTherapyUnderLock(AppointmentBookingRequest request) {
-        String lockKey = request.scheduleId() + "|" + request.sedeId() + "|" + request.date()
-                + "|" + request.time() + "|" + request.type();
-        ReentrantLock lock = THERAPY_SLOT_LOCKS.computeIfAbsent(lockKey, ignored -> new ReentrantLock());
-
-        lock.lock();
-        try {
-            return runInTransaction(request);
-        } finally {
-            lock.unlock();
-        }
-    }
-
-    private Appointment runInTransaction(AppointmentBookingRequest request) {
-        if (transactionTemplate == null) {
-            return bookAppointmentTransactional(request);
-        }
-
-        Appointment appointment = transactionTemplate.execute(status -> bookAppointmentTransactional(request));
-        if (appointment == null) {
-            throw new IllegalStateException("Transaction returned null appointment");
-        }
-        return appointment;
-    }
-
-    private Appointment bookAppointmentTransactional(AppointmentBookingRequest request) {
+    private Appointment bookRegularAppointment(AppointmentBookingRequest request) {
         Schedule schedule = scheduleRepository.findById(request.scheduleId())
                 .orElseThrow(() -> new IllegalArgumentException("Schedule not found"));
         int blockDuration = schedule.getSlotDurationMinutes();
@@ -145,18 +153,6 @@ public class AppointmentBookingService {
         );
 
         humanResourceAvailabilityService.assertBookingAllowed(context);
-
-        if (isTherapy(request.type())) {
-            humanResourceAvailabilityService.assertTherapyGroupAllowsNewPatient(
-                    request.scheduleId(),
-                    request.date(),
-                    request.time(),
-                    request.type()
-            );
-            Appointment saved = bookTherapyAppointment(request, blockDuration, consultorioId);
-            resourceCapacityService.allocate(saved, consultorioId);
-            return saved;
-        }
 
         resourceCapacityService.assertCanAllocate(
                 request.sedeId(),
@@ -191,7 +187,32 @@ public class AppointmentBookingService {
         return saved;
     }
 
-    private Appointment bookTherapyAppointment(AppointmentBookingRequest request, Integer duration, UUID consultorioId) {
+    private Appointment bookTherapyAppointment(AppointmentBookingRequest request) {
+        Schedule schedule = scheduleRepository.findById(request.scheduleId())
+                .orElseThrow(() -> new IllegalArgumentException("Schedule not found"));
+        int blockDuration = schedule.getSlotDurationMinutes();
+        UUID consultorioId = schedule.getConsultorioId();
+
+        HumanResourceBookingContext context = HumanResourceBookingContext.forBooking(
+                request.patientId(),
+                request.doctorId(),
+                request.secondaryDoctorId(),
+                request.scheduleId(),
+                request.sedeId(),
+                request.date(),
+                request.time(),
+                request.type(),
+                blockDuration
+        );
+
+        humanResourceAvailabilityService.assertBookingAllowed(context);
+        humanResourceAvailabilityService.assertTherapyGroupAllowsNewPatient(
+                request.scheduleId(),
+                request.date(),
+                request.time(),
+                request.type()
+        );
+
         List<Appointment> slotAppointments = appointmentRepository.findByScheduleAndDateAndTimeAndTypeForUpdate(
                 request.scheduleId(),
                 request.date(),
@@ -208,7 +229,7 @@ public class AppointmentBookingService {
                 request.scheduleId(),
                 request.date(),
                 request.time(),
-                duration,
+                blockDuration,
                 null,
                 consultorioId
         );
@@ -226,7 +247,7 @@ public class AppointmentBookingService {
                         request.sedeId(),
                         request.date(),
                         request.time(),
-                        duration,
+                        blockDuration,
                         request.type(),
                         initialStatus,
                         request.reason()
@@ -236,6 +257,8 @@ public class AppointmentBookingService {
         );
 
         Appointment saved = appointmentRepository.save(appointment);
+
+        resourceCapacityService.allocate(saved, consultorioId);
 
         List<Appointment> refreshed = appointmentRepository.findByScheduleAndDateAndTimeAndTypeForUpdate(
                 request.scheduleId(),

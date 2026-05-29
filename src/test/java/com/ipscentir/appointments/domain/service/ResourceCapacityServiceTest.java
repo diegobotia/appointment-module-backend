@@ -21,6 +21,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -55,9 +56,14 @@ class ResourceCapacityServiceTest {
     void rejectsWhenConsultorioCapacityExceeded() {
         when(facilityResourceRepository.countActiveBySedeIdAndResourceType(sedeId, FacilityResourceType.CONSULTORIO))
                 .thenReturn(4L);
-        when(allocationRepository.countOccupiedCapacityUnits(
-                eq(sedeId), eq(FacilityResourceType.CONSULTORIO), eq(date), eq(time), any(), eq(null)))
-                .thenReturn(4L);
+        when(allocationRepository.findOccupiedForUpdate(
+                eq(sedeId), eq(FacilityResourceType.CONSULTORIO), eq(date), eq(time), any()))
+                .thenReturn(List.of(
+                        buildAllocation("key-1"),
+                        buildAllocation("key-2"),
+                        buildAllocation("key-3"),
+                        buildAllocation("key-4")
+                ));
         when(sedeRepository.findById(sedeId)).thenReturn(Optional.of(
                 Sede.builder().id(sedeId).nombre("Sede Test").build()
         ));
@@ -71,6 +77,14 @@ class ResourceCapacityServiceTest {
                 30,
                 null
         ));
+    }
+
+    private AppointmentResourceAllocation buildAllocation(String sessionKey) {
+        return AppointmentResourceAllocation.builder()
+                .appointmentId(UUID.randomUUID())
+                .capacitySessionKey(sessionKey)
+                .resourceType(FacilityResourceType.CONSULTORIO)
+                .build();
     }
 
     @Test

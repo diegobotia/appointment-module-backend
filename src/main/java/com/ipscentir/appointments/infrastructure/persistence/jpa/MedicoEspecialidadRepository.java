@@ -25,4 +25,12 @@ public interface MedicoEspecialidadRepository extends JpaRepository<MedicoEspeci
             ORDER BY me.especialidad ASC
             """)
     List<String> findActiveSpecialties(@Param("medicoId") UUID medicoId);
+
+    @Query("""
+            SELECT me.medicoId, me.especialidad
+            FROM MedicoEspecialidad me
+            WHERE me.medicoId IN :medicoIds
+              AND me.activo = true
+            """)
+    List<Object[]> findActiveSpecialtiesByMedicoIds(@Param("medicoIds") List<UUID> medicoIds);
 }

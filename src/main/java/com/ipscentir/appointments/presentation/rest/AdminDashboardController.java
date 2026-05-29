@@ -25,7 +25,7 @@ public class AdminDashboardController {
     private final AdminDashboardService adminDashboardService;
 
     @GetMapping("/kpis")
-    @Operation(summary = "KPIs de citas, PQRS y notificaciones")
+    @Operation(summary = "KPIs de citas y PQRS")
     public ResponseEntity<DashboardKpiResponse> getKpis(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date
     ) {

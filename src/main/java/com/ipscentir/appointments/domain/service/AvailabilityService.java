@@ -55,51 +55,23 @@ public class AvailabilityService {
             DayOfWeek dayOfWeek = currentDate.getDayOfWeek();
 
             List<Schedule> schedules = scheduleRepository.findBySedeIdAndDayOfWeek(sedeId, dayOfWeek);
-            for (Schedule schedule : schedules) {
-                if (!matchesServiceType(schedule.getSpecialty(), serviceType)) {
-                    continue;
-                }
+            List<String> doctorIds = schedules.stream()
+                    .filter(s -> matchesServiceType(s.getSpecialty(), serviceType))
+                    .map(Schedule::getDoctorId)
+                    .distinct()
+                    .toList();
 
-                List<LocalTime> possibleSlots = schedule.getAvailableSlots(currentDate);
-                List<Appointment> existingAppointments = appointmentRepository
-                        .findByDoctorIdAndDate(schedule.getDoctorId(), currentDate);
-                Map<LocalTime, Long> appointmentsPerSlot = existingAppointments.stream()
-                        .collect(Collectors.groupingBy(Appointment::getAppointmentTime, Collectors.counting()));
+            if (doctorIds.isEmpty()) {
+                continue;
+            }
 
-                for (LocalTime time : possibleSlots) {
-                    if (currentDate.equals(LocalDate.now()) && time.isBefore(LocalTime.now().plusHours(1))) {
-                        continue;
-                    }
-
-                    long occupiedSeats = appointmentsPerSlot.getOrDefault(time, 0L);
-                    int availableSeats = Math.max(0, schedule.getMaxPatientsPerSlot() - (int) occupiedSeats);
-
-                    if (availableSeats <= 0) {
-                        continue;
-                    }
-
-                    boolean physicalCapacity = resourceCapacityService.hasPhysicalCapacityForService(
-                            sedeId,
-                            serviceType,
-                            schedule.getId(),
-                            currentDate,
-                            time,
-                            schedule.getSlotDurationMinutes());
-                    if (!physicalCapacity) {
-                        continue;
-                    }
-
-                    nearestSlots.add(new AvailableSlotDetail(
-                            schedule.getId(),
-                            schedule.getDoctorId(),
-                            schedule.getSedeId(),
-                            serviceType,
-                            schedule.getSpecialty(),
-                            currentDate,
-                            time,
-                            schedule.getSlotDurationMinutes(),
-                            availableSeats,
-                            true));
+            if (doctorIds.size() == 1) {
+                String singleDoctorId = doctorIds.getFirst();
+                populateNearestSlots(schedules, serviceType, sedeId, currentDate, singleDoctorId, nearestSlots, limit);
+            } else {
+                for (String doctorId : doctorIds) {
+                    if (nearestSlots.size() >= limit) break;
+                    populateNearestSlots(schedules, serviceType, sedeId, currentDate, doctorId, nearestSlots, limit);
                 }
             }
         }
@@ -111,6 +83,51 @@ public class AvailabilityService {
                         .thenComparing(AvailableSlotDetail::doctorId))
                 .limit(limit)
                 .toList();
+    }
+
+    private void populateNearestSlots(
+            List<Schedule> schedules,
+            AppointmentServiceType serviceType,
+            Integer sedeId,
+            LocalDate currentDate,
+            String doctorId,
+            List<AvailableSlotDetail> nearestSlots,
+            int limit) {
+        List<Appointment> existingAppointments = appointmentRepository
+                .findByDoctorIdAndDate(doctorId, currentDate);
+        Map<LocalTime, Long> appointmentsPerSlot = existingAppointments.stream()
+                .collect(Collectors.groupingBy(Appointment::getAppointmentTime, Collectors.counting()));
+
+        for (Schedule schedule : schedules) {
+            if (!schedule.getDoctorId().equals(doctorId)) continue;
+            if (!matchesServiceType(schedule.getSpecialty(), serviceType)) continue;
+
+            List<LocalTime> possibleSlots = schedule.getAvailableSlots(currentDate);
+
+            for (LocalTime time : possibleSlots) {
+                if (nearestSlots.size() >= limit) return;
+
+                if (currentDate.equals(LocalDate.now()) && time.isBefore(LocalTime.now().plusHours(1))) {
+                    continue;
+                }
+
+                long occupiedSeats = appointmentsPerSlot.getOrDefault(time, 0L);
+                int availableSeats = Math.max(0, schedule.getMaxPatientsPerSlot() - (int) occupiedSeats);
+
+                if (availableSeats <= 0) continue;
+
+                boolean physicalCapacity = resourceCapacityService.hasPhysicalCapacityForService(
+                        sedeId, serviceType, schedule.getId(),
+                        currentDate, time, schedule.getSlotDurationMinutes());
+                if (!physicalCapacity) continue;
+
+                nearestSlots.add(new AvailableSlotDetail(
+                        schedule.getId(), schedule.getDoctorId(), schedule.getSedeId(),
+                        serviceType, schedule.getSpecialty(),
+                        currentDate, time, schedule.getSlotDurationMinutes(),
+                        availableSeats, true));
+            }
+        }
     }
 
     public List<AvailableSlot> getAvailableSlots(String doctorId, Integer sedeId, LocalDate date) {

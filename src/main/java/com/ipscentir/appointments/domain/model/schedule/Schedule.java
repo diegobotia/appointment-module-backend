@@ -82,7 +82,7 @@ public class Schedule {
         List<LocalTime> slots = new ArrayList<>();
         LocalTime currentSlot = this.startTime;
 
-        while (currentSlot.isBefore(this.endTime)) {
+        while (!currentSlot.plusMinutes(this.slotDurationMinutes).isAfter(this.endTime)) {
             if (!isSlotBlocked(date, currentSlot)) {
                 slots.add(currentSlot);
             }

@@ -56,11 +56,6 @@
             <artifactId>spring-boot-starter-security</artifactId>
         </dependency>
         <dependency>
-            <groupId>com.twilio.sdk</groupId>
-            <artifactId>twilio</artifactId>
-            <version>10.4.0</version>
-        </dependency>
-        <dependency>
             <groupId>org.springdoc</groupId>
             <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
             <version>2.3.0</version>
@@ -149,7 +144,6 @@
                                     <includes>
                                         <include>com.ipscentir.appointments.application.service.AppointmentApplicationService</include>
                                         <include>com.ipscentir.appointments.application.service.N8nPatientIntegrationService</include>
-                                        <include>com.ipscentir.appointments.application.service.NotificationDispatchService</include>
                                         <include>com.ipscentir.appointments.application.service.N8nIdempotencyService</include>
                                         <include>com.ipscentir.appointments.application.service.PatientRegistrationService</include>
                                         <include>com.ipscentir.appointments.application.service.TherapyPendingGroupCutoffService</include>

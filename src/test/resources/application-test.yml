@@ -32,16 +32,4 @@ appointments:
     pending-group-policy: RESCHEDULE
     pending-group-cutoff-minutes: 120
 
-notifications:
-  enabled: true
-  created-alert-enabled: true
-  cancelled-alert-enabled: true
-  reminder-24h-enabled: false
-  reminder-2h-enabled: false
-  max-retry-attempts: 3
 
-twilio:
-  enabled: false
-
-resend:
-  enabled: false

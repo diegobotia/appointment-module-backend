@@ -2,13 +2,10 @@ package com.ipscentir.appointments.application.service;
 
 import com.ipscentir.appointments.application.dto.admin.DashboardKpiResponse;
 import com.ipscentir.appointments.domain.model.appointment.AppointmentStatus;
-import com.ipscentir.appointments.domain.model.notification.NotificationStatus;
 import com.ipscentir.appointments.domain.model.pqrs.PqrsStatus;
 import com.ipscentir.appointments.domain.repository.AppointmentRepository;
-import com.ipscentir.appointments.domain.repository.NotificationRepository;
 import com.ipscentir.appointments.domain.repository.PqrsRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,10 +19,6 @@ public class AdminDashboardService {
 
     private final AppointmentRepository appointmentRepository;
     private final PqrsRepository pqrsRepository;
-    private final NotificationRepository notificationRepository;
-
-    @Value("${notifications.max-retry-attempts:3}")
-    private int maxRetryAttempts;
 
     @Transactional(readOnly = true)
     public DashboardKpiResponse getKpis(LocalDate referenceDate) {
@@ -47,9 +40,7 @@ public class AdminDashboardService {
                 appointmentRepository.countByAppointmentDate(tomorrow),
                 appointmentRepository.countByAppointmentDateBetween(today, weekEnd),
                 byStatus,
-                pqrsOpen,
-                notificationRepository.countByStatus(NotificationStatus.FAILED),
-                notificationRepository.countRetryable(maxRetryAttempts)
+                pqrsOpen
         );
     }
 }

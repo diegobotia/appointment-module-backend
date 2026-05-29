@@ -17,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -81,17 +82,50 @@ public class ResourceCapacityService {
             UUID facilityResourceId
     ) {
         FacilityResourceType resourceType = AppointmentResourceTypeResolver.forAppointmentType(appointmentType);
-        if (!canAllocate(sedeId, resourceType, appointmentType, scheduleId, date, startTime, durationMinutes, excludeAppointmentId, facilityResourceId)) {
+        int totalUnits = totalUnits(sedeId, resourceType);
+        if (totalUnits == 0) return;
+
+        LocalTime endTime = endTime(startTime, durationMinutes);
+        String sessionKey = capacitySessionKey(sedeId, appointmentType, scheduleId, date, startTime, null);
+
+        if (isTherapy(appointmentType) && allocationRepository.existsActiveSessionKey(sessionKey)) return;
+
+        long occupied;
+        if (facilityResourceId != null) {
+            occupied = allocationRepository.countOccupiedForResource(
+                    facilityResourceId, date, startTime, endTime, excludeAppointmentId);
+            Optional<FacilityResource> resource = facilityResourceRepository.findById(facilityResourceId);
+            int capacity = resource.map(FacilityResource::getCapacityUnits).orElse(0);
+            if (occupied >= capacity) {
+                throw buildCapacityException(sedeId, resourceType, appointmentType, date, startTime, durationMinutes, excludeAppointmentId);
+            }
+            return;
+        }
+
+        occupied = countOccupiedWithLock(sedeId, resourceType, date, startTime, endTime, excludeAppointmentId);
+        if (occupied >= totalUnits) {
             throw buildCapacityException(sedeId, resourceType, appointmentType, date, startTime, durationMinutes, excludeAppointmentId);
         }
     }
 
-    @Transactional
+    private long countOccupiedWithLock(Integer sedeId, FacilityResourceType resourceType, LocalDate date, LocalTime startTime, LocalTime endTime, UUID excludeAppointmentId) {
+        List<AppointmentResourceAllocation> allocations = allocationRepository.findOccupiedForUpdate(
+                sedeId, resourceType, date, startTime, endTime);
+        if (excludeAppointmentId != null) {
+            allocations = allocations.stream()
+                    .filter(a -> !a.getAppointmentId().equals(excludeAppointmentId))
+                    .toList();
+        }
+        return allocations.stream()
+                .map(AppointmentResourceAllocation::getCapacitySessionKey)
+                .distinct()
+                .count();
+    }
+
     public void allocate(Appointment appointment) {
         allocate(appointment, null);
     }
 
-    @Transactional
     public void allocate(Appointment appointment, UUID facilityResourceId) {
         FacilityResourceType resourceType = AppointmentResourceTypeResolver.forAppointmentType(appointment.getAppointmentType());
         int totalUnits = totalUnits(sedeId(appointment), resourceType);
@@ -101,7 +135,7 @@ public class ResourceCapacityService {
 
         if (facilityResourceId != null) {
             Optional<FacilityResource> resource = facilityResourceRepository.findById(facilityResourceId);
-            if (resource.isPresent() && !resource.get().isActive()) {
+            if (resource.isEmpty() || !resource.get().isActive()) {
                 return;
             }
         }
@@ -139,10 +173,10 @@ public class ResourceCapacityService {
                         .startTime(appointment.getAppointmentTime())
                         .endTime(endTime)
                         .capacitySessionKey(sessionKey)
-                        .build()));
+                        .build())
+        );
     }
 
-    @Transactional
     public void release(UUID appointmentId) {
         allocationRepository.findActiveByAppointmentId(appointmentId).ifPresent(allocation -> {
             allocation.release();
@@ -150,7 +184,6 @@ public class ResourceCapacityService {
         });
     }
 
-    @Transactional
     public void reallocate(Appointment appointment) {
         release(appointment.getId());
         assertCanAllocate(
@@ -165,7 +198,6 @@ public class ResourceCapacityService {
         allocate(appointment);
     }
 
-    @Transactional
     public void reallocate(Appointment appointment, UUID facilityResourceId) {
         release(appointment.getId());
         assertCanAllocate(
