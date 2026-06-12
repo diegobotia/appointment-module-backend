@@ -4,7 +4,6 @@ import com.ipscentir.appointments.domain.model.facility.FacilityResourceType;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
-import java.util.UUID;
 
 public class ResourceCapacityExceededException extends IllegalStateException {
 

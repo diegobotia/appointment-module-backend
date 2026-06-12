@@ -2,10 +2,13 @@ package com.ipscentir.appointments.application.service;
 
 import com.ipscentir.appointments.application.dto.AppointmentDTO;
 import com.ipscentir.appointments.application.dto.CreateAdministrativeAppointmentCommand;
+import com.ipscentir.appointments.application.dto.CreateAdminOverrideAppointmentCommand;
 import com.ipscentir.appointments.application.dto.CreateAppointmentCommand;
+import com.ipscentir.appointments.application.dto.CreateBloqueoAppointmentCommand;
 import com.ipscentir.appointments.application.security.SedeAuthorizationService;
 import com.ipscentir.appointments.domain.model.appointment.Appointment;
 import com.ipscentir.appointments.domain.model.appointment.AppointmentType;
+import com.ipscentir.appointments.domain.model.appointment.BookingChannel;
 import com.ipscentir.appointments.domain.service.AdministrativeAppointmentBookingRequest;
 import com.ipscentir.appointments.domain.service.AppointmentBookingRequest;
 import com.ipscentir.appointments.domain.service.AppointmentBookingService;
@@ -36,7 +39,7 @@ public class AppointmentApplicationService {
                 new AppointmentBookingRequest(
                         command.patientId(),
                         command.medicoId(),
-                        command.secondaryMedicoId(),
+                        command.resolvedAdditionalMedicoIds(),
                         command.scheduleId(),
                         command.sedeId(),
                         command.appointmentDate(),
@@ -65,6 +68,53 @@ public class AppointmentApplicationService {
                         command.resolvedDurationMinutes(),
                         command.reason()
                 )
+        );
+
+        appointmentsMetrics.recordAppointmentCreated(appointment.getBookingChannel());
+        return appointmentEnrichmentService.toDto(appointment);
+    }
+
+    public AppointmentDTO createBloqueoAppointment(CreateBloqueoAppointmentCommand command) {
+        sedeAuthorizationService.assertCurrentUserCanAccessSede(command.sedeId());
+
+        Appointment appointment = appointmentBookingService.bookAppointment(
+                new AppointmentBookingRequest(
+                        command.patientId(),
+                        command.medicoId(),
+                        List.of(),
+                        null,
+                        command.sedeId(),
+                        command.appointmentDate(),
+                        command.appointmentTime(),
+                        AppointmentType.BLOQUEO,
+                        command.reason(),
+                        BookingChannel.STAFF,
+                        null
+                )
+        );
+
+        appointmentsMetrics.recordAppointmentCreated(appointment.getBookingChannel());
+        return appointmentEnrichmentService.toDto(appointment);
+    }
+
+    public AppointmentDTO createAdminOverrideAppointment(CreateAdminOverrideAppointmentCommand command) {
+        AppointmentType type = AppointmentType.valueOf(command.appointmentType().toUpperCase());
+
+        Appointment appointment = appointmentBookingService.bookAdminOverrideAppointment(
+                new AppointmentBookingRequest(
+                        command.patientId(),
+                        command.medicoId(),
+                        command.additionalMedicoIds(),
+                        null,
+                        command.sedeId(),
+                        command.appointmentDate(),
+                        command.appointmentTime(),
+                        type,
+                        command.reason(),
+                        BookingChannel.STAFF,
+                        null
+                ),
+                command.durationMinutes()
         );
 
         appointmentsMetrics.recordAppointmentCreated(appointment.getBookingChannel());

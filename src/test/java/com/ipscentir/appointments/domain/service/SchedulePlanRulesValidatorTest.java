@@ -47,38 +47,11 @@ class SchedulePlanRulesValidatorTest {
     }
 
     @Test
-    void rejectsDurationShorterThanTwoMonths() {
+    void rejectsDurationShorterThanOneMonth() {
         IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () ->
-                validator.validateDuration(LocalDate.of(2026, 4, 1), LocalDate.of(2026, 5, 31))
+                validator.validateDuration(LocalDate.of(2026, 4, 1), LocalDate.of(2026, 4, 15))
         );
-        assertTrue(ex.getMessage().contains("at least 2 months"));
-    }
-
-    @Test
-    void rejectsDurationLongerThanThreeMonths() {
-        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () ->
-                validator.validateDuration(LocalDate.of(2026, 4, 1), LocalDate.of(2026, 8, 1))
-        );
-        assertTrue(ex.getMessage().contains("not exceed 3 months"));
-    }
-
-    @Test
-    void rejectsDailyWorkloadBelowEightHours() {
-        List<CreateSchedulePlanSlotRequest> slots = List.of(
-                new CreateSchedulePlanSlotRequest(
-                        DayOfWeek.MONDAY,
-                        LocalTime.of(8, 0),
-                        LocalTime.of(12, 0),
-                        30,
-                        1,
-                        UUID.randomUUID()
-                )
-        );
-
-        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () ->
-                validator.validateSlotsForCreation(slots)
-        );
-        assertTrue(ex.getMessage().contains("minimum workload"));
+        assertTrue(ex.getMessage().contains("at least 1 month"));
     }
 
     @Test

@@ -2,8 +2,6 @@ package com.ipscentir.appointments.application.exception;
 
 import com.ipscentir.appointments.domain.service.FacilityOperatingWindow;
 
-import java.util.UUID;
-
 /**
  * El slot o bloque propuesto excede el horario institucional de la sede.
  */

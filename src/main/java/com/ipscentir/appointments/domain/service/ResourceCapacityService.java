@@ -290,6 +290,7 @@ public class ResourceCapacityService {
             case FISIOTERAPIA -> "salas de fisioterapia";
             case TERAPIA_OCUPACIONAL -> "salas de terapia ocupacional";
             case REUNION_STAFF -> "salas de reunión";
+            case SIN_RECURSO -> "sin recurso físico";
         };
 
         return new ResourceCapacityExceededException(

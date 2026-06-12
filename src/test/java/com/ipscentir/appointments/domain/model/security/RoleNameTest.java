@@ -8,16 +8,16 @@ class RoleNameTest {
 
     @Test
     void shouldResolveSupabaseRoleNames() {
-        assertThat(RoleName.fromSupabaseNombre("Administracion")).contains(RoleName.ADMINISTRACION);
-        assertThat(RoleName.fromSupabaseNombre("Medico")).contains(RoleName.MEDICO);
-        assertThat(RoleName.fromSupabaseNombre("Admisiones")).contains(RoleName.ADMISIONES);
-        assertThat(RoleName.fromSupabaseNombre("Asesor")).contains(RoleName.ASESOR);
-        assertThat(RoleName.fromSupabaseNombre("Facturacion")).contains(RoleName.FACTURACION);
+        assertThat(RoleName.fromNombre("Administracion")).contains(RoleName.ADMINISTRACION);
+        assertThat(RoleName.fromNombre("Medico")).contains(RoleName.MEDICO);
+        assertThat(RoleName.fromNombre("Admisiones")).contains(RoleName.ADMISIONES);
+        assertThat(RoleName.fromNombre("Asesor")).contains(RoleName.ASESOR);
+        assertThat(RoleName.fromNombre("Facturacion")).contains(RoleName.FACTURACION);
     }
 
     @Test
     void shouldNotResolveLegacyRoles() {
-        assertThat(RoleName.fromSupabaseNombre("Superadmin")).isEmpty();
-        assertThat(RoleName.fromSupabaseNombre("Paciente")).isEmpty();
+        assertThat(RoleName.fromNombre("Superadmin")).isEmpty();
+        assertThat(RoleName.fromNombre("Paciente")).isEmpty();
     }
 }

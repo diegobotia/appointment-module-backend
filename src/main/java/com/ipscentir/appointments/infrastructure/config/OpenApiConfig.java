@@ -33,7 +33,7 @@ public class OpenApiConfig {
                                 .type(SecurityScheme.Type.HTTP)
                                 .scheme("bearer")
                                 .bearerFormat("JWT")
-                                .description("JWT de Supabase Auth (panel interno)")))
+                                .description("JWT del módulo de autenticación (panel interno)")))
                 .addSecurityItem(new SecurityRequirement().addList(BEARER_SCHEME))
                 .info(new Info()
                         .title("API de Módulo de Citas - IPS Centir")
@@ -42,7 +42,7 @@ public class OpenApiConfig {
                                 API REST del módulo de citas médicas IPS Centir.
 
                                 **Autenticación**
-                                - Panel interno: `Authorization: Bearer <jwt_supabase>` (obtener token vía SDK Supabase).
+                                - Panel interno: `Authorization: Bearer <jwt>` (obtener token vía módulo de autenticación).
                                 - n8n / chat paciente: header `X-API-Key` en `/api/v1/integrations/n8n/**` (no usar JWT).
 
                                 **Contratos clave (panel)**

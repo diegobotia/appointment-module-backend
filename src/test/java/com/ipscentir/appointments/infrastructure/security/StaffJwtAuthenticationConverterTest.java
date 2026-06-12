@@ -23,7 +23,7 @@ import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-class SupabaseJwtAuthenticationConverterTest {
+class StaffJwtAuthenticationConverterTest {
 
     @Mock
     private ProfileRepository profileRepository;
@@ -35,16 +35,18 @@ class SupabaseJwtAuthenticationConverterTest {
     private MedicoProfileResolver medicoProfileResolver;
 
     @InjectMocks
-    private SupabaseJwtAuthenticationConverter converter;
+    private StaffJwtAuthenticationConverter converter;
 
     @Test
-    void shouldUseProfileRoleWhenJwtOnlyHasAuthenticatedClaim() {
+    void shouldResolveRoleFromProfileByEmail() {
         UUID profileId = UUID.fromString("5d40fca9-a0f6-4d8b-904e-b2ccef4a327f");
         UUID roleId = UUID.fromString("ce044ba3-b0e7-4114-961c-5173a00adf01");
+        String email = "admin@ipscentir.com";
 
         Profile profile = Profile.builder()
                 .id(profileId)
                 .roleId(roleId)
+                .email(email)
                 .estaActivo(true)
                 .build();
         Role role = Role.builder()
@@ -53,12 +55,12 @@ class SupabaseJwtAuthenticationConverterTest {
                 .build();
 
         Jwt jwt = Jwt.withTokenValue("token")
-                .header("alg", "none")
-                .claim("sub", profileId.toString())
-                .claim("role", "authenticated")
+                .header("alg", "HS256")
+                .claim("sub", email)
+                .claim("role", "Admin")
                 .build();
 
-        when(profileRepository.findById(profileId)).thenReturn(Optional.of(profile));
+        when(profileRepository.findByEmail(email)).thenReturn(Optional.of(profile));
         when(roleRepository.findById(roleId)).thenReturn(Optional.of(role));
 
         JwtAuthenticationToken auth = (JwtAuthenticationToken) converter.convert(jwt);
@@ -75,10 +77,12 @@ class SupabaseJwtAuthenticationConverterTest {
     void shouldMapFacturacionRoleWithAccentFromDatabase() {
         UUID profileId = UUID.randomUUID();
         UUID roleId = UUID.randomUUID();
+        String email = "facturacion@ipscentir.com";
 
         Profile profile = Profile.builder()
                 .id(profileId)
                 .roleId(roleId)
+                .email(email)
                 .estaActivo(true)
                 .build();
         Role role = Role.builder()
@@ -87,12 +91,12 @@ class SupabaseJwtAuthenticationConverterTest {
                 .build();
 
         Jwt jwt = Jwt.withTokenValue("token")
-                .header("alg", "none")
-                .claim("sub", profileId.toString())
-                .claim("role", "authenticated")
+                .header("alg", "HS256")
+                .claim("sub", email)
+                .claim("role", "Facturacion")
                 .build();
 
-        when(profileRepository.findById(profileId)).thenReturn(Optional.of(profile));
+        when(profileRepository.findByEmail(email)).thenReturn(Optional.of(profile));
         when(roleRepository.findById(roleId)).thenReturn(Optional.of(role));
 
         JwtAuthenticationToken auth = (JwtAuthenticationToken) converter.convert(jwt);

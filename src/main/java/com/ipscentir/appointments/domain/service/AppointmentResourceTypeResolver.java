@@ -18,6 +18,7 @@ public final class AppointmentResourceTypeResolver {
             case TERAPIA_OCUPACIONAL -> FacilityResourceType.TERAPIA_OCUPACIONAL;
             case STAFF -> FacilityResourceType.REUNION_STAFF;
             case PRESENCIAL, JUNTA_MEDICA -> FacilityResourceType.CONSULTORIO;
+            case BLOQUEO -> FacilityResourceType.SIN_RECURSO;
         };
     }
 

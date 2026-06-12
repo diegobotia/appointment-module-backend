@@ -1,16 +1,19 @@
 package com.ipscentir.appointments.application.dto;
 
 import com.fasterxml.jackson.annotation.JsonAlias;
-import com.ipscentir.appointments.domain.model.appointment.BookingChannel;
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.FutureOrPresent;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import java.time.LocalDate;
 import java.time.LocalTime;
-import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 
-public record CreateAppointmentCommand(
+@Schema(description = "Creación de cita por override administrativo (salta horario, agenda y capacidad)")
+public record CreateAdminOverrideAppointmentCommand(
+
         @NotNull(message = "Patient ID is required")
         UUID patientId,
 
@@ -18,14 +21,10 @@ public record CreateAppointmentCommand(
         @JsonAlias("doctorId")
         String medicoId,
 
-        @NotNull(message = "Facility ID is required")
-        Integer sedeId,
-
-        @JsonAlias({"secondaryDoctorId", "secondaryMedicoId"})
         List<String> additionalMedicoIds,
 
-        @NotNull(message = "Schedule ID is required")
-        UUID scheduleId,
+        @NotNull(message = "Facility ID is required")
+        Integer sedeId,
 
         @NotNull(message = "Appointment date is required")
         @FutureOrPresent(message = "Appointment date must be today or in the future")
@@ -34,18 +33,14 @@ public record CreateAppointmentCommand(
         @NotNull(message = "Appointment time is required")
         LocalTime appointmentTime,
 
-        @NotNull(message = "Appointment type is required")
+        @Min(value = 1, message = "Duration must be at least 1 minute")
+        int durationMinutes,
+
+        @NotBlank(message = "Appointment type is required")
+        @Schema(description = "Tipo de cita (PRESENCIAL, JUNTA_MEDICA, etc.)")
         String appointmentType,
 
-        String reason,
-        BookingChannel bookingChannel,
-        String n8nConversationId
+        @Schema(description = "Motivo de la cita")
+        String reason
 ) {
-    public BookingChannel resolvedChannel() {
-        return bookingChannel != null ? bookingChannel : BookingChannel.STAFF;
-    }
-
-    public List<String> resolvedAdditionalMedicoIds() {
-        return additionalMedicoIds != null ? additionalMedicoIds : Collections.emptyList();
-    }
 }

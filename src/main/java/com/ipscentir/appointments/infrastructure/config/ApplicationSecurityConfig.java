@@ -1,25 +1,27 @@
 package com.ipscentir.appointments.infrastructure.config;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.security.oauth2.jose.jws.SignatureAlgorithm;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
+
+import javax.crypto.SecretKey;
+import javax.crypto.spec.SecretKeySpec;
+import java.util.Base64;
+
 @Configuration
 @RequiredArgsConstructor
 public class ApplicationSecurityConfig {
 
-    @Value("${supabase.url:https://project.supabase.co}")
-    private String supabaseUrl;
+    @Value("${security.jwt.secret}")
+    private String jwtSecret;
 
     @Bean
     public JwtDecoder jwtDecoder() {
-        String baseUrl = supabaseUrl.startsWith("http") ? supabaseUrl : "https://" + supabaseUrl;
-        String jwkSetUri = baseUrl + "/auth/v1/.well-known/jwks.json";
-        return NimbusJwtDecoder.withJwkSetUri(jwkSetUri)
-                .jwsAlgorithm(SignatureAlgorithm.ES256)
-                .build();
+        byte[] keyBytes = Base64.getDecoder().decode(jwtSecret);
+        SecretKey key = new SecretKeySpec(keyBytes, "HmacSHA256");
+        return NimbusJwtDecoder.withSecretKey(key).build();
     }
 }

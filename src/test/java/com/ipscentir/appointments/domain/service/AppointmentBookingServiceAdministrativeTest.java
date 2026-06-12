@@ -75,7 +75,7 @@ class AppointmentBookingServiceAdministrativeTest {
         assertEquals(AppointmentType.STAFF, saved.getAppointmentType());
         assertEquals(AppointmentStatus.SCHEDULED, saved.getStatus());
         assertEquals(primary, saved.getDoctorId());
-        assertEquals(secondary, saved.getSecondaryDoctorId());
+        assertEquals(List.of(secondary), saved.getAdditionalDoctorIds());
         assertTrue(saved.isAdministrative());
         assertEquals(2, saved.getParticipants().size());
     }

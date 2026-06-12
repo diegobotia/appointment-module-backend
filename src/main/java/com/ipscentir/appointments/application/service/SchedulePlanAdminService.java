@@ -9,6 +9,7 @@ import com.ipscentir.appointments.application.dto.schedule.SchedulePlanDTO;
 import com.ipscentir.appointments.application.dto.schedule.SchedulePlanPageResponse;
 import com.ipscentir.appointments.application.dto.schedule.SchedulePlanSearchCriteria;
 import com.ipscentir.appointments.application.dto.schedule.SchedulePlanSlotDTO;
+import com.ipscentir.appointments.application.dto.schedule.UpdateSchedulePlanRequest;
 import com.ipscentir.appointments.domain.model.schedule.SchedulePlan;
 import com.ipscentir.appointments.domain.model.schedule.SchedulePlanBlock;
 import com.ipscentir.appointments.domain.model.schedule.SchedulePlanSlot;
@@ -190,6 +191,98 @@ public class SchedulePlanAdminService {
         }
 
         return plans.stream().map(this::toDto).toList();
+    }
+
+    @Transactional
+    public SchedulePlanDTO updatePlan(UUID planId, UpdateSchedulePlanRequest request) {
+        SchedulePlan plan = schedulePlanJpaRepository.findWithSlotsAndBlocksById(planId)
+                .orElseThrow(() -> new IllegalArgumentException("Schedule plan not found"));
+
+        if (plan.isPublished()) {
+            throw new IllegalArgumentException("Cannot update a published schedule plan. Unpublish it first.");
+        }
+
+        schedulePlanRulesValidator.validateDuration(request.startDate(), request.endDate());
+
+        if (request.slots() != null && !request.slots().isEmpty()) {
+            schedulePlanRulesValidator.validateSlotsForCreation(request.slots());
+            schedulePlanRulesValidator.validateConsultoriosBelongToSede(plan.getSedeId(), request.slots());
+            schedulePlanRulesValidator.validateNoConsultorioOverlapWithOtherDoctors(
+                    plan.getSpecialistId(),
+                    request.startDate(),
+                    request.endDate(),
+                    request.slots()
+            );
+            for (CreateSchedulePlanSlotRequest slotRequest : request.slots()) {
+                facilityOperatingHoursService.assertSlotWithinSedeHours(
+                        plan.getSedeId(),
+                        slotRequest.dayOfWeek(),
+                        slotRequest.startTime(),
+                        slotRequest.endTime()
+                );
+            }
+
+            List<SchedulePlanSlot> newSlots = request.slots().stream()
+                    .map(sr -> SchedulePlanSlot.builder()
+                            .dayOfWeek(sr.dayOfWeek())
+                            .startTime(sr.startTime())
+                            .endTime(sr.endTime())
+                            .slotDurationMinutes(sr.slotDurationMinutes())
+                            .maxPatientsPerSlot(sr.maxPatientsPerSlot())
+                            .consultorioId(sr.consultorioId())
+                            .active(true)
+                            .build())
+                    .toList();
+            plan.replaceSlots(newSlots);
+        }
+
+        plan.updateDates(request.startDate(), request.endDate());
+        return toDto(schedulePlanJpaRepository.save(plan));
+    }
+
+    @Transactional
+    public SchedulePlanDTO deleteSlot(UUID planId, UUID slotId) {
+        SchedulePlan plan = schedulePlanJpaRepository.findWithSlotsAndBlocksById(planId)
+                .orElseThrow(() -> new IllegalArgumentException("Schedule plan not found"));
+
+        if (plan.isPublished()) {
+            throw new IllegalArgumentException("Cannot modify a published schedule plan. Unpublish it first.");
+        }
+
+        if (!plan.removeSlot(slotId)) {
+            throw new IllegalArgumentException("Slot not found in plan: " + slotId);
+        }
+
+        return toDto(schedulePlanJpaRepository.save(plan));
+    }
+
+    @Transactional
+    public SchedulePlanDTO deleteBlock(UUID planId, UUID blockId) {
+        SchedulePlan plan = schedulePlanJpaRepository.findWithSlotsAndBlocksById(planId)
+                .orElseThrow(() -> new IllegalArgumentException("Schedule plan not found"));
+
+        if (plan.isPublished()) {
+            throw new IllegalArgumentException("Cannot modify a published schedule plan. Unpublish it first.");
+        }
+
+        if (!plan.removeBlock(blockId)) {
+            throw new IllegalArgumentException("Block not found in plan: " + blockId);
+        }
+
+        return toDto(schedulePlanJpaRepository.save(plan));
+    }
+
+    @Transactional
+    public SchedulePlanDTO unpublish(UUID planId) {
+        SchedulePlan plan = schedulePlanJpaRepository.findWithSlotsAndBlocksById(planId)
+                .orElseThrow(() -> new IllegalArgumentException("Schedule plan not found"));
+
+        if (!plan.isPublished()) {
+            throw new IllegalArgumentException("Schedule plan is not published");
+        }
+
+        plan.unpublish();
+        return toDto(schedulePlanJpaRepository.save(plan));
     }
 
     @Transactional(readOnly = true)

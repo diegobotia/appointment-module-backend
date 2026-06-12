@@ -9,6 +9,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.List;
 import java.util.UUID;
 
 @Schema(description = "Cita con nombres resueltos para tablas y calendario del panel interno")
@@ -22,9 +23,9 @@ public record AppointmentDTO(
         String medicoId,
         @Schema(description = "Sede donde se atiende la cita", example = "1")
         Integer sedeId,
-        @Schema(description = "Segundo médico (junta médica o reunión staff)", nullable = true)
-        @JsonAlias("secondaryDoctorId")
-        String secondaryMedicoId,
+        @Schema(description = "Médicos adicionales (junta médica o reunión staff)", nullable = true)
+        @JsonAlias({"secondaryDoctorId", "secondaryMedicoId"})
+        List<String> additionalMedicoIds,
         @Schema(description = "Plantilla de agenda usada al reservar", nullable = true)
         UUID scheduleId,
         LocalDate appointmentDate,

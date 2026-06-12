@@ -14,8 +14,8 @@ import org.springframework.context.annotation.Configuration;
 @Slf4j
 public class SecurityAuthDiagnosticsLoggingConfig {
 
-    @Value("${supabase.url:}")
-    private String supabaseUrl;
+    @Value("${auth.module.base-url:http://localhost:8081}")
+    private String authModuleBaseUrl;
 
     @PostConstruct
     void enableVerboseSecurityLogs() {
@@ -23,8 +23,7 @@ public class SecurityAuthDiagnosticsLoggingConfig {
         setLevel("org.springframework.security.oauth2", Level.DEBUG);
         setLevel("com.ipscentir.appointments.infrastructure.security", Level.DEBUG);
 
-        String base = supabaseUrl.startsWith("http") ? supabaseUrl : "https://" + supabaseUrl;
-        log.warn("[AUTH-DIAGNOSTICS] Logs detallados activos. JWKS: {}/auth/v1/keys", base);
+        log.warn("[AUTH-DIAGNOSTICS] Logs detallados activos. Auth module: {}", authModuleBaseUrl);
     }
 
     private static void setLevel(String loggerName, Level level) {

@@ -4,6 +4,8 @@ import com.ipscentir.appointments.domain.model.appointment.AppointmentType;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.Collections;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -12,7 +14,7 @@ import java.util.UUID;
 public record HumanResourceBookingContext(
         UUID patientId,
         String primaryDoctorId,
-        String secondaryDoctorId,
+        List<String> additionalDoctorIds,
         UUID scheduleId,
         Integer sedeId,
         LocalDate date,
@@ -23,7 +25,7 @@ public record HumanResourceBookingContext(
     public static HumanResourceBookingContext forBooking(
             UUID patientId,
             String primaryDoctorId,
-            String secondaryDoctorId,
+            List<String> additionalDoctorIds,
             UUID scheduleId,
             Integer sedeId,
             LocalDate date,
@@ -34,7 +36,7 @@ public record HumanResourceBookingContext(
         return new HumanResourceBookingContext(
                 patientId,
                 primaryDoctorId,
-                secondaryDoctorId,
+                additionalDoctorIds != null ? additionalDoctorIds : Collections.emptyList(),
                 scheduleId,
                 sedeId,
                 date,
@@ -43,4 +45,5 @@ public record HumanResourceBookingContext(
                 durationMinutes
         );
     }
+
 }

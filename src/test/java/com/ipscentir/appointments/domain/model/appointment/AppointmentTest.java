@@ -150,7 +150,7 @@ class AppointmentTest {
         assertEquals(AppointmentType.STAFF, staffMeeting.getAppointmentType());
         assertTrue(staffMeeting.isAdministrative());
         assertEquals(primary, staffMeeting.getDoctorId());
-        assertEquals(secondary, staffMeeting.getSecondaryDoctorId());
+        assertEquals(List.of(secondary), staffMeeting.getAdditionalDoctorIds());
     }
 
     @Test

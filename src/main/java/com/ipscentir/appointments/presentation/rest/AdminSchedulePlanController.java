@@ -6,6 +6,7 @@ import com.ipscentir.appointments.application.dto.schedule.PublishSchedulePlanRe
 import com.ipscentir.appointments.application.dto.schedule.SchedulePlanDTO;
 import com.ipscentir.appointments.application.dto.schedule.SchedulePlanPageResponse;
 import com.ipscentir.appointments.application.dto.schedule.SchedulePlanSearchCriteria;
+import com.ipscentir.appointments.application.dto.schedule.UpdateSchedulePlanRequest;
 import com.ipscentir.appointments.application.service.SchedulePlanAdminService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -15,9 +16,11 @@ import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -49,6 +52,39 @@ public class AdminSchedulePlanController {
             @Valid @RequestBody CreateSchedulePlanBlockRequest request
     ) {
         return ResponseEntity.ok(schedulePlanAdminService.addBlock(planId, request));
+    }
+
+    @PutMapping("/{planId}")
+    @Operation(summary = "Update schedule plan dates and/or slots (only if not published)")
+    public ResponseEntity<SchedulePlanDTO> update(
+            @PathVariable UUID planId,
+            @Valid @RequestBody UpdateSchedulePlanRequest request
+    ) {
+        return ResponseEntity.ok(schedulePlanAdminService.updatePlan(planId, request));
+    }
+
+    @DeleteMapping("/{planId}/slots/{slotId}")
+    @Operation(summary = "Delete a slot from a schedule plan (only if not published)")
+    public ResponseEntity<SchedulePlanDTO> deleteSlot(
+            @PathVariable UUID planId,
+            @PathVariable UUID slotId
+    ) {
+        return ResponseEntity.ok(schedulePlanAdminService.deleteSlot(planId, slotId));
+    }
+
+    @DeleteMapping("/{planId}/blocks/{blockId}")
+    @Operation(summary = "Delete a block from a schedule plan (only if not published)")
+    public ResponseEntity<SchedulePlanDTO> deleteBlock(
+            @PathVariable UUID planId,
+            @PathVariable UUID blockId
+    ) {
+        return ResponseEntity.ok(schedulePlanAdminService.deleteBlock(planId, blockId));
+    }
+
+    @PostMapping("/{planId}/unpublish")
+    @Operation(summary = "Unpublish a schedule plan to allow editing")
+    public ResponseEntity<SchedulePlanDTO> unpublish(@PathVariable UUID planId) {
+        return ResponseEntity.ok(schedulePlanAdminService.unpublish(planId));
     }
 
     @PostMapping("/{planId}/publish")

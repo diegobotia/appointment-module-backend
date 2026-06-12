@@ -23,25 +23,19 @@ public class AuthApplicationService {
     private final ProfileRepository profileRepository;
     private final RoleRepository roleRepository;
 
-    @Value("${supabase.url:https://project.supabase.co}")
-    private String supabaseUrl;
+    @Value("${auth.module.base-url:http://localhost:8081}")
+    private String authModuleBaseUrl;
 
-    @Value("${supabase.api-key:public-anon-key}")
-    private String supabaseAnonKey;
-
-    public Map<String, Object> getSupabaseAuthConfig() {
+    public Map<String, Object> getAuthConfig() {
         Map<String, Object> config = new HashMap<>();
-        config.put("supabaseUrl", supabaseUrl);
-        config.put("supabaseAnonKey", supabaseAnonKey);
-        config.put("jwkSetUri", supabaseUrl + "/auth/v1/keys");
-        config.put("issuerUri", supabaseUrl + "/auth/v1");
+        config.put("loginUrl", authModuleBaseUrl + "/api/v1/auth/login");
         return config;
     }
 
     public Map<String, Object> refreshToken(String refreshToken) {
         log.debug("Refrescando token JWT");
         Map<String, Object> response = new HashMap<>();
-        response.put("message", "Implementar integración con Supabase Auth");
+        response.put("message", "El refresco de token es gestionado por el módulo de autenticación externo");
         response.put("refreshTokenReceived", refreshToken != null && !refreshToken.isBlank());
         return response;
     }
@@ -58,7 +52,7 @@ public class AuthApplicationService {
         if (auth instanceof JwtAuthenticationToken jwtAuth
                 && jwtAuth.getDetails() instanceof StaffPrincipal principal) {
             profile.put("id", principal.profileId());
-            profile.put("role", principal.roleName().map(RoleName::getSupabaseNombre).orElse(null));
+            profile.put("role", principal.roleName().map(RoleName::getNombre).orElse(null));
             principal.medicoId().ifPresent(medicoId -> profile.put("medicoId", medicoId));
         }
 

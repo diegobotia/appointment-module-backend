@@ -3,7 +3,6 @@ package com.ipscentir.appointments.domain.model.schedule;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -83,6 +82,33 @@ public class SchedulePlan {
         this.blocks.add(block);
     }
 
+    public void replaceSlots(List<SchedulePlanSlot> newSlots) {
+        this.slots.clear();
+        for (SchedulePlanSlot slot : newSlots) {
+            slot.assignPlan(this);
+            this.slots.add(slot);
+        }
+    }
+
+    public boolean removeSlot(UUID slotId) {
+        return this.slots.removeIf(s -> s.getId().equals(slotId));
+    }
+
+    public boolean removeBlock(UUID blockId) {
+        return this.blocks.removeIf(b -> b.getId().equals(blockId));
+    }
+
+    public void updateDates(LocalDate startDate, LocalDate endDate) {
+        this.startDate = startDate;
+        this.endDate = endDate;
+    }
+
+    public void unpublish() {
+        this.published = false;
+        this.activeVersion = false;
+        this.publishedAt = null;
+    }
+
     public void publishAsActive() {
         this.published = true;
         this.activeVersion = true;
@@ -91,5 +117,9 @@ public class SchedulePlan {
 
     public void markAsInactiveVersion() {
         this.activeVersion = false;
+    }
+
+    public void setSedeId(Integer sedeId) {
+        this.sedeId = sedeId;
     }
 }

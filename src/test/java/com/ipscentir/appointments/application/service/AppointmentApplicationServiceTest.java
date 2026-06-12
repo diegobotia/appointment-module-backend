@@ -79,13 +79,13 @@ class AppointmentApplicationServiceTest {
         );
 
         AppointmentDTO mappedDto = new AppointmentDTO(
-                appointment.getId(), patientId, doctorId, sedeId, null, scheduleId, date, time, 30,
+                appointment.getId(), patientId, doctorId, sedeId, List.of(), scheduleId, date, time, 30,
                 AppointmentType.PRESENCIAL, AppointmentStatus.SCHEDULED, BookingChannel.STAFF, null, "Symptoms", null, null, null,
                 null, null, false
         );
 
         when(bookingService.bookAppointment(new AppointmentBookingRequest(
-                patientId, doctorId, null, scheduleId, sedeId, date, time, AppointmentType.PRESENCIAL, "Symptoms", BookingChannel.STAFF, null
+                patientId, doctorId, List.of(), scheduleId, sedeId, date, time, AppointmentType.PRESENCIAL, "Symptoms", BookingChannel.STAFF, null
         ))).thenReturn(appointment);
 
         when(appointmentEnrichmentService.toDto(appointment)).thenReturn(mappedDto);
@@ -96,7 +96,7 @@ class AppointmentApplicationServiceTest {
         assertEquals(AppointmentType.PRESENCIAL, result.appointmentType());
         verify(sedeAuthorizationService).assertCurrentUserCanAccessSede(sedeId);
         verify(bookingService).bookAppointment(new AppointmentBookingRequest(
-                patientId, doctorId, null, scheduleId, sedeId, date, time, AppointmentType.PRESENCIAL, "Symptoms", BookingChannel.STAFF, null
+                patientId, doctorId, List.of(), scheduleId, sedeId, date, time, AppointmentType.PRESENCIAL, "Symptoms", BookingChannel.STAFF, null
         ));
         verify(appointmentEnrichmentService).toDto(appointment);
     }
@@ -116,7 +116,7 @@ class AppointmentApplicationServiceTest {
         );
 
         AppointmentDTO mappedDto = new AppointmentDTO(
-                appointment.getId(), null, doctorId, sedeId, participants.get(1), null, date, time, 60,
+                appointment.getId(), null, doctorId, sedeId, List.of(participants.get(1)), null, date, time, 60,
                 AppointmentType.STAFF, AppointmentStatus.SCHEDULED, BookingChannel.STAFF, null, "Junta operativa", null, null, null,
                 null, null, true
         );

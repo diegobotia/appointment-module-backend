@@ -63,7 +63,7 @@ public class AppointmentOperationsService {
                 command.patientId(),
                 command.medicoId(),
                 command.sedeId(),
-                command.secondaryMedicoId(),
+                command.resolvedAdditionalMedicoIds(),
                 command.scheduleId(),
                 command.appointmentDate(),
                 command.appointmentTime(),
@@ -143,7 +143,7 @@ public class AppointmentOperationsService {
         HumanResourceBookingContext context = HumanResourceBookingContext.forBooking(
                 appointment.getPatientId(),
                 command.medicoId(),
-                appointment.getSecondaryDoctorId(),
+                appointment.getAdditionalDoctorIds(),
                 command.scheduleId(),
                 command.sedeId(),
                 command.appointmentDate(),

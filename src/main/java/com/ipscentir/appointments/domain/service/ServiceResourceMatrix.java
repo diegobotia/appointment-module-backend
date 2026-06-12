@@ -5,6 +5,7 @@ import com.ipscentir.appointments.domain.model.catalog.AppointmentServiceType;
 import com.ipscentir.appointments.domain.model.facility.FacilityResourceType;
 import com.ipscentir.appointments.domain.model.schedule.Schedule;
 
+import static com.ipscentir.appointments.domain.model.appointment.AppointmentType.BLOQUEO;
 import static com.ipscentir.appointments.domain.model.appointment.AppointmentType.JUNTA_MEDICA;
 import static com.ipscentir.appointments.domain.model.appointment.AppointmentType.PRESENCIAL;
 import static com.ipscentir.appointments.domain.model.appointment.AppointmentType.STAFF;
@@ -51,11 +52,20 @@ public final class ServiceResourceMatrix {
         };
     }
 
+    public static boolean isBloqueo(AppointmentServiceType serviceType) {
+        return serviceType == AppointmentServiceType.MEDICO_DOLOR
+                || serviceType == AppointmentServiceType.MEDICO_FISIATRA_INTEGRAL_DOLOR;
+    }
+
     public static FacilityResourceType resourceForAppointmentType(AppointmentType appointmentType) {
         return AppointmentResourceTypeResolver.forAppointmentType(appointmentType);
     }
 
     public static void assertScheduleAlignsWithAppointmentType(Schedule schedule, AppointmentType appointmentType) {
+        if (appointmentType == AppointmentType.BLOQUEO) {
+            return;
+        }
+
         Optional<AppointmentServiceType> scheduleService = AppointmentServiceType.tryResolve(schedule.getSpecialty());
         FacilityResourceType requiredResource = resourceForAppointmentType(appointmentType);
 
@@ -96,6 +106,7 @@ public final class ServiceResourceMatrix {
                     );
                 }
             }
+            case BLOQUEO -> {}
         }
     }
 
@@ -119,6 +130,7 @@ public final class ServiceResourceMatrix {
             case FISIOTERAPIA -> "sala de fisioterapia";
             case TERAPIA_OCUPACIONAL -> "sala de terapia ocupacional";
             case REUNION_STAFF -> "sala de reunión";
+            case SIN_RECURSO -> "sin recurso físico";
         };
     }
 }

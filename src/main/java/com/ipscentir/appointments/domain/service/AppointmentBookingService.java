@@ -46,6 +46,45 @@ public class AppointmentBookingService {
         return appointment;
     }
 
+    /**
+     * Cita creada por override administrativo: salta todas las validaciones de horario,
+     * agenda, festivos y capacidad. Solo verifica que el doctor no tenga solapamiento
+     * y que el paciente no tenga duplicado en la misma fecha.
+     */
+    public Appointment bookAdminOverrideAppointment(AppointmentBookingRequest request, int durationMinutes) {
+        HumanResourceBookingContext overrideContext = new HumanResourceBookingContext(
+                request.patientId(),
+                request.doctorId(),
+                request.resolvedAdditionalDoctorIds(),
+                null,
+                request.sedeId(),
+                request.date(),
+                request.time(),
+                request.type(),
+                durationMinutes
+        );
+        humanResourceAvailabilityService.assertAdminOverrideAllowed(overrideContext, null);
+
+        Appointment appointment = Appointment.scheduleNew(
+                request.patientId(),
+                request.doctorId(),
+                request.resolvedAdditionalDoctorIds(),
+                new AppointmentScheduleData(
+                        null,
+                        request.sedeId(),
+                        request.date(),
+                        request.time(),
+                        durationMinutes,
+                        request.type(),
+                        AppointmentStatus.SCHEDULED,
+                        request.reason()
+                ),
+                request.resolvedChannel(),
+                request.n8nConversationId()
+        );
+        return appointmentRepository.save(appointment);
+    }
+
     @Transactional
     public Appointment cancelAppointment(UUID appointmentId, String reason) {
         Appointment appointment = appointmentRepository.findById(appointmentId)
@@ -135,6 +174,10 @@ public class AppointmentBookingService {
     }
 
     private Appointment bookRegularAppointment(AppointmentBookingRequest request) {
+        if (request.type() == AppointmentType.BLOQUEO) {
+            return bookBloqueoAppointment(request);
+        }
+
         Schedule schedule = scheduleRepository.findById(request.scheduleId())
                 .orElseThrow(() -> new IllegalArgumentException("Schedule not found"));
         int blockDuration = schedule.getSlotDurationMinutes();
@@ -143,7 +186,7 @@ public class AppointmentBookingService {
         HumanResourceBookingContext context = HumanResourceBookingContext.forBooking(
                 request.patientId(),
                 request.doctorId(),
-                request.secondaryDoctorId(),
+                request.resolvedAdditionalDoctorIds(),
                 request.scheduleId(),
                 request.sedeId(),
                 request.date(),
@@ -168,7 +211,7 @@ public class AppointmentBookingService {
         Appointment appointment = Appointment.scheduleNew(
                 request.patientId(),
                 request.doctorId(),
-                request.secondaryDoctorId(),
+                request.resolvedAdditionalDoctorIds(),
                 new AppointmentScheduleData(
                         request.scheduleId(),
                         request.sedeId(),
@@ -187,6 +230,43 @@ public class AppointmentBookingService {
         return saved;
     }
 
+    private Appointment bookBloqueoAppointment(AppointmentBookingRequest request) {
+        int duration = 30;
+
+        HumanResourceBookingContext context = HumanResourceBookingContext.forBooking(
+                request.patientId(),
+                request.doctorId(),
+                request.resolvedAdditionalDoctorIds(),
+                null,
+                request.sedeId(),
+                request.date(),
+                request.time(),
+                request.type(),
+                duration
+        );
+
+        humanResourceAvailabilityService.assertBookingAllowed(context);
+
+        Appointment appointment = Appointment.scheduleNew(
+                request.patientId(),
+                request.doctorId(),
+                request.resolvedAdditionalDoctorIds(),
+                new AppointmentScheduleData(
+                        null,
+                        request.sedeId(),
+                        request.date(),
+                        request.time(),
+                        duration,
+                        request.type(),
+                        AppointmentStatus.SCHEDULED,
+                        request.reason()
+                ),
+                request.resolvedChannel(),
+                request.n8nConversationId()
+        );
+        return appointmentRepository.save(appointment);
+    }
+
     private Appointment bookTherapyAppointment(AppointmentBookingRequest request) {
         Schedule schedule = scheduleRepository.findById(request.scheduleId())
                 .orElseThrow(() -> new IllegalArgumentException("Schedule not found"));
@@ -196,7 +276,7 @@ public class AppointmentBookingService {
         HumanResourceBookingContext context = HumanResourceBookingContext.forBooking(
                 request.patientId(),
                 request.doctorId(),
-                request.secondaryDoctorId(),
+                request.resolvedAdditionalDoctorIds(),
                 request.scheduleId(),
                 request.sedeId(),
                 request.date(),
@@ -241,7 +321,7 @@ public class AppointmentBookingService {
         Appointment appointment = Appointment.scheduleNew(
                 request.patientId(),
                 request.doctorId(),
-                request.secondaryDoctorId(),
+                request.resolvedAdditionalDoctorIds(),
                 new AppointmentScheduleData(
                         request.scheduleId(),
                         request.sedeId(),

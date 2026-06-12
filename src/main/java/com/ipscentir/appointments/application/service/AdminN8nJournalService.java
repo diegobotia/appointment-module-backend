@@ -1,5 +1,6 @@
 package com.ipscentir.appointments.application.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ipscentir.appointments.application.dto.admin.BookingChannelSummaryDTO;
@@ -69,7 +70,7 @@ public class AdminN8nJournalService {
             if (root.hasNonNull("n8nConversationId")) {
                 conversationId = root.get("n8nConversationId").asText();
             }
-        } catch (Exception ignored) {
+        } catch (JsonProcessingException ignored) {
             // eventData legacy sin canal
         }
 

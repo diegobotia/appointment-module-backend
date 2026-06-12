@@ -2,7 +2,7 @@ package com.ipscentir.appointments.presentation.rest.config;
 
 import com.ipscentir.appointments.infrastructure.security.StaffAccessDeniedHandler;
 import com.ipscentir.appointments.infrastructure.security.StaffJwtAuthenticationEntryPoint;
-import com.ipscentir.appointments.infrastructure.security.SupabaseJwtAuthenticationConverter;
+import com.ipscentir.appointments.infrastructure.security.StaffJwtAuthenticationConverter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -22,14 +22,14 @@ import java.util.Arrays;
 public class SecurityConfig {
 
     private final N8nApiKeyFilter n8nApiKeyFilter;
-    private final SupabaseJwtAuthenticationConverter supabaseJwtAuthenticationConverter;
+    private final StaffJwtAuthenticationConverter staffJwtAuthenticationConverter;
 
     public SecurityConfig(
             N8nApiKeyFilter n8nApiKeyFilter,
-            SupabaseJwtAuthenticationConverter supabaseJwtAuthenticationConverter
+            StaffJwtAuthenticationConverter staffJwtAuthenticationConverter
     ) {
         this.n8nApiKeyFilter = n8nApiKeyFilter;
-        this.supabaseJwtAuthenticationConverter = supabaseJwtAuthenticationConverter;
+        this.staffJwtAuthenticationConverter = staffJwtAuthenticationConverter;
     }
 
     @Bean
@@ -52,7 +52,7 @@ public class SecurityConfig {
             .csrf(AbstractHttpConfigurer::disable)
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/v1/auth/supabase-config", "/api/v1/auth/refresh").permitAll()
+                .requestMatchers("/api/v1/auth/config", "/api/v1/auth/refresh").permitAll()
                 .requestMatchers("/api/v1/forms/**").permitAll()
                 .requestMatchers("/api/v1/catalogs/**").permitAll()
                 .requestMatchers("/api/v1/integrations/n8n/**").permitAll()
@@ -74,7 +74,7 @@ public class SecurityConfig {
             .oauth2ResourceServer(oauth -> oauth
                     .authenticationEntryPoint(new StaffJwtAuthenticationEntryPoint())
                     .accessDeniedHandler(new StaffAccessDeniedHandler())
-                    .jwt(jwt -> jwt.jwtAuthenticationConverter(supabaseJwtAuthenticationConverter)))
+                    .jwt(jwt -> jwt.jwtAuthenticationConverter(staffJwtAuthenticationConverter)))
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .addFilterBefore(n8nApiKeyFilter, BasicAuthenticationFilter.class);
 

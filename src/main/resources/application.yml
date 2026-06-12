@@ -51,15 +51,11 @@ management:
     tags:
       application: ${spring.application.name}
 
-# Logging Level
-logging:
-  level:
-    root: INFO
-    com.ipscentir.appointments: DEBUG
-    org.hibernate.SQL: DEBUG
-    org.springframework.web: DEBUG
-
 security:
+  jwt:
+    secret: ${JWT_SECRET:N9Cib0jGaY+pQifpw/EVFyQq2gSQA2DeMDSTTHcx543anw/z0xlzPIKE1QL5rJJPkWcscfh275mHzg88I8FlxQ==}
+  auth:
+    diagnostics: ${SECURITY_AUTH_DIAGNOSTICS:false}
   n8n:
     api-key: ${N8N_API_KEY:change-this-in-production}
     base-path: ${N8N_BASE_PATH:/api/v1/integrations/n8n}

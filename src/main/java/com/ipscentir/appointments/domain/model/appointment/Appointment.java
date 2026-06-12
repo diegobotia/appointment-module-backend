@@ -22,6 +22,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
@@ -131,22 +132,25 @@ public class Appointment extends AbstractAggregateRoot<Appointment> {
     public static Appointment scheduleNew(
             UUID patientId,
             String primaryDoctorId,
-            String secondaryDoctorId,
+            List<String> additionalDoctorIds,
             AppointmentScheduleData scheduleData) {
-        return scheduleNew(patientId, primaryDoctorId, secondaryDoctorId, scheduleData, BookingChannel.STAFF, null);
+        return scheduleNew(patientId, primaryDoctorId, additionalDoctorIds, scheduleData, BookingChannel.STAFF, null);
     }
 
     public static Appointment scheduleNew(
             UUID patientId,
             String primaryDoctorId,
-            String secondaryDoctorId,
+            List<String> additionalDoctorIds,
             AppointmentScheduleData scheduleData,
             BookingChannel bookingChannel,
             String n8nConversationId) {
         UUID appointmentId = UUID.randomUUID();
 
-        if (scheduleData.type() == AppointmentType.JUNTA_MEDICA && secondaryDoctorId == null) {
-            throw new IllegalStateException("Junta medica requires exactly 2 specialists");
+        if (scheduleData.type() == AppointmentType.JUNTA_MEDICA) {
+            List<String> nonNullAdditional = additionalDoctorIds != null ? additionalDoctorIds : Collections.emptyList();
+            if (nonNullAdditional.isEmpty() || nonNullAdditional.size() > 3) {
+                throw new IllegalStateException("Junta medica requires between 2 and 4 specialists");
+            }
         }
 
         Appointment appointment = Appointment.builder()
@@ -166,12 +170,17 @@ public class Appointment extends AbstractAggregateRoot<Appointment> {
                 .build();
 
         appointment.addParticipant(primaryDoctorId, 1, AppointmentParticipantRole.PRIMARY);
-        if (secondaryDoctorId != null) {
-            appointment.addParticipant(secondaryDoctorId, 2, AppointmentParticipantRole.SECONDARY);
+        List<String> additional = additionalDoctorIds != null ? additionalDoctorIds : Collections.emptyList();
+        for (int i = 0; i < additional.size(); i++) {
+            AppointmentParticipantRole role = switch (i) {
+                case 0 -> AppointmentParticipantRole.SECONDARY;
+                case 1 -> AppointmentParticipantRole.TERTIARY;
+                case 2 -> AppointmentParticipantRole.QUATERNARY;
+                default -> AppointmentParticipantRole.SECONDARY;
+            };
+            appointment.addParticipant(additional.get(i), i + 2, role);
         }
 
-        // Registramos evento para disparar asíncronamente notificaciones (SMS/Email) al
-        // guardar.
         appointment.registerEvent(new AppointmentCreatedEvent(
                 appointment.id,
                 appointment.patientId,
@@ -218,9 +227,13 @@ public class Appointment extends AbstractAggregateRoot<Appointment> {
                 .build();
 
         for (int i = 0; i < participantDoctorIds.size(); i++) {
-            AppointmentParticipantRole role = i == 0
-                    ? AppointmentParticipantRole.PRIMARY
-                    : AppointmentParticipantRole.SECONDARY;
+            AppointmentParticipantRole role = switch (i) {
+                case 0 -> AppointmentParticipantRole.PRIMARY;
+                case 1 -> AppointmentParticipantRole.SECONDARY;
+                case 2 -> AppointmentParticipantRole.TERTIARY;
+                case 3 -> AppointmentParticipantRole.QUATERNARY;
+                default -> AppointmentParticipantRole.SECONDARY;
+            };
             appointment.addParticipant(participantDoctorIds.get(i), i + 1, role);
         }
 
@@ -241,9 +254,16 @@ public class Appointment extends AbstractAggregateRoot<Appointment> {
         return this.appointmentType == AppointmentType.STAFF;
     }
 
+    public boolean isBloqueo() {
+        return this.appointmentType == AppointmentType.BLOQUEO;
+    }
+
     public void checkIn() {
         if (isAdministrative()) {
             throw new IllegalStateException("Las citas administrativas no admiten check-in de paciente");
+        }
+        if (isBloqueo()) {
+            throw new IllegalStateException("Las citas tipo BLOQUEO no admiten check-in de paciente");
         }
         if (this.status != AppointmentStatus.SCHEDULED && this.status != AppointmentStatus.CONFIRMED) {
             throw new IllegalStateException("Only SCHEDULED or CONFIRMED appointments can be checked in");
@@ -333,12 +353,11 @@ public class Appointment extends AbstractAggregateRoot<Appointment> {
         }
     }
 
-    public String getSecondaryDoctorId() {
+    public List<String> getAdditionalDoctorIds() {
         return this.participants.stream()
-                .filter(p -> p.getParticipantRole() == AppointmentParticipantRole.SECONDARY)
+                .filter(p -> p.getParticipantRole() != AppointmentParticipantRole.PRIMARY)
                 .map(AppointmentParticipant::getDoctorId)
-                .findFirst()
-                .orElse(null);
+                .toList();
     }
 
     private void addParticipant(String doctorId, int order, AppointmentParticipantRole role) {

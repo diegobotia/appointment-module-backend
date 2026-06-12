@@ -43,8 +43,7 @@ class AuthApplicationServiceTest {
 
     @BeforeEach
     void setUp() {
-        ReflectionTestUtils.setField(authApplicationService, "supabaseUrl", "https://test.supabase.co");
-        ReflectionTestUtils.setField(authApplicationService, "supabaseAnonKey", "anon-key");
+        ReflectionTestUtils.setField(authApplicationService, "authModuleBaseUrl", "http://localhost:8081");
     }
 
     @AfterEach
@@ -53,12 +52,10 @@ class AuthApplicationServiceTest {
     }
 
     @Test
-    void getSupabaseAuthConfigExposesEndpoints() {
-        Map<String, Object> config = authApplicationService.getSupabaseAuthConfig();
+    void getAuthConfigExposesLoginUrl() {
+        Map<String, Object> config = authApplicationService.getAuthConfig();
 
-        assertEquals("https://test.supabase.co", config.get("supabaseUrl"));
-        assertEquals("anon-key", config.get("supabaseAnonKey"));
-        assertEquals("https://test.supabase.co/auth/v1/keys", config.get("jwkSetUri"));
+        assertEquals("http://localhost:8081/api/v1/auth/login", config.get("loginUrl"));
     }
 
     @Test
@@ -82,7 +79,7 @@ class AuthApplicationServiceTest {
         profile.setMedicoId("medico-hc-1");
         Role role = new Role();
         role.setId(roleId);
-        role.setNombre(RoleName.MEDICO.getSupabaseNombre());
+        role.setNombre(RoleName.MEDICO.getNombre());
 
         when(profileRepository.findById(profileId)).thenReturn(Optional.of(profile));
         when(roleRepository.findById(roleId)).thenReturn(Optional.of(role));

@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Autenticación del personal interno (roles en core.profiles + Supabase Auth).
+ * Autenticación del personal interno (roles en core.profiles + JWT).
  * Los pacientes no se autentican: interactúan vía n8n y formulario público.
  */
 @RestController
@@ -25,10 +25,10 @@ public class AuthController {
 
     private final AuthApplicationService authApplicationService;
 
-    @GetMapping("/supabase-config")
-    @Operation(summary = "Obtener configuración de Supabase Auth para el panel interno")
-    public ResponseEntity<?> getSupabaseConfig() {
-        return ResponseEntity.ok(authApplicationService.getSupabaseAuthConfig());
+    @GetMapping("/config")
+    @Operation(summary = "Obtener configuración de autenticación JWT para el panel interno")
+    public ResponseEntity<?> getAuthConfig() {
+        return ResponseEntity.ok(authApplicationService.getAuthConfig());
     }
 
     @PostMapping("/refresh")

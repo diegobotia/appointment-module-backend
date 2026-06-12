@@ -2,7 +2,10 @@ package com.ipscentir.appointments.presentation.rest;
 
 import com.ipscentir.appointments.application.dto.AppointmentDTO;
 import com.ipscentir.appointments.application.dto.AppointmentSearchCriteria;
+import com.ipscentir.appointments.application.dto.CreateAdminOverrideAppointmentCommand;
+import com.ipscentir.appointments.application.dto.CreateBloqueoAppointmentCommand;
 import com.ipscentir.appointments.application.dto.RescheduleAppointmentCommand;
+import com.ipscentir.appointments.application.service.AppointmentApplicationService;
 import com.ipscentir.appointments.application.service.AppointmentOperationsService;
 import com.ipscentir.appointments.domain.model.appointment.AppointmentStatus;
 import com.ipscentir.appointments.domain.model.appointment.BookingChannel;
@@ -11,11 +14,13 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -33,6 +38,7 @@ import java.util.UUID;
 public class AdminAppointmentController {
 
     private final AppointmentOperationsService appointmentOperationsService;
+    private final AppointmentApplicationService appointmentApplicationService;
 
     @GetMapping
     @Operation(
@@ -66,5 +72,25 @@ public class AdminAppointmentController {
             @Valid @RequestBody RescheduleAppointmentCommand command
     ) {
         return ResponseEntity.ok(appointmentOperationsService.rescheduleAppointment(id, command));
+    }
+
+    @PreAuthorize("hasRole('ADMINISTRACION')")
+    @PostMapping("/override")
+    @Operation(summary = "Crear cita por override administrativo (salta horario, agenda, festivos y capacidad)")
+    public ResponseEntity<AppointmentDTO> createOverride(
+            @Valid @RequestBody CreateAdminOverrideAppointmentCommand command
+    ) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(appointmentApplicationService.createAdminOverrideAppointment(command));
+    }
+
+    @PreAuthorize("hasRole('ADMINISTRACION')")
+    @PostMapping("/bloqueo")
+    @Operation(summary = "Crear cita tipo BLOQUEO (médico del dolor + paciente, sin recurso físico)")
+    public ResponseEntity<AppointmentDTO> createBloqueo(
+            @Valid @RequestBody CreateBloqueoAppointmentCommand command
+    ) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(appointmentApplicationService.createBloqueoAppointment(command));
     }
 }

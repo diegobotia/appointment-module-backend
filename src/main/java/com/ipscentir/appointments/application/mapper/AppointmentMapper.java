@@ -11,7 +11,7 @@ import org.mapstruct.ReportingPolicy;
 public interface AppointmentMapper {
 
     @Mapping(source = "doctorId", target = "medicoId")
-    @Mapping(source = "secondaryDoctorId", target = "secondaryMedicoId")
+    @Mapping(source = "additionalDoctorIds", target = "additionalMedicoIds")
     @Mapping(target = "medicoDisplayName", ignore = true)
     @Mapping(target = "patientDisplayName", ignore = true)
     @Mapping(target = "administrative", expression = "java(appointment.isAdministrative())")

@@ -5,12 +5,14 @@ import com.ipscentir.appointments.domain.model.appointment.BookingChannel;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.Collections;
+import java.util.List;
 import java.util.UUID;
 
 public record AppointmentBookingRequest(
         UUID patientId,
         String doctorId,
-        String secondaryDoctorId,
+        List<String> additionalDoctorIds,
         UUID scheduleId,
         Integer sedeId,
         LocalDate date,
@@ -22,5 +24,9 @@ public record AppointmentBookingRequest(
 ) {
     public BookingChannel resolvedChannel() {
         return bookingChannel != null ? bookingChannel : BookingChannel.STAFF;
+    }
+
+    public List<String> resolvedAdditionalDoctorIds() {
+        return additionalDoctorIds != null ? additionalDoctorIds : Collections.emptyList();
     }
 }

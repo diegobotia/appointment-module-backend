@@ -154,12 +154,15 @@ public class N8nPatientIntegrationService {
 
         AppointmentType appointmentType = resolveAppointmentType(request.scheduleId());
 
+        List<String> additional = request.secondaryDoctorId() != null
+                ? List.of(request.secondaryDoctorId())
+                : List.of();
         AppointmentDTO appointment = appointmentApplicationService.createAppointment(
                 new CreateAppointmentCommand(
                         request.patientId(),
                         request.doctorId(),
                         resolvedSedeId,
-                        request.secondaryDoctorId(),
+                        additional,
                         request.scheduleId(),
                         request.appointmentDate(),
                         request.appointmentTime(),
@@ -450,7 +453,7 @@ public class N8nPatientIntegrationService {
             case TERAPIA_OCUPACIONAL -> Optional.of(AppointmentServiceType.TERAPIA_OCUPACIONAL);
             case JUNTA_MEDICA -> Optional.of(AppointmentServiceType.JUNTA_MEDICA);
             case STAFF -> Optional.of(AppointmentServiceType.STAFF);
-            case PRESENCIAL -> Optional.empty();
+            case PRESENCIAL, BLOQUEO -> Optional.empty();
         };
     }
 

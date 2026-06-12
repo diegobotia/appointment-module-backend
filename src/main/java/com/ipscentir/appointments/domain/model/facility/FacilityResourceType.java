@@ -7,5 +7,7 @@ public enum FacilityResourceType {
     CONSULTORIO,
     FISIOTERAPIA,
     TERAPIA_OCUPACIONAL,
-    REUNION_STAFF
+    REUNION_STAFF,
+    /** Citas que no requieren recurso físico (ej: BLOQUEO). */
+    SIN_RECURSO
 }

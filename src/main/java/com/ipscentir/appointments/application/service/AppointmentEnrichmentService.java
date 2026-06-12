@@ -59,7 +59,7 @@ public class AppointmentEnrichmentService {
                 dto.patientId(),
                 dto.medicoId(),
                 dto.sedeId(),
-                dto.secondaryMedicoId(),
+                dto.additionalMedicoIds(),
                 dto.scheduleId(),
                 dto.appointmentDate(),
                 dto.appointmentTime(),
@@ -82,8 +82,8 @@ public class AppointmentEnrichmentService {
         Set<String> medicoIds = new HashSet<>();
         for (Appointment appointment : appointments) {
             medicoIds.add(appointment.getDoctorId());
-            if (appointment.getSecondaryDoctorId() != null) {
-                medicoIds.add(appointment.getSecondaryDoctorId());
+            for (String additionalId : appointment.getAdditionalDoctorIds()) {
+                medicoIds.add(additionalId);
             }
         }
         return medicoLookupService.resolveDisplayNames(medicoIds);

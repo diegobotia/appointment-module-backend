@@ -20,11 +20,10 @@ class AuthControllerIntegrationTest {
     private MockMvc mockMvc;
 
     @Test
-    void shouldReturnSupabaseConfigPublicly() throws Exception {
-        mockMvc.perform(get("/api/v1/auth/supabase-config"))
+    void shouldReturnAuthConfigPublicly() throws Exception {
+        mockMvc.perform(get("/api/v1/auth/config"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.supabaseUrl").exists())
-                .andExpect(jsonPath("$.supabaseAnonKey").exists());
+                .andExpect(jsonPath("$.loginUrl").exists());
     }
 
     @Test

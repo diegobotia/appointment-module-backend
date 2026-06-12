@@ -181,7 +181,7 @@ class AppointmentEp4IntegrationTest {
         Appointment appointment = appointmentBookingService.bookAppointment(new AppointmentBookingRequest(
                 UUID.randomUUID(),
                 doctorB,
-                doctorA,
+                List.of(doctorA),
                 scheduleIdJunta,
             sedeId,
                 bookingDate,
@@ -195,7 +195,7 @@ class AppointmentEp4IntegrationTest {
             UUID appointmentId = java.util.Objects.requireNonNull(appointment.getId());
             Appointment reloaded = appointmentJpaRepository.findById(appointmentId).orElseThrow();
         assertThat(reloaded.getParticipants()).hasSize(2);
-        assertThat(reloaded.getSecondaryDoctorId()).isEqualTo(doctorA);
+        assertThat(reloaded.getAdditionalDoctorIds()).containsExactly(doctorA);
     }
 
     private static LocalDate nextOpenWeekday(LocalDate date) {

@@ -148,7 +148,7 @@ class AppointmentEnrichmentServiceTest {
                 appointment.getPatientId(),
                 appointment.getDoctorId(),
                 appointment.getSedeId(),
-                appointment.getSecondaryDoctorId(),
+                appointment.getAdditionalDoctorIds(),
                 appointment.getScheduleId(),
                 appointment.getAppointmentDate(),
                 appointment.getAppointmentTime(),

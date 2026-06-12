@@ -20,6 +20,8 @@ spring:
       mode: never
 
 security:
+  jwt:
+    secret: dGVzdC1zZWNyZXQta2V5LWZvci1obWFjLXNoYTI1Ni1taW4tMzItYnl0ZXM=
   n8n:
     api-key: test-n8n-api-key
     base-path: /api/v1/integrations/n8n

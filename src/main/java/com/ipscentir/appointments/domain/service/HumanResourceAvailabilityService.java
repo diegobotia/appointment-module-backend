@@ -27,18 +27,34 @@ public class HumanResourceAvailabilityService {
     private final AppointmentRepository appointmentRepository;
 
     public void assertBookingAllowed(HumanResourceBookingContext context) {
-        // No se permiten reservas en días festivos
         facilityOperatingHoursService.assertDateNotHoliday(context.date());
         assertBookingAllowed(context, null);
     }
 
     public void assertBookingAllowed(HumanResourceBookingContext context, UUID excludeAppointmentId) {
+        if (context.appointmentType() == AppointmentType.BLOQUEO) {
+            assertBloqueoAllowed(context, excludeAppointmentId);
+            return;
+        }
         Schedule schedule = loadSchedule(context.scheduleId());
         assertScheduleOwnership(schedule, context.primaryDoctorId(), context.sedeId());
         assertSlotWithinSedeHours(context);
         ServiceResourceMatrix.assertScheduleAlignsWithAppointmentType(schedule, context.appointmentType());
         assertPrimaryDoctorAvailable(context, excludeAppointmentId);
         assertJuntaMedicaRules(context, excludeAppointmentId);
+        assertPatientNoDuplicate(context.patientId(), context.date(), excludeAppointmentId);
+    }
+
+    private void assertBloqueoAllowed(HumanResourceBookingContext context, UUID excludeAppointmentId) {
+        if (!availabilityService.isDoctorSlotAvailable(
+                context.primaryDoctorId(),
+                context.sedeId(),
+                context.date(),
+                context.time(),
+                excludeAppointmentId)) {
+            throw new IllegalStateException("The requested slot is not available for the pain management doctor.");
+        }
+        assertNoRangeOverlap(context.primaryDoctorId(), context, excludeAppointmentId);
         assertPatientNoDuplicate(context.patientId(), context.date(), excludeAppointmentId);
     }
 
@@ -68,6 +84,21 @@ public class HumanResourceAvailabilityService {
             throw new IllegalStateException(
                     "Therapy slot has reached maximum capacity (" + THERAPY_GROUP_MAX + ")");
         }
+    }
+
+    /**
+     * Override administrativo: salta horario de sede, festivos, agenda del doctor y capacidad.
+     * Solo valida que el doctor no tenga otra cita en la misma franja y que el paciente
+     * no tenga duplicado en la misma fecha.
+     */
+    public void assertAdminOverrideAllowed(HumanResourceBookingContext context, UUID excludeAppointmentId) {
+        assertNoRangeOverlap(context.primaryDoctorId(), context, excludeAppointmentId);
+        if (context.additionalDoctorIds() != null) {
+            for (String doctorId : context.additionalDoctorIds()) {
+                assertNoRangeOverlap(doctorId, context, excludeAppointmentId);
+            }
+        }
+        assertPatientNoDuplicate(context.patientId(), context.date(), excludeAppointmentId);
     }
 
     /**
@@ -148,23 +179,29 @@ public class HumanResourceAvailabilityService {
             return;
         }
 
-        String secondary = context.secondaryDoctorId();
-        if (secondary == null) {
-            throw new IllegalStateException("Junta medica requires exactly 2 specialists");
+        List<String> additional = context.additionalDoctorIds();
+        if (additional == null || additional.isEmpty() || additional.size() > 3) {
+            throw new IllegalStateException("Junta medica requires between 2 and 4 specialists");
         }
-        if (secondary.equals(context.primaryDoctorId())) {
-            throw new IllegalStateException("Junta medica requires 2 different specialists");
-        }
-        if (!availabilityService.isDoctorSlotAvailable(
-                secondary,
-                context.sedeId(),
-                context.date(),
-                context.time(),
-                excludeAppointmentId)) {
-            throw new IllegalStateException("The requested slot is not available for the second specialist.");
-        }
-        if (!isTherapy(context.appointmentType())) {
-            assertNoRangeOverlap(secondary, context, excludeAppointmentId);
+
+        for (String doctorId : additional) {
+            if (doctorId.equals(context.primaryDoctorId())) {
+                throw new IllegalStateException("Junta medica requires different specialists");
+            }
+            if (context.additionalDoctorIds().stream().filter(d -> d.equals(doctorId)).count() > 1) {
+                throw new IllegalStateException("Duplicate specialist in junta medica");
+            }
+            if (!availabilityService.isDoctorSlotAvailable(
+                    doctorId,
+                    context.sedeId(),
+                    context.date(),
+                    context.time(),
+                    excludeAppointmentId)) {
+                throw new IllegalStateException("The requested slot is not available for specialist: " + doctorId);
+            }
+            if (!isTherapy(context.appointmentType())) {
+                assertNoRangeOverlap(doctorId, context, excludeAppointmentId);
+            }
         }
     }
 

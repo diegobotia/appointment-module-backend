@@ -97,7 +97,7 @@ class AdministrativeAppointmentIntegrationTest {
                 .andExpect(jsonPath("$.patientId").value(nullValue()))
                 .andExpect(jsonPath("$.appointmentType").value("STAFF"))
                 .andExpect(jsonPath("$.medicoId").value(doctorA))
-                .andExpect(jsonPath("$.secondaryMedicoId").value(doctorB))
+                .andExpect(jsonPath("$.additionalMedicoIds[0]").value(doctorB))
                 .andExpect(jsonPath("$.sedeId").value(sedeId))
                 .andExpect(jsonPath("$.durationMinutes").value(60))
                 .andExpect(jsonPath("$.status").value("SCHEDULED"))

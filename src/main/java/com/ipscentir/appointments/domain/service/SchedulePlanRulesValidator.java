@@ -10,7 +10,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.time.DayOfWeek;
-import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.temporal.ChronoUnit;
@@ -25,10 +24,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class SchedulePlanRulesValidator {
 
-    public static final int MIN_DURATION_MONTHS = 2;
-    public static final int MAX_DURATION_MONTHS = 3;
-    public static final int WEEKDAY_MIN_DAILY_WORKLOAD_MINUTES = 480;
-    public static final int SATURDAY_MIN_DAILY_WORKLOAD_MINUTES = 240;
+    public static final int MIN_DURATION_MONTHS = 1;
 
     private final SchedulePlanJpaRepository schedulePlanJpaRepository;
     private final FacilityResourceJpaRepository facilityResourceJpaRepository;
@@ -41,11 +37,7 @@ public class SchedulePlanRulesValidator {
         long months = ChronoUnit.MONTHS.between(startDate, endDate);
         if (months < MIN_DURATION_MONTHS) {
             throw new IllegalArgumentException(
-                    "Schedule plan duration must be at least " + MIN_DURATION_MONTHS + " months");
-        }
-        if (months > MAX_DURATION_MONTHS) {
-            throw new IllegalArgumentException(
-                    "Schedule plan duration must not exceed " + MAX_DURATION_MONTHS + " months");
+                    "Schedule plan duration must be at least " + MIN_DURATION_MONTHS + " month(s)");
         }
     }
 
@@ -54,7 +46,6 @@ public class SchedulePlanRulesValidator {
             throw new IllegalArgumentException("Schedule plan must include at least one slot");
         }
         validateSlotTimeRangesFromRequests(slots);
-        validateMinimumDailyWorkloadFromRequests(slots);
         validateSameConsultorioPerDayFromRequests(slots);
         validateNoInternalSlotOverlapFromRequests(slots);
     }
@@ -67,7 +58,6 @@ public class SchedulePlanRulesValidator {
             throw new IllegalArgumentException("Cannot publish a schedule plan without active slots");
         }
         validateSlotTimeRangesFromEntities(activeSlots);
-        validateMinimumDailyWorkloadFromEntities(activeSlots);
         validateSameConsultorioPerDayFromEntities(activeSlots);
         validateNoInternalSlotOverlapFromEntities(activeSlots);
         validateConsultoriosBelongToSedeForSlots(plan.getSedeId(), activeSlots);
@@ -209,33 +199,6 @@ public class SchedulePlanRulesValidator {
         }
     }
 
-    private void validateMinimumDailyWorkloadFromRequests(List<CreateSchedulePlanSlotRequest> slots) {
-        validateMinimumDailyWorkload(aggregateMinutesByDayFromRequests(slots));
-    }
-
-    private void validateMinimumDailyWorkloadFromEntities(List<SchedulePlanSlot> slots) {
-        validateMinimumDailyWorkload(aggregateMinutesByDayFromEntities(slots));
-    }
-
-    private void validateMinimumDailyWorkload(Map<DayOfWeek, Integer> dailyMinutes) {
-        for (var entry : dailyMinutes.entrySet()) {
-            int expectedMinutes = minimumDailyWorkloadMinutes(entry.getKey());
-            if (entry.getValue() < expectedMinutes) {
-                throw new IllegalArgumentException(
-                        "Each scheduled day of the week must have a minimum workload of "
-                                + (expectedMinutes / 60)
-                                + " hours (" + expectedMinutes + " minutes) total. "
-                                + entry.getKey() + " has only " + (entry.getValue() / 60.0) + " hours.");
-            }
-        }
-    }
-
-    private int minimumDailyWorkloadMinutes(DayOfWeek dayOfWeek) {
-        return dayOfWeek == DayOfWeek.SATURDAY
-                ? SATURDAY_MIN_DAILY_WORKLOAD_MINUTES
-                : WEEKDAY_MIN_DAILY_WORKLOAD_MINUTES;
-    }
-
     private void validateSameConsultorioPerDayFromRequests(List<CreateSchedulePlanSlotRequest> slots) {
         Map<DayOfWeek, UUID> dailyConsultorio = new HashMap<>();
         for (CreateSchedulePlanSlotRequest slot : slots) {
@@ -311,24 +274,6 @@ public class SchedulePlanRulesValidator {
                 }
             }
         }
-    }
-
-    private Map<DayOfWeek, Integer> aggregateMinutesByDayFromRequests(List<CreateSchedulePlanSlotRequest> slots) {
-        Map<DayOfWeek, Integer> dailyMinutes = new HashMap<>();
-        for (CreateSchedulePlanSlotRequest slot : slots) {
-            int minutes = (int) Duration.between(slot.startTime(), slot.endTime()).toMinutes();
-            dailyMinutes.merge(slot.dayOfWeek(), minutes, Integer::sum);
-        }
-        return dailyMinutes;
-    }
-
-    private Map<DayOfWeek, Integer> aggregateMinutesByDayFromEntities(List<SchedulePlanSlot> slots) {
-        Map<DayOfWeek, Integer> dailyMinutes = new HashMap<>();
-        for (SchedulePlanSlot slot : slots) {
-            int minutes = (int) Duration.between(slot.getStartTime(), slot.getEndTime()).toMinutes();
-            dailyMinutes.merge(slot.getDayOfWeek(), minutes, Integer::sum);
-        }
-        return dailyMinutes;
     }
 
     private boolean samePeriod(SchedulePlan plan, LocalDate startDate, LocalDate endDate) {

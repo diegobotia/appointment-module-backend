@@ -6,8 +6,9 @@ import java.util.Locale;
 import java.util.Optional;
 
 /**
- * Roles internos alineados con {@code core.roles.nombre} en Supabase.
+ * Roles internos alineados con {@code core.roles.nombre}.
  */
+@SuppressWarnings({"MS_MUTABLE_ARRAY", "java:S2386"})
 public enum RoleName {
     MEDICO("Medico"),
     ADMISIONES("Admisiones"),
@@ -31,14 +32,14 @@ public enum RoleName {
             ADMINISTRACION, ADMISIONES, ASESOR, FACTURACION
     };
 
-    private final String supabaseNombre;
+    private final String nombre;
 
-    RoleName(String supabaseNombre) {
-        this.supabaseNombre = supabaseNombre;
+    RoleName(String nombre) {
+        this.nombre = nombre;
     }
 
-    public String getSupabaseNombre() {
-        return supabaseNombre;
+    public String getNombre() {
+        return nombre;
     }
 
     public String getAuthority() {
@@ -54,13 +55,13 @@ public enum RoleName {
         return this == ADMISIONES || this == ASESOR;
     }
 
-    public static Optional<RoleName> fromSupabaseNombre(String nombre) {
+    public static Optional<RoleName> fromNombre(String nombre) {
         if (nombre == null || nombre.isBlank()) {
             return Optional.empty();
         }
         String normalized = normalizeNombre(nombre);
         return Arrays.stream(values())
-                .filter(role -> normalizeNombre(role.supabaseNombre).equals(normalized)
+                .filter(role -> normalizeNombre(role.nombre).equals(normalized)
                         || role.name().equalsIgnoreCase(normalized))
                 .findFirst();
     }
