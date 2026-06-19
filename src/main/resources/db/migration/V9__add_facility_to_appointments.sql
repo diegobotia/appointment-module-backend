@@ -3,7 +3,7 @@
 -- =============================================
 
 ALTER TABLE appointments
-    ADD COLUMN facility_id UUID;
+    ADD COLUMN IF NOT EXISTS facility_id UUID;
 
 UPDATE appointments a
 SET facility_id = s.facility_id
@@ -11,6 +11,7 @@ FROM schedules s
 WHERE a.schedule_id = s.id
   AND a.facility_id IS NULL;
 
+ALTER TABLE appointments DROP CONSTRAINT IF EXISTS fk_appointments_facility;
 ALTER TABLE appointments
     ADD CONSTRAINT fk_appointments_facility
         FOREIGN KEY (facility_id) REFERENCES facilities(id);
@@ -18,9 +19,7 @@ ALTER TABLE appointments
 ALTER TABLE appointments
     ALTER COLUMN facility_id SET NOT NULL;
 
-CREATE INDEX idx_appointments_facility_date_status ON appointments(facility_id, appointment_date, status);
-
-DROP VIEW IF EXISTS v_appointments_enriched;
+CREATE INDEX IF NOT EXISTS idx_appointments_facility_date_status ON appointments(facility_id, appointment_date, status);
 
 DROP VIEW IF EXISTS v_appointments_enriched;
 

@@ -3,6 +3,7 @@ package com.ipscentir.appointments.presentation.rest.config;
 import com.ipscentir.appointments.infrastructure.security.StaffAccessDeniedHandler;
 import com.ipscentir.appointments.infrastructure.security.StaffJwtAuthenticationEntryPoint;
 import com.ipscentir.appointments.infrastructure.security.StaffJwtAuthenticationConverter;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -15,7 +16,7 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
-import java.util.Arrays;
+import java.util.List;
 
 @Configuration
 @EnableWebSecurity
@@ -23,21 +24,24 @@ public class SecurityConfig {
 
     private final N8nApiKeyFilter n8nApiKeyFilter;
     private final StaffJwtAuthenticationConverter staffJwtAuthenticationConverter;
+    private final List<String> corsAllowedOrigins;
 
     public SecurityConfig(
             N8nApiKeyFilter n8nApiKeyFilter,
-            StaffJwtAuthenticationConverter staffJwtAuthenticationConverter
+            StaffJwtAuthenticationConverter staffJwtAuthenticationConverter,
+            @Value("${cors.allowed-origins:http://localhost:3000,http://127.0.0.1:3000}") List<String> corsAllowedOrigins
     ) {
         this.n8nApiKeyFilter = n8nApiKeyFilter;
         this.staffJwtAuthenticationConverter = staffJwtAuthenticationConverter;
+        this.corsAllowedOrigins = corsAllowedOrigins;
     }
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(Arrays.asList("http://localhost:3000", "http://127.0.0.1:3000"));
-        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(Arrays.asList("*"));
+        configuration.setAllowedOrigins(corsAllowedOrigins);
+        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
+        configuration.setAllowedHeaders(List.of("*"));
         configuration.setAllowCredentials(true);
         configuration.setMaxAge(3600L);
 

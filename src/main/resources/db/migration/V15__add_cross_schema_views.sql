@@ -19,6 +19,7 @@
 -- Citas con información enriquecida: paciente, médico, sede
 
 DROP VIEW IF EXISTS v_appointments_enriched CASCADE;
+DROP VIEW IF EXISTS v_appointments_complete CASCADE;
 
 CREATE OR REPLACE VIEW v_appointments_complete AS
 SELECT 
@@ -65,6 +66,7 @@ LEFT JOIN appointments.facilities f ON a.facility_id = f.id;
 -- ========================
 -- Horarios disponibles de cada médico con conteo de citas
 
+DROP VIEW IF EXISTS v_doctor_available_slots CASCADE;
 CREATE OR REPLACE VIEW v_doctor_available_slots AS
 SELECT 
     s.id as schedule_id,
@@ -102,6 +104,7 @@ GROUP BY s.id, med.id, med.nombre, med.apellido, med.registro, f.id;
 -- ========================
 -- Citas agrupadas por sede con métricas
 
+DROP VIEW IF EXISTS v_appointments_by_facility CASCADE;
 CREATE OR REPLACE VIEW v_appointments_by_facility AS
 SELECT 
     f.id,
@@ -127,6 +130,7 @@ ORDER BY f.id, a.appointment_date DESC;
 -- ========================
 -- Especialidades de médicos (de specialist_metadata JSON hasta hc.specialties)
 
+DROP VIEW IF EXISTS v_doctor_specialties CASCADE;
 CREATE OR REPLACE VIEW v_doctor_specialties AS
 SELECT 
     prof.id as doctor_id,
@@ -155,6 +159,7 @@ ORDER BY prof.name;
 -- ========================
 -- Participantes de citas con datos de médicos
 
+DROP VIEW IF EXISTS v_appointment_participants_complete CASCADE;
 CREATE OR REPLACE VIEW v_appointment_participants_complete AS
 SELECT 
     ap.id,
@@ -183,6 +188,7 @@ ORDER BY ap.appointment_id, ap.participant_order;
 -- ========================
 -- Citas pendientes de confirmación de grupo (junta médica)
 
+DROP VIEW IF EXISTS v_appointments_pending_group_confirmation CASCADE;
 CREATE OR REPLACE VIEW v_appointments_pending_group_confirmation AS
 SELECT 
     a.id,
@@ -209,6 +215,7 @@ ORDER BY a.appointment_date;
 -- ========================
 -- Resumen de agendas por médico
 
+DROP VIEW IF EXISTS v_schedules_summary_by_doctor CASCADE;
 CREATE OR REPLACE VIEW v_schedules_summary_by_doctor AS
 SELECT
     med.id::text AS doctor_id,
@@ -233,6 +240,7 @@ ORDER BY doctor_name, f.name;
 -- ========================
 -- Estado de planes trimestrales
 
+DROP VIEW IF EXISTS v_quarterly_plan_status CASCADE;
 CREATE OR REPLACE VIEW v_quarterly_plan_status AS
 SELECT 
     sp.specialist_id,

@@ -10,6 +10,7 @@ WHERE sede_id IS NULL;
 ALTER TABLE appointments.schedule_plans
     ALTER COLUMN sede_id SET NOT NULL;
 
+ALTER TABLE appointments.schedule_plans DROP CONSTRAINT IF EXISTS fk_schedule_plans_sede;
 ALTER TABLE appointments.schedule_plans
     ADD CONSTRAINT fk_schedule_plans_sede
         FOREIGN KEY (sede_id) REFERENCES core.sede(id) ON DELETE RESTRICT;

@@ -2,7 +2,7 @@
 -- V6: PLANIFICACION TRIMESTRAL, SLOTS Y BLOQUEOS
 -- =============================================
 
-CREATE TABLE schedule_plans (
+CREATE TABLE IF NOT EXISTS schedule_plans (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     specialist_id UUID NOT NULL REFERENCES specialists(id) ON DELETE CASCADE,
     plan_year INTEGER NOT NULL,
@@ -16,7 +16,7 @@ CREATE TABLE schedule_plans (
     CONSTRAINT uq_schedule_plan_version UNIQUE (specialist_id, plan_year, plan_quarter, version_number)
 );
 
-CREATE TABLE schedule_plan_slots (
+CREATE TABLE IF NOT EXISTS schedule_plan_slots (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     schedule_plan_id UUID NOT NULL REFERENCES schedule_plans(id) ON DELETE CASCADE,
     day_of_week INTEGER NOT NULL CHECK (day_of_week BETWEEN 1 AND 7),
@@ -31,7 +31,7 @@ CREATE TABLE schedule_plan_slots (
     CONSTRAINT chk_schedule_plan_slot_capacity CHECK (max_patients_per_slot > 0)
 );
 
-CREATE TABLE schedule_plan_blocks (
+CREATE TABLE IF NOT EXISTS schedule_plan_blocks (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     schedule_plan_id UUID NOT NULL REFERENCES schedule_plans(id) ON DELETE CASCADE,
     start_date DATE NOT NULL,
@@ -45,12 +45,13 @@ CREATE TABLE schedule_plan_blocks (
     CONSTRAINT chk_schedule_plan_block_time_range CHECK (end_time > start_time)
 );
 
-CREATE INDEX idx_schedule_plans_specialist_period ON schedule_plans(specialist_id, plan_year, plan_quarter);
-CREATE UNIQUE INDEX uq_schedule_plan_active_period ON schedule_plans(specialist_id, plan_year, plan_quarter)
+CREATE INDEX IF NOT EXISTS idx_schedule_plans_specialist_period ON schedule_plans(specialist_id, plan_year, plan_quarter);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_schedule_plan_active_period ON schedule_plans(specialist_id, plan_year, plan_quarter)
     WHERE is_active_version = true;
-CREATE INDEX idx_schedule_plan_slots_plan ON schedule_plan_slots(schedule_plan_id, day_of_week);
-CREATE INDEX idx_schedule_plan_blocks_plan_date ON schedule_plan_blocks(schedule_plan_id, start_date, end_date);
+CREATE INDEX IF NOT EXISTS idx_schedule_plan_slots_plan ON schedule_plan_slots(schedule_plan_id, day_of_week);
+CREATE INDEX IF NOT EXISTS idx_schedule_plan_blocks_plan_date ON schedule_plan_blocks(schedule_plan_id, start_date, end_date);
 
+DROP TRIGGER IF EXISTS trg_schedule_plans_updated_at ON schedule_plans;
 CREATE TRIGGER trg_schedule_plans_updated_at
     BEFORE UPDATE ON schedule_plans
     FOR EACH ROW

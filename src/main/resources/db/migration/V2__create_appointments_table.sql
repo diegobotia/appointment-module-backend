@@ -3,7 +3,7 @@
 -- =============================================
 
 -- Tabla: appointments (Citas Médicas)
-CREATE TABLE appointments (
+CREATE TABLE IF NOT EXISTS appointments (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     patient_id UUID NOT NULL,
     doctor_id UUID NOT NULL,
@@ -27,15 +27,16 @@ CREATE TABLE appointments (
     )
 );
 
-CREATE INDEX idx_appointments_patient ON appointments(patient_id);
-CREATE INDEX idx_appointments_doctor_date ON appointments(doctor_id, appointment_date);
-CREATE INDEX idx_appointments_date_status ON appointments(appointment_date, status);
-CREATE INDEX idx_appointments_status ON appointments(status);
+CREATE INDEX IF NOT EXISTS idx_appointments_patient ON appointments(patient_id);
+CREATE INDEX IF NOT EXISTS idx_appointments_doctor_date ON appointments(doctor_id, appointment_date);
+CREATE INDEX IF NOT EXISTS idx_appointments_date_status ON appointments(appointment_date, status);
+CREATE INDEX IF NOT EXISTS idx_appointments_status ON appointments(status);
 
 -- =============================================
 -- FUNCIONES Y TRIGGERS PARA UPDATED_AT
 -- =============================================
 
+DROP TRIGGER IF EXISTS trg_appointments_updated_at ON appointments;
 CREATE TRIGGER trg_appointments_updated_at
     BEFORE UPDATE ON appointments
     FOR EACH ROW
@@ -46,7 +47,8 @@ CREATE TRIGGER trg_appointments_updated_at
 -- =============================================
 
 -- Vista: Citas con información enriquecida
-CREATE VIEW v_appointments_enriched AS
+DROP VIEW IF EXISTS v_appointments_enriched CASCADE;
+CREATE OR REPLACE VIEW v_appointments_enriched AS
 SELECT 
     a.id,
     a.patient_id,

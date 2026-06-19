@@ -35,6 +35,10 @@ CREATE TABLE IF NOT EXISTS appointments.schedules (
 );
 
 CREATE INDEX IF NOT EXISTS idx_schedules_doctor_day ON appointments.schedules(doctor_id, day_of_week);
+
+-- Asegurar que facility_id exista (tabla pudo crearse antes sin esta columna)
+ALTER TABLE appointments.schedules ADD COLUMN IF NOT EXISTS facility_id UUID;
+
 CREATE INDEX IF NOT EXISTS idx_schedules_facility ON appointments.schedules(facility_id);
 CREATE INDEX IF NOT EXISTS idx_schedules_doctor_facility_day ON appointments.schedules(doctor_id, facility_id, day_of_week);
 
@@ -102,6 +106,10 @@ CREATE INDEX IF NOT EXISTS idx_appointments_patient ON appointments.appointments
 CREATE INDEX IF NOT EXISTS idx_appointments_doctor_date ON appointments.appointments(doctor_id, appointment_date);
 CREATE INDEX IF NOT EXISTS idx_appointments_date_status ON appointments.appointments(appointment_date, status);
 CREATE INDEX IF NOT EXISTS idx_appointments_status ON appointments.appointments(status);
+
+-- Asegurar que facility_id exista (tabla pudo crearse antes sin esta columna)
+ALTER TABLE appointments.appointments ADD COLUMN IF NOT EXISTS facility_id UUID;
+
 CREATE INDEX IF NOT EXISTS idx_appointments_facility_date_status ON appointments.appointments(facility_id, appointment_date, status);
 CREATE INDEX IF NOT EXISTS idx_appointments_patient_date_status ON appointments.appointments(patient_id, appointment_date DESC, status);
 CREATE INDEX IF NOT EXISTS idx_appointments_specialist_available ON appointments.appointments(doctor_id, appointment_date, status) WHERE status IN ('SCHEDULED', 'CONFIRMED');
@@ -292,6 +300,18 @@ CREATE TABLE IF NOT EXISTS appointments.schedule_plans (
     updated_at TIMESTAMP,
     CONSTRAINT uq_schedule_plan_version UNIQUE (specialist_id, plan_year, plan_quarter, version_number)
 );
+
+-- Asegurar columnas en tabla existente (versión anterior usaba start_date/end_date)
+ALTER TABLE appointments.schedule_plans ADD COLUMN IF NOT EXISTS plan_year INTEGER;
+ALTER TABLE appointments.schedule_plans ADD COLUMN IF NOT EXISTS plan_quarter INTEGER;
+
+-- Asegurar constraint UNIQUE (no se crea con CREATE TABLE IF NOT EXISTS en tablas existentes)
+ALTER TABLE appointments.schedule_plans DROP CONSTRAINT IF EXISTS uq_schedule_plan_version;
+ALTER TABLE appointments.schedule_plans ADD CONSTRAINT uq_schedule_plan_version UNIQUE (specialist_id, plan_year, plan_quarter, version_number);
+
+-- Asegurar CHECK constraint
+ALTER TABLE appointments.schedule_plans DROP CONSTRAINT IF EXISTS chk_schedule_plans_quarter;
+ALTER TABLE appointments.schedule_plans ADD CONSTRAINT chk_schedule_plans_quarter CHECK (plan_quarter BETWEEN 1 AND 4);
 
 CREATE INDEX IF NOT EXISTS idx_schedule_plans_specialist_period ON appointments.schedule_plans(specialist_id, plan_year, plan_quarter);
 CREATE UNIQUE INDEX IF NOT EXISTS uq_schedule_plan_active_period ON appointments.schedule_plans(specialist_id, plan_year, plan_quarter) WHERE is_active_version = true;

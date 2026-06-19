@@ -1,0 +1,89 @@
+# =====================================================================
+# docker-compose.prod.yml — Producción (servidor local)
+# Uso: docker compose -f docker-compose.prod.yml up -d
+# =====================================================================
+# NOTA: La BD PostgreSQL y el módulo de billing YA existen en este servidor.
+# Este compose despliega SOLO el módulo de citas (appointments).
+# =====================================================================
+
+services:
+  appointments-module:
+    # Usar imagen desde GHCR (si el servidor tiene acceso a internet):
+    image: ghcr.io/${REPO_OWNER:-ipscentir}/appointment-module-backend:${IMAGE_TAG:-latest}
+    
+    # O construir localmente (descomentar si no hay acceso a GHCR):
+    # build:
+    #   context: .
+    #   dockerfile: Dockerfile
+
+    container_name: ipscentir-appointments
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+
+    env_file:
+      - .env
+
+    environment:
+      # Spring
+      SPRING_PROFILES_ACTIVE: prod
+      SERVER_PORT: 8080
+
+      # Base de datos (existente en el servidor)
+      SPRING_DATASOURCE_URL: jdbc:postgresql://${DB_HOST:-postgres}:${DB_PORT:-5432}/${DB_NAME:-ipscentir_appointments}
+      SPRING_DATASOURCE_USERNAME: ${DB_USER:-postgres}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-postgres}
+      SPRING_FLYWAY_ENABLED: "true"
+
+      # JWT (MISMO secreto que el módulo de billing)
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET es obligatorio — debe coincidir con billing}
+
+      # URL del módulo de billing (ya corriendo)
+      AUTH_MODULE_BASE_URL: http://${BILLING_HOST:-billing}:${BILLING_PORT:-8081}
+
+      # Seguridad
+      N8N_API_KEY: ${N8N_API_KEY:?N8N_API_KEY es obligatorio}
+      SECURITY_AUTH_DIAGNOSTICS: "false"
+
+      # Integraciones
+      PATIENT_SERVICE_URL: http://${BILLING_HOST:-billing}:${BILLING_PORT:-8081}
+      AFFILIATION_SERVICE_URL: ${AFFILIATION_SERVICE_URL:-}
+      CLINICAL_SERVICE_URL: ${CLINICAL_SERVICE_URL:-}
+
+      # Notificaciones (deshabilitar si no se usa)
+      NOTIFICATIONS_ENABLED: "false"
+      NOTIFICATIONS_CREATED_ALERT_ENABLED: "false"
+      NOTIFICATIONS_CANCELLED_ALERT_ENABLED: "false"
+      NOTIFICATIONS_REMINDER_24H_ENABLED: "false"
+      NOTIFICATIONS_REMINDER_2H_ENABLED: "false"
+      NOTIFICATIONS_MAX_RETRY_ATTEMPTS: "3"
+
+      TWILIO_ENABLED: "false"
+      RESEND_ENABLED: "false"
+
+      # CORS — dominio del frontend
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:3000}
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+    networks:
+      - ipscentir-network
+
+networks:
+  ipscentir-network:
+    name: ipscentir-network
+    driver: bridge
+    external: false
+    # Si el módulo de billing ya está en una red existente, usar:
+    # external: true

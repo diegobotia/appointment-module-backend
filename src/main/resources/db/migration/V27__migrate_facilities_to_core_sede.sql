@@ -98,6 +98,7 @@ FROM appointments.facilities f
 WHERE f.id = a.facility_id AND a.sede_id IS NULL;
 
 ALTER TABLE appointments.appointments DROP CONSTRAINT IF EXISTS fk_appointments_facility;
+ALTER TABLE appointments.appointments DROP CONSTRAINT IF EXISTS fk_appointments_sede;
 ALTER TABLE appointments.appointments DROP COLUMN IF EXISTS facility_id;
 ALTER TABLE appointments.appointments ALTER COLUMN sede_id SET NOT NULL;
 ALTER TABLE appointments.appointments
@@ -123,6 +124,7 @@ FROM appointments.facilities f
 WHERE f.id = s.facility_id AND s.sede_id IS NULL;
 
 ALTER TABLE appointments.schedules DROP CONSTRAINT IF EXISTS fk_schedules_facility;
+ALTER TABLE appointments.schedules DROP CONSTRAINT IF EXISTS fk_schedules_sede;
 ALTER TABLE appointments.schedules DROP COLUMN IF EXISTS facility_id;
 ALTER TABLE appointments.schedules ALTER COLUMN sede_id SET NOT NULL;
 ALTER TABLE appointments.schedules
@@ -151,6 +153,8 @@ WHERE f.id = h.facility_id AND h.sede_id IS NULL;
 
 ALTER TABLE appointments.facility_operating_hours DROP CONSTRAINT IF EXISTS fk_facility_operating_hours_facility;
 ALTER TABLE appointments.facility_operating_hours DROP CONSTRAINT IF EXISTS uq_facility_operating_hours_facility_day;
+ALTER TABLE appointments.facility_operating_hours DROP CONSTRAINT IF EXISTS fk_facility_operating_hours_sede;
+ALTER TABLE appointments.facility_operating_hours DROP CONSTRAINT IF EXISTS uq_facility_operating_hours_sede_day;
 ALTER TABLE appointments.facility_operating_hours DROP COLUMN IF EXISTS facility_id;
 ALTER TABLE appointments.facility_operating_hours ALTER COLUMN sede_id SET NOT NULL;
 ALTER TABLE appointments.facility_operating_hours
@@ -179,6 +183,8 @@ WHERE f.id = r.facility_id AND r.sede_id IS NULL;
 
 ALTER TABLE appointments.facility_resources DROP CONSTRAINT IF EXISTS fk_facility_resources_facility;
 ALTER TABLE appointments.facility_resources DROP CONSTRAINT IF EXISTS uq_facility_resources_facility_code;
+ALTER TABLE appointments.facility_resources DROP CONSTRAINT IF EXISTS fk_facility_resources_sede;
+ALTER TABLE appointments.facility_resources DROP CONSTRAINT IF EXISTS uq_facility_resources_sede_code;
 ALTER TABLE appointments.facility_resources DROP COLUMN IF EXISTS facility_id;
 ALTER TABLE appointments.facility_resources ALTER COLUMN sede_id SET NOT NULL;
 ALTER TABLE appointments.facility_resources
@@ -206,6 +212,7 @@ FROM appointments.facilities f
 WHERE f.id = a.facility_id AND a.sede_id IS NULL;
 
 ALTER TABLE appointments.appointment_resource_allocations DROP CONSTRAINT IF EXISTS fk_appointment_resource_allocations_facility;
+ALTER TABLE appointments.appointment_resource_allocations DROP CONSTRAINT IF EXISTS fk_appointment_resource_allocations_sede;
 ALTER TABLE appointments.appointment_resource_allocations DROP COLUMN IF EXISTS facility_id;
 ALTER TABLE appointments.appointment_resource_allocations ALTER COLUMN sede_id SET NOT NULL;
 ALTER TABLE appointments.appointment_resource_allocations

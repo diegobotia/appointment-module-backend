@@ -27,7 +27,7 @@ ALTER TABLE appointments
             'NO_SHOW'
         ));
 
-CREATE TABLE appointment_participants (
+CREATE TABLE IF NOT EXISTS appointment_participants (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     appointment_id UUID NOT NULL REFERENCES appointments(id) ON DELETE CASCADE,
     doctor_id UUID NOT NULL,
@@ -39,7 +39,8 @@ CREATE TABLE appointment_participants (
 
 INSERT INTO appointment_participants (appointment_id, doctor_id, participant_order, participant_role)
 SELECT id, doctor_id, 1, 'PRIMARY'
-FROM appointments;
+FROM appointments
+ON CONFLICT (appointment_id, doctor_id) DO NOTHING;
 
-CREATE INDEX idx_appointment_participants_doctor_date
+CREATE INDEX IF NOT EXISTS idx_appointment_participants_doctor_date
     ON appointment_participants(doctor_id, appointment_id);

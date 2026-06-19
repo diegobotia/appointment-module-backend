@@ -3,7 +3,7 @@
 -- =============================================
 
 -- Tabla: schedules (Agendas Médicas)
-CREATE TABLE schedules (
+CREATE TABLE IF NOT EXISTS schedules (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     doctor_id UUID NOT NULL,
     facility_id UUID NOT NULL,
@@ -20,11 +20,11 @@ CREATE TABLE schedules (
     CONSTRAINT chk_time_range CHECK (end_time > start_time)
 );
 
-CREATE INDEX idx_schedules_doctor_day ON schedules(doctor_id, day_of_week);
-CREATE INDEX idx_schedules_facility ON schedules(facility_id);
+CREATE INDEX IF NOT EXISTS idx_schedules_doctor_day ON schedules(doctor_id, day_of_week);
+CREATE INDEX IF NOT EXISTS idx_schedules_facility ON schedules(facility_id);
 
 -- Tabla: schedule_blocks (Bloqueos de Agenda)
-CREATE TABLE schedule_blocks (
+CREATE TABLE IF NOT EXISTS schedule_blocks (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     schedule_id UUID NOT NULL REFERENCES schedules(id) ON DELETE CASCADE,
     block_date DATE NOT NULL,
@@ -37,7 +37,7 @@ CREATE TABLE schedule_blocks (
     CONSTRAINT chk_block_time_range CHECK (end_time > start_time)
 );
 
-CREATE INDEX idx_schedule_blocks_schedule_date ON schedule_blocks(schedule_id, block_date);
+CREATE INDEX IF NOT EXISTS idx_schedule_blocks_schedule_date ON schedule_blocks(schedule_id, block_date);
 
 -- =============================================
 -- FUNCIONES Y TRIGGERS PARA UPDATED_AT
@@ -51,6 +51,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS trg_schedules_updated_at ON schedules;
 CREATE TRIGGER trg_schedules_updated_at
     BEFORE UPDATE ON schedules
     FOR EACH ROW
