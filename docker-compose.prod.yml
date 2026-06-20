@@ -8,18 +8,18 @@
 
 services:
   appointments-module:
-    # Usar imagen desde GHCR (si el servidor tiene acceso a internet):
-    image: ghcr.io/${REPO_OWNER:-ipscentir}/appointment-module-backend:${IMAGE_TAG:-latest}
+    # Construir localmente
+    build:
+      context: .
+      dockerfile: Dockerfile
     
-    # O construir localmente (descomentar si no hay acceso a GHCR):
-    # build:
-    #   context: .
-    #   dockerfile: Dockerfile
+    # Imagen GHCR (cuando el usuario correcto esté autenticado):
+    # image: ghcr.io/${REPO_OWNER:-ipscentir}/appointment-module-backend:${IMAGE_TAG:-latest}
 
     container_name: ipscentir-appointments
     restart: unless-stopped
     ports:
-      - "8080:8080"
+      - "${SERVER_PORT:-8080}:${SERVER_PORT:-8080}"
 
     env_file:
       - .env
@@ -27,7 +27,7 @@ services:
     environment:
       # Spring
       SPRING_PROFILES_ACTIVE: prod
-      SERVER_PORT: 8080
+      SERVER_PORT: ${SERVER_PORT:-8080}
 
       # Base de datos (existente en el servidor)
       SPRING_DATASOURCE_URL: jdbc:postgresql://${DB_HOST:-postgres}:${DB_PORT:-5432}/${DB_NAME:-ipscentir_appointments}
@@ -65,7 +65,7 @@ services:
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:3000}
 
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      test: "curl -f http://localhost:${SERVER_PORT:-8080}/actuator/health"
       interval: 30s
       timeout: 10s
       retries: 3
