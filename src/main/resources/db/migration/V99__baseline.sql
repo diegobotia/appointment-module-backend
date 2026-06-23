@@ -1786,11 +1786,23 @@ BEGIN
 END;
 $$;
 
-ALTER TABLE ONLY appointments.appointment_audit_log
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_catalog.pg_constraint WHERE conname = 'appointment_audit_log_performed_by_fkey') THEN
+        ALTER TABLE ONLY appointments.appointment_audit_log
     ADD CONSTRAINT appointment_audit_log_performed_by_fkey FOREIGN KEY (performed_by) REFERENCES core.profiles(id) ON DELETE SET NULL;
+    END IF;
+END;
+$$;
 
-ALTER TABLE ONLY appointments.appointment_state_history
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_catalog.pg_constraint WHERE conname = 'appointment_state_history_changed_by_fkey') THEN
+        ALTER TABLE ONLY appointments.appointment_state_history
     ADD CONSTRAINT appointment_state_history_changed_by_fkey FOREIGN KEY (changed_by) REFERENCES core.profiles(id) ON DELETE SET NULL;
+    END IF;
+END;
+$$;
 
 DO $$
 BEGIN
@@ -1801,8 +1813,14 @@ BEGIN
 END;
 $$;
 
-ALTER TABLE ONLY appointments.appointments
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_catalog.pg_constraint WHERE conname = 'appointments_schedule_id_fkey') THEN
+        ALTER TABLE ONLY appointments.appointments
     ADD CONSTRAINT appointments_schedule_id_fkey FOREIGN KEY (schedule_id) REFERENCES appointments.schedules(id) ON DELETE SET NULL;
+    END IF;
+END;
+$$;
 
 DO $$
 BEGIN
@@ -1849,14 +1867,32 @@ BEGIN
 END;
 $$;
 
-ALTER TABLE ONLY appointments.appointment_resource_allocations
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_catalog.pg_constraint WHERE conname = 'fk_resource_alloc_facility_resource') THEN
+        ALTER TABLE ONLY appointments.appointment_resource_allocations
     ADD CONSTRAINT fk_resource_alloc_facility_resource FOREIGN KEY (facility_resource_id) REFERENCES appointments.facility_resources(id) ON DELETE SET NULL;
+    END IF;
+END;
+$$;
 
-ALTER TABLE ONLY appointments.schedule_blocks
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_catalog.pg_constraint WHERE conname = 'fk_schedule_blocks_created_by') THEN
+        ALTER TABLE ONLY appointments.schedule_blocks
     ADD CONSTRAINT fk_schedule_blocks_created_by FOREIGN KEY (created_by) REFERENCES core.profiles(id) ON DELETE SET NULL;
+    END IF;
+END;
+$$;
 
-ALTER TABLE ONLY appointments.schedule_plan_blocks
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_catalog.pg_constraint WHERE conname = 'fk_schedule_plan_blocks_created_by') THEN
+        ALTER TABLE ONLY appointments.schedule_plan_blocks
     ADD CONSTRAINT fk_schedule_plan_blocks_created_by FOREIGN KEY (created_by) REFERENCES core.profiles(id) ON DELETE SET NULL;
+    END IF;
+END;
+$$;
 
 DO $$
 BEGIN
@@ -1894,8 +1930,14 @@ BEGIN
 END;
 $$;
 
-ALTER TABLE ONLY appointments.schedule_plan_blocks
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_catalog.pg_constraint WHERE conname = 'schedule_plan_blocks_created_by_fkey') THEN
+        ALTER TABLE ONLY appointments.schedule_plan_blocks
     ADD CONSTRAINT schedule_plan_blocks_created_by_fkey FOREIGN KEY (created_by) REFERENCES core.profiles(id) ON DELETE SET NULL;
+    END IF;
+END;
+$$;
 
 DO $$
 BEGIN
@@ -1906,8 +1948,14 @@ BEGIN
 END;
 $$;
 
-ALTER TABLE ONLY appointments.schedule_plan_slots
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_catalog.pg_constraint WHERE conname = 'schedule_plan_slots_consultorio_id_fkey') THEN
+        ALTER TABLE ONLY appointments.schedule_plan_slots
     ADD CONSTRAINT schedule_plan_slots_consultorio_id_fkey FOREIGN KEY (consultorio_id) REFERENCES appointments.facility_resources(id) ON DELETE SET NULL;
+    END IF;
+END;
+$$;
 
 DO $$
 BEGIN
@@ -1918,8 +1966,14 @@ BEGIN
 END;
 $$;
 
-ALTER TABLE ONLY appointments.schedules
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_catalog.pg_constraint WHERE conname = 'schedules_consultorio_id_fkey') THEN
+        ALTER TABLE ONLY appointments.schedules
     ADD CONSTRAINT schedules_consultorio_id_fkey FOREIGN KEY (consultorio_id) REFERENCES appointments.facility_resources(id) ON DELETE SET NULL;
+    END IF;
+END;
+$$;
 
 DO $$
 BEGIN
@@ -2011,8 +2065,14 @@ BEGIN
 END;
 $$;
 
-ALTER TABLE ONLY core.appointment_admissions
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_catalog.pg_constraint WHERE conname = 'appointment_admissions_linked_by_fkey') THEN
+        ALTER TABLE ONLY core.appointment_admissions
     ADD CONSTRAINT appointment_admissions_linked_by_fkey FOREIGN KEY (linked_by) REFERENCES core.profiles(id) ON DELETE SET NULL;
+    END IF;
+END;
+$$;
 
 DO $$
 BEGIN
