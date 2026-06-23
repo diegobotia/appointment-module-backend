@@ -13,7 +13,7 @@ CREATE OR REPLACE FUNCTION appointments.get_confirmed_appointments_by_patient(p_
     COALESCE(m.nombre || ' ' || m.apellido, 'Sin asignar') AS doctor_name,
     a.sede_id, a.status
   FROM appointments.appointments a
-  LEFT JOIN hc.medicos m ON a.doctor_id = m.id
+  LEFT JOIN hc.medicos m ON a.doctor_id = m.id::text
   WHERE a.patient_id = p_patient_id
     AND a.status = 'CONFIRMED'
     AND (p_sede_id IS NULL OR a.sede_id = p_sede_id)
