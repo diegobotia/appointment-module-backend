@@ -1,6 +1,5 @@
-# Perfil de producción para PostgreSQL directo (servidor local)
+# Perfil de producción para PostgreSQL directo
 # Usa el datasource configurado en application.yml vía SPRING_DATASOURCE_*
-# No incluye el perfil supabase — la conexión es directa a PostgreSQL.
 spring:
   jpa:
     hibernate:
@@ -8,7 +7,8 @@ spring:
   flyway:
     enabled: true
     baseline-on-migrate: true
-    baseline-version: 36
+    baseline-version: 1
+    schemas: appointments
 
 security:
   jwt:

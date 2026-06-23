@@ -3,9 +3,9 @@ spring:
     name: appointments-module
   
   datasource:
-    url: jdbc:postgresql://localhost:5432/ipscentir_appointments
+    url: jdbc:postgresql://192.168.0.160:5432/centir_prod
     username: postgres
-    password: postgres
+    password: t40DEL06V$
     driver-class-name: org.postgresql.Driver
     
   jpa:
@@ -20,7 +20,9 @@ spring:
   flyway:
     enabled: true
     baseline-on-migrate: true
+    baseline-version: 0
     locations: classpath:db/migration
+    schemas: appointments
     
 server:
   port: 8080

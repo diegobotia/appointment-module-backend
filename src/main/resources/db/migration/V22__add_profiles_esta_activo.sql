@@ -1,2 +1,0 @@
-ALTER TABLE core.profiles
-    ADD COLUMN IF NOT EXISTS esta_activo BOOLEAN NOT NULL DEFAULT true;

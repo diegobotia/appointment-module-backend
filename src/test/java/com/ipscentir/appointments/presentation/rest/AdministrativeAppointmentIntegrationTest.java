@@ -17,8 +17,10 @@ import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.temporal.TemporalAdjusters;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -63,7 +65,7 @@ class AdministrativeAppointmentIntegrationTest {
         doctorA = UUID.randomUUID().toString();
         doctorB = UUID.randomUUID().toString();
         sedeId = FacilityMasterData.SEDE_ID_BELEN;
-        appointmentDate = LocalDate.now().plusDays(5);
+        appointmentDate = nextWeekday(LocalDate.now().plusDays(1));
         appointmentTime = LocalTime.of(11, 0);
 
         seedSchedule(doctorA);
@@ -170,6 +172,14 @@ class AdministrativeAppointmentIntegrationTest {
                 .maxPatientsPerSlot(1)
                 .isActive(true)
                 .build());
+    }
+
+    private static LocalDate nextWeekday(LocalDate date) {
+        LocalDate next = date.with(TemporalAdjusters.next(DayOfWeek.MONDAY));
+        if (date.getDayOfWeek().getValue() <= DayOfWeek.FRIDAY.getValue()) {
+            return date;
+        }
+        return next;
     }
 
     /** Evita dependencia de application en tests de presentación. */

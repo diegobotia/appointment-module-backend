@@ -64,23 +64,23 @@ Incluye PostgreSQL, pgAdmin y **MailHog** (SMTP `1025`, UI `8025`) para probar n
 API: `http://localhost:8080/api/v1/...`  
 Swagger (solo dev): `http://localhost:8080/swagger-ui.html`
 
-### Supabase
+### Ejecución local
 
 ```bash
 cp .env.example .env
 # Editar credenciales
 chmod +x scripts/run-with-env.sh
-SPRING_PROFILES_ACTIVE=supabase SPRING_FLYWAY_ENABLED=true ./scripts/run-with-env.sh
+SPRING_PROFILES_ACTIVE=prod SPRING_FLYWAY_ENABLED=true ./scripts/run-with-env.sh
 ```
 
 Variables: ver [`.env.example`](.env.example).
 
 ### Producción
 
-Perfil recomendado: `prod` (+ `supabase` si aplica).
+Perfil recomendado: `prod`.
 
 ```bash
-SPRING_PROFILES_ACTIVE=prod,supabase SPRING_FLYWAY_ENABLED=true mvn spring-boot:run
+SPRING_PROFILES_ACTIVE=prod SPRING_FLYWAY_ENABLED=true mvn spring-boot:run
 ```
 
 | Aspecto | Comportamiento |
@@ -144,7 +144,7 @@ Artefactos descargables 14 días: `quality-reports` (JaCoCo HTML + SpotBugs).
 
 Rutas compartidas mostrador/call center: `/admin/appointments/**`, `/staff/patients/**` (`Admisiones`, `Asesor`, `Administracion`).
 
-En Supabase, el rol debe existir en `core.roles` con nombre **`Asesor`** (migración `V28`).
+El rol debe existir en `core.roles` con nombre **`Asesor`**.
 
 ## Integraciones paciente
 
@@ -157,6 +157,39 @@ En Supabase, el rol debe existir en `core.roles` con nombre **`Asesor`** (migrac
 - API admin de sedes: `/api/v1/admin/sedes` (no `/admin/facilities`). Códigos n8n: `BELEN`, `CONQUISTADORES`.
 - Planes de agenda trimestrales: `/api/v1/admin/schedule-plans` (bloques por día, **consultorio** obligatorio por sede, publicación con validación de solapes).
 
+## Migraciones (Flyway)
+
+### Estrategia
+
+El proyecto usa una **baseline única** (`V1__baseline.sql`) que refleja exactamente el esquema de la base de datos canónica (`centir_prod`). No hay migraciones incrementales históricas.
+
+### ¿Qué hace Flyway según el estado de la BD?
+
+| Estado de la BD | Comportamiento |
+|----------------|----------------|
+| **Vacía** (nueva instalación) | `baseline-on-migrate: true` + `baseline-version: 0` → Flyway aplica `V1__baseline.sql` completo |
+| **Completa** (`centir_prod`) | Flyway detecta esquema no vacío, hace baseline en versión 0, aplica `V1` con `CREATE TABLE IF NOT EXISTS` (no produce cambios porque todo existe) |
+| **Parcial** (faltan algunas tablas) | `V1` con `IF NOT EXISTS` crea solo lo que falte sin error |
+| **Con datos existentes** | Flyway respeta los datos existentes; `IF NOT EXISTS` evita conflictos |
+
+### CHECK constraints
+
+Las siguientes constraints están sincronizadas con los enums de Java:
+
+| Tabla | Constraint | Valores permitidos |
+|-------|-----------|-------------------|
+| `appointments.appointments` | `appointment_type` | `PRESENCIAL, JUNTA_MEDICA, TERAPIA_FISICA, TERAPIA_OCUPACIONAL, STAFF, BLOQUEO` |
+| `appointments.appointments` | `status` | `SCHEDULED, PENDIENTE_CONFIRMACION_GRUPO, CONFIRMED, CHECKED_IN, COMPLETED, CANCELLED, NO_SHOW` |
+| `appointments.appointments` | `booking_channel` | `N8N, STAFF` |
+| `appointments.appointment_participants` | `participant_role` | `PRIMARY, SECONDARY, TERTIARY, QUATERNARY` |
+| `appointments.appointment_participants` | `participant_order` | `1..4` |
+
+### Desarrollo: agregar una migration
+
+1. Crear `src/main/resources/db/migration/V<version>__<descripcion>.sql`
+2. El número de versión debe ser incremental (V2, V3, etc.)
+3. La migration se aplica automáticamente al iniciar la app
+
 ## Estructura
 
 ```text
@@ -166,6 +199,6 @@ src/main/java/com/ipscentir/appointments/
 ├── infrastructure/
 └── presentation/
 docs/flujos-api.md                    # Referencia API (panel, formularios, n8n)
-src/main/resources/db/migration/      # Flyway V0…V33
+src/main/resources/db/migration/      # Flyway V1… (ver README sección Migraciones)
 scripts/                              # run-with-env, seeds SQL
 ```
