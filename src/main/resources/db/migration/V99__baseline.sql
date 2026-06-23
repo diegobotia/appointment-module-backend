@@ -9,7 +9,7 @@ CREATE OR REPLACE FUNCTION appointments.get_confirmed_appointments_by_patient(p_
     AS $$
   SELECT 
     a.id, a.patient_id, a.appointment_date, a.appointment_time,
-    a.appointment_type, a.specialty, a.doctor_id,
+    a.appointment_type, a.specialty, a.doctor_id::uuid,
     COALESCE(m.nombre || ' ' || m.apellido, 'Sin asignar') AS doctor_name,
     a.sede_id, a.status
   FROM appointments.appointments a
