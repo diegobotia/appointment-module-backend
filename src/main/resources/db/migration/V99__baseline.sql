@@ -2746,7 +2746,7 @@ ALTER TABLE hc.medico_especialidades ENABLE ROW LEVEL SECURITY;
 
 ALTER TABLE hc.medicos ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY read_medicos ON hc.medicos FOR SELECT USING (true);
+CREATE POLICY IF NOT EXISTS read_medicos ON hc.medicos FOR SELECT USING (true);
 
 ALTER TABLE hc.revision_sistemas ENABLE ROW LEVEL SECURITY;
 
@@ -2755,6 +2755,4 @@ ALTER TABLE hc.signos_vitales ENABLE ROW LEVEL SECURITY;
 ALTER TABLE hc.solicitudes ENABLE ROW LEVEL SECURITY;
 
 -- PostgreSQL database dump complete
-
-\unrestrict 1IvfKe5klUSclMMQqUa9GqFactf7dc6b8mjUKqRGy2kZUCd86mrWvDPKRF5x50J
 

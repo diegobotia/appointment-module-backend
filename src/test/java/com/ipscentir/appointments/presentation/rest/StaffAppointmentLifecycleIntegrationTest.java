@@ -81,7 +81,7 @@ class StaffAppointmentLifecycleIntegrationTest {
         patientId = seedPatient();
         doctorId = UUID.randomUUID().toString();
         sedeId = FacilityMasterData.SEDE_ID_BELEN;
-        appointmentDate = LocalDate.now().plusDays(4);
+        appointmentDate = LocalDate.now().plusDays(5);
         appointmentTime = LocalTime.of(10, 0);
 
         scheduleId = scheduleJpaRepository.save(Schedule.builder()
