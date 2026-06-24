@@ -9,6 +9,7 @@ spring:
     baseline-on-migrate: true
     baseline-version: 1
     schemas: appointments
+    split-statements: false
 
 security:
   jwt:

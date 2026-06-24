@@ -23,6 +23,7 @@ spring:
     baseline-version: 0
     locations: classpath:db/migration
     schemas: appointments
+    split-statements: false
     
 server:
   port: 8080
