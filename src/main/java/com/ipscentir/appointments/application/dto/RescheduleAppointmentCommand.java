@@ -13,6 +13,7 @@ public record RescheduleAppointmentCommand(
         @NotNull LocalTime appointmentTime,
         @NotNull UUID scheduleId,
         @NotNull @JsonAlias("doctorId") String medicoId,
-        @NotNull Integer sedeId
+        @NotNull Integer sedeId,
+        String reason
 ) {
 }

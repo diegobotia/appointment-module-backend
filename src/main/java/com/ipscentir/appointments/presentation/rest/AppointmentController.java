@@ -1,6 +1,7 @@
 package com.ipscentir.appointments.presentation.rest;
 
 import com.ipscentir.appointments.application.dto.AppointmentDTO;
+import com.ipscentir.appointments.application.dto.AppointmentPageResponse;
 import com.ipscentir.appointments.application.dto.AppointmentSearchCriteria;
 import com.ipscentir.appointments.application.dto.CancelAppointmentCommand;
 import com.ipscentir.appointments.application.dto.CreateAdministrativeAppointmentCommand;
@@ -42,11 +43,11 @@ public class AppointmentController {
     @GetMapping
     @PreAuthorize("hasAnyRole('ADMINISTRACION', 'ADMISIONES', 'ASESOR', 'MEDICO', 'FACTURACION')")
     @Operation(
-            summary = "Listar citas con filtros",
-            description = "Devuelve AppointmentDTO enriquecido (medicoDisplayName, patientDisplayName, administrative). "
+            summary = "Listar citas con filtros y paginación",
+            description = "Devuelve AppointmentPageResponse con AppointmentDTO enriquecido (medicoDisplayName, patientDisplayName, administrative). "
                     + "No es necesario resolver IDs de médico o paciente en el cliente."
     )
-    public ResponseEntity<List<AppointmentDTO>> listAppointments(
+    public ResponseEntity<AppointmentPageResponse> listAppointments(
             @RequestParam(required = false) Integer sedeId,
             @RequestParam(required = false) String medicoId,
             @RequestParam(required = false, name = "doctorId") String legacyDoctorId,
@@ -54,11 +55,14 @@ public class AppointmentController {
             @RequestParam(required = false) AppointmentStatus status,
             @RequestParam(required = false) BookingChannel bookingChannel,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fromDate,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate toDate
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate toDate,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
     ) {
         String resolvedMedicoId = medicoId != null && !medicoId.isBlank() ? medicoId : legacyDoctorId;
         return ResponseEntity.ok(appointmentOperationsService.searchAppointments(
-                new AppointmentSearchCriteria(sedeId, resolvedMedicoId, patientId, status, bookingChannel, fromDate, toDate)
+                new AppointmentSearchCriteria(sedeId, resolvedMedicoId, patientId, status, bookingChannel, fromDate, toDate),
+                page, size
         ));
     }
 

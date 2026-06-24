@@ -1,6 +1,7 @@
 package com.ipscentir.appointments.application.service;
 
 import com.ipscentir.appointments.application.dto.AppointmentDTO;
+import com.ipscentir.appointments.application.dto.AppointmentPageResponse;
 import com.ipscentir.appointments.application.dto.AppointmentSearchCriteria;
 import com.ipscentir.appointments.application.dto.CancelAppointmentCommand;
 import com.ipscentir.appointments.application.dto.CreateAdministrativeAppointmentCommand;
@@ -47,6 +48,19 @@ public class AppointmentOperationsService {
                 .filter(this::canRead)
                 .toList();
         return appointmentEnrichmentService.toDtos(appointments);
+    }
+
+    @Transactional(readOnly = true)
+    public AppointmentPageResponse searchAppointments(AppointmentSearchCriteria criteria, int page, int size) {
+        List<AppointmentDTO> allDtos = searchAppointments(criteria);
+        int totalElements = allDtos.size();
+        int totalPages = (int) Math.ceil((double) totalElements / size);
+        int fromIndex = page * size;
+        int toIndex = Math.min(fromIndex + size, totalElements);
+        List<AppointmentDTO> pageDtos = fromIndex < totalElements
+                ? allDtos.subList(fromIndex, toIndex)
+                : List.of();
+        return new AppointmentPageResponse(pageDtos, page, size, totalElements, totalPages);
     }
 
     @Transactional(readOnly = true)

@@ -4,7 +4,6 @@ import com.ipscentir.appointments.application.dto.schedule.MyScheduleResponse;
 import com.ipscentir.appointments.application.service.ScheduleApplicationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
@@ -28,9 +27,9 @@ public class MeScheduleController {
     @GetMapping
     @Operation(summary = "Agenda propia: plantillas, citas y disponibilidad contextual")
     public ResponseEntity<MyScheduleResponse> getMySchedule(
-            @RequestParam @NotNull Integer sedeId,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to
+            @RequestParam(required = false) Integer sedeId,
+            @RequestParam(required = false, name = "fromDate") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(required = false, name = "toDate") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to
     ) {
         return ResponseEntity.ok(scheduleApplicationService.getMySchedule(sedeId, from, to));
     }

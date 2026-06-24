@@ -292,7 +292,8 @@ public class N8nPatientIntegrationService {
                         request.appointmentTime(),
                         request.scheduleId(),
                         request.doctorId(),
-                        resolvedSedeId
+                        resolvedSedeId,
+                        null
                 ),
                 request.conversationId()
         );
