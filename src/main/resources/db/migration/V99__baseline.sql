@@ -2746,7 +2746,13 @@ ALTER TABLE hc.medico_especialidades ENABLE ROW LEVEL SECURITY;
 
 ALTER TABLE hc.medicos ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY IF NOT EXISTS read_medicos ON hc.medicos FOR SELECT USING (true);
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_catalog.pg_policies WHERE schemaname = 'hc' AND tablename = 'medicos' AND policyname = 'read_medicos') THEN
+        CREATE POLICY read_medicos ON hc.medicos FOR SELECT USING (true);
+    END IF;
+END;
+$$;
 
 ALTER TABLE hc.revision_sistemas ENABLE ROW LEVEL SECURITY;
 
