@@ -21,7 +21,18 @@ public class ApplicationSecurityConfig {
     @Bean
     public JwtDecoder jwtDecoder() {
         byte[] keyBytes = jwtSecret.getBytes(StandardCharsets.UTF_8);
-        SecretKey key = new SecretKeySpec(keyBytes, "HmacSHA256");
+        SecretKey key = new SecretKeySpec(keyBytes, hmacAlgorithm(keyBytes.length));
         return NimbusJwtDecoder.withSecretKey(key).build();
+    }
+
+    /**
+     * Selecciona el algoritmo HMAC según el tamaño de la llave,
+     * con la misma lógica que io.jsonwebtoken.security.Keys.hmacShaKeyFor()
+     * en jjwt 0.11.5 (usado por el módulo de billing para firmar JWTs).
+     */
+    private static String hmacAlgorithm(int keyLength) {
+        if (keyLength >= 64) return "HmacSHA512";
+        if (keyLength >= 48) return "HmacSHA384";
+        return "HmacSHA256";
     }
 }
