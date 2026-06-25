@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 
@@ -21,18 +22,22 @@ public class ApplicationSecurityConfig {
     @Bean
     public JwtDecoder jwtDecoder() {
         byte[] keyBytes = jwtSecret.getBytes(StandardCharsets.UTF_8);
-        SecretKey key = new SecretKeySpec(keyBytes, hmacAlgorithm(keyBytes.length));
-        return NimbusJwtDecoder.withSecretKey(key).build();
+        MacAlgorithm macAlg = selectMacAlgorithm(keyBytes.length);
+        SecretKey key = new SecretKeySpec(keyBytes, jcaAlgorithm(macAlg));
+        return NimbusJwtDecoder.withSecretKey(key)
+                .macAlgorithm(macAlg)
+                .build();
     }
 
-    /**
-     * Selecciona el algoritmo HMAC según el tamaño de la llave,
-     * con la misma lógica que io.jsonwebtoken.security.Keys.hmacShaKeyFor()
-     * en jjwt 0.11.5 (usado por el módulo de billing para firmar JWTs).
-     */
-    private static String hmacAlgorithm(int keyLength) {
-        if (keyLength >= 64) return "HmacSHA512";
-        if (keyLength >= 48) return "HmacSHA384";
+    private static MacAlgorithm selectMacAlgorithm(int keyLength) {
+        if (keyLength >= 64) return MacAlgorithm.HS512;
+        if (keyLength >= 48) return MacAlgorithm.HS384;
+        return MacAlgorithm.HS256;
+    }
+
+    private static String jcaAlgorithm(MacAlgorithm macAlg) {
+        if (macAlg == MacAlgorithm.HS512) return "HmacSHA512";
+        if (macAlg == MacAlgorithm.HS384) return "HmacSHA384";
         return "HmacSHA256";
     }
 }
