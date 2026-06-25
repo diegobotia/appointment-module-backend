@@ -1,5 +1,6 @@
 package com.ipscentir.appointments.domain.service;
 
+import com.ipscentir.appointments.application.service.MedicoLookupService;
 import com.ipscentir.appointments.domain.model.appointment.Appointment;
 import com.ipscentir.appointments.domain.model.appointment.AppointmentStatus;
 import com.ipscentir.appointments.domain.model.appointment.AppointmentType;
@@ -25,6 +26,7 @@ public class HumanResourceAvailabilityService {
     private final FacilityOperatingHoursService facilityOperatingHoursService;
     private final ScheduleRepository scheduleRepository;
     private final AppointmentRepository appointmentRepository;
+    private final MedicoLookupService medicoLookupService;
 
     public void assertBookingAllowed(HumanResourceBookingContext context) {
         facilityOperatingHoursService.assertDateNotHoliday(context.date());
@@ -46,6 +48,11 @@ public class HumanResourceAvailabilityService {
     }
 
     private void assertBloqueoAllowed(HumanResourceBookingContext context, UUID excludeAppointmentId) {
+        List<String> specialties = medicoLookupService.findActiveSpecialties(context.primaryDoctorId());
+        if (specialties.stream().noneMatch(s -> s.equalsIgnoreCase("DOLOR"))) {
+            throw new IllegalStateException(
+                    "El bloqueo solo puede asignarse a un médico con especialidad en Dolor.");
+        }
         if (!availabilityService.isDoctorSlotAvailable(
                 context.primaryDoctorId(),
                 context.sedeId(),
