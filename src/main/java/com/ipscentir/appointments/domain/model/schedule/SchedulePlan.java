@@ -122,4 +122,8 @@ public class SchedulePlan {
     public void setSedeId(Integer sedeId) {
         this.sedeId = sedeId;
     }
+
+    public void setSpecialistId(String specialistId) {
+        this.specialistId = specialistId;
+    }
 }

@@ -202,20 +202,22 @@ public class SchedulePlanAdminService {
             throw new IllegalArgumentException("Cannot update a published schedule plan. Unpublish it first.");
         }
 
+        var specialist = medicoLookupService.requireById(request.medicoId());
+
         schedulePlanRulesValidator.validateDuration(request.startDate(), request.endDate());
 
         if (request.slots() != null && !request.slots().isEmpty()) {
             schedulePlanRulesValidator.validateSlotsForCreation(request.slots());
-            schedulePlanRulesValidator.validateConsultoriosBelongToSede(plan.getSedeId(), request.slots());
+            schedulePlanRulesValidator.validateConsultoriosBelongToSede(request.sedeId(), request.slots());
             schedulePlanRulesValidator.validateNoConsultorioOverlapWithOtherDoctors(
-                    plan.getSpecialistId(),
+                    specialist.getId(),
                     request.startDate(),
                     request.endDate(),
                     request.slots()
             );
             for (CreateSchedulePlanSlotRequest slotRequest : request.slots()) {
                 facilityOperatingHoursService.assertSlotWithinSedeHours(
-                        plan.getSedeId(),
+                        request.sedeId(),
                         slotRequest.dayOfWeek(),
                         slotRequest.startTime(),
                         slotRequest.endTime()
@@ -236,6 +238,8 @@ public class SchedulePlanAdminService {
             plan.replaceSlots(newSlots);
         }
 
+        plan.setSpecialistId(specialist.getId());
+        plan.setSedeId(request.sedeId());
         plan.updateDates(request.startDate(), request.endDate());
         return toDto(schedulePlanJpaRepository.save(plan));
     }

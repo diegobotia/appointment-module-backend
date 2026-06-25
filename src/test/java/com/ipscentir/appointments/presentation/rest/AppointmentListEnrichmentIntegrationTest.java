@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ipscentir.appointments.domain.model.facility.FacilityMasterData;
 import com.ipscentir.appointments.domain.model.schedule.Schedule;
 import com.ipscentir.appointments.domain.model.specialist.Specialist;
+import com.ipscentir.appointments.domain.service.ColombiaPublicHoliday;
 import com.ipscentir.appointments.infrastructure.persistence.jpa.AppointmentJpaRepository;
 import com.ipscentir.appointments.infrastructure.persistence.jpa.AppointmentResourceAllocationJpaRepository;
 import com.ipscentir.appointments.infrastructure.persistence.jpa.ContactoRepository;
@@ -89,7 +90,7 @@ class AppointmentListEnrichmentIntegrationTest {
         direccionRepository.deleteAll();
 
         sedeId = FacilityMasterData.SEDE_ID_BELEN;
-        appointmentDate = nextWeekday(LocalDate.now().plusDays(6));
+        appointmentDate = nextNonHoliday(LocalDate.now());
         appointmentTime = LocalTime.of(10, 30);
 
         doctorId = specialistJpaRepository.save(Specialist.builder()
@@ -247,9 +248,12 @@ class AppointmentListEnrichmentIntegrationTest {
                 .build());
     }
 
-    /** Evita sábado (cierre 12:00) y domingo (cerrado) del seed operativo de sedes. */
-    private static LocalDate nextWeekday(LocalDate date) {
-        while (date.getDayOfWeek() == DayOfWeek.SATURDAY || date.getDayOfWeek() == DayOfWeek.SUNDAY) {
+    /** Evita sábado, domingo y festivos. */
+    private static LocalDate nextNonHoliday(LocalDate date) {
+        date = date.plusDays(1);
+        while (date.getDayOfWeek() == DayOfWeek.SATURDAY
+                || date.getDayOfWeek() == DayOfWeek.SUNDAY
+                || ColombiaPublicHoliday.isHoliday(date)) {
             date = date.plusDays(1);
         }
         return date;
