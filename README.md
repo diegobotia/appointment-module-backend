@@ -1,6 +1,6 @@
 # Módulo de Citas - IPS Centir
 
-Backend del **módulo de gestión de citas médicas** de IPS Centir (Java 21, Spring Boot 3.2, PostgreSQL, DDD). Comparte esquemas con Supabase (`core`, `hc`, `appointments`).
+Backend del **módulo de gestión de citas médicas** de IPS Centir (Java 21, Spring Boot 3.2, PostgreSQL, DDD). Comparte esquemas con Supabase (`core`, `hc`, `appointments`)..
 
 ## Funcionalidades
 
