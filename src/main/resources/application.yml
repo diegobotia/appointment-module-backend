@@ -5,7 +5,7 @@ spring:
   datasource:
     url: jdbc:postgresql://192.168.0.160:5432/centir_prod
     username: postgres
-    password: t40DEL06V$
+    password: ${SPRING_DATASOURCE_PASSWORD}
     driver-class-name: org.postgresql.Driver
     
   jpa:
@@ -56,7 +56,7 @@ management:
 
 security:
   jwt:
-    secret: ${JWT_SECRET:N9Cib0jGaY+pQifpw/EVFyQq2gSQA2DeMDSTTHcx543anw/z0xlzPIKE1QL5rJJPkWcscfh275mHzg88I8FlxQ==}
+    secret: ${JWT_SECRET}
   auth:
     diagnostics: ${SECURITY_AUTH_DIAGNOSTICS:false}
   n8n:

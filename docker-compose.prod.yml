@@ -32,7 +32,7 @@ services:
       # Base de datos (existente en el servidor)
       SPRING_DATASOURCE_URL: jdbc:postgresql://${DB_HOST:-postgres}:${DB_PORT:-5432}/${DB_NAME:-ipscentir_appointments}
       SPRING_DATASOURCE_USERNAME: ${DB_USER:-postgres}
-      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-postgres}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
       SPRING_FLYWAY_ENABLED: "true"
 
       # JWT (MISMO secreto que el módulo de billing)

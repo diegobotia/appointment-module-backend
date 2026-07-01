@@ -21,9 +21,9 @@ spring:
 
 security:
   jwt:
-    secret: dGVzdC1zZWNyZXQta2V5LWZvci1obWFjLXNoYTI1Ni1taW4tMzItYnl0ZXM=
+    secret: ${JWT_SECRET:dGVzdC1zZWNyZXQta2V5LWZvci1obWFjLXNoYTI1Ni1taW4tMzItYnl0ZXM=}
   n8n:
-    api-key: test-n8n-api-key
+    api-key: ${N8N_API_KEY:test-n8n-api-key}
     base-path: /api/v1/integrations/n8n
 
 patient-registration:
